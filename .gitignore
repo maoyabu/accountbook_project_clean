@@ -1,0 +1,33 @@
+# node_modules は追跡しない（依存ライブラリ）
+node_modules/
+
+# macOS特有の隠しファイル
+.DS_Store
+
+# 環境変数ファイル（すでに書いてある）
+.env
+
+# VSCodeの個人設定ファイル（必要なら）
+.vscode/
+
+# ログファイルなど（任意）
+*.log
+
+# Google Drive API 認証情報
+credentials.json
+
+# .gitignore に追加
+/tmp/
+/*.zip
+
+# ローカルで実施するスクリプトファイル
+push-all.sh
+
+# Google Cloud Vision AI 認証情報
+config/accountbook.json
+config/accountbook.b64.txt
+
+#バックアップやレシピ画像など
+/backup
+# レシピ画像のアップロード先
+/public/uploads

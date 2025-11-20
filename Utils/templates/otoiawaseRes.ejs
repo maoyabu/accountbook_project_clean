@@ -1,0 +1,27 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+
+    <p><%= userEmail %> 様</p>
+
+    <p>以下の内容でお問い合わせいただき、ありがとうございます。<br>
+    サポートよりご返信いたします。</p>
+
+    <hr>
+    <p><strong>件名：</strong> <%= title %></p>
+    <p><strong>ご返信内容：</strong></p>
+    <div style="white-space: pre-wrap;"><%= replyContent %></div>
+    <hr>
+
+    <p>ご不明点などございましたら、引き続きご連絡ください。</p>
+    <p>今後ともよろしくお願いいたします。</p>
+    <p>サポートページはこちらからご確認いただけます：</p>
+    <br>
+    <p>    
+        <a href="https://www.allaboutme.jp/support" style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+            返信を見る
+        </a>
+    </p>
+</div>
+
+<%- include('_mailFooter') %>

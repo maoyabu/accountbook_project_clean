@@ -1,0 +1,18 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+    <h2>Planner登録完了のお知らせ</h2>
+    <p><%= typeof username !== 'undefined' ? username : '不明' %>様</p>
+
+    <p><strong>お申込内容を確認させて頂き、当サイトのPlannerとして登録させていただきました。Planner一覧に掲載させていただきます。ご利用者からの申込みがあるまで今しばらくお待ちください</strong></p>
+    <p>
+      <a href="<%= typeof inviteUrl !== 'undefined' ? inviteUrl : '#' %>" target="_blank" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: #fff; text-decoration: none; border-radius: 4px;">
+        Planner専用グループへの参加
+      </a>
+    </p>
+    <p>どうぞよろしくお願いいたします</p>
+    <br>
+  <p></p>
+</div>
+
+<%- include('_mailFooter') %>

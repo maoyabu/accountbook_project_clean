@@ -1,0 +1,21 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+    <h2>新しいお問い合わせがあります</h2>
+    <p><strong>お名前：</strong> <%= typeof name !== 'undefined' ? name : '不明' %></p>
+    <p><strong>メールアドレス：</strong> <%= typeof email !== 'undefined' ? email : '不明' %></p>
+    <p><strong>メッセージ：</strong></p>
+    <div style="white-space: pre-wrap;"><%= typeof message !== 'undefined' ? message : '' %></div>
+    <br>
+  <p>
+    <% if (typeof url !== 'undefined') { %>
+      <a href="<%= url %>/admin/inquiries" style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+        お問合せを見る
+      </a>
+    <% } else { %>
+      <span style="color: red;">リンク情報がありません</span>
+    <% } %>
+  </p>
+</div>
+
+<%- include('_mailFooter') %>

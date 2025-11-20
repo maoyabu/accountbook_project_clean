@@ -1,0 +1,13 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+    <h2>Planner審査結果のお知らせ</h2>
+    <p><%= typeof username !== 'undefined' ? username : '不明' %>様</p>
+
+    <p>この度は、当サイトのPlannerにお申込頂きまして誠にありがとうございました。<br>内容を拝見させていただきましたが、今回はPlannerとしての採用を見送らせていただくこととさせていただきました。</p>
+    <p>何卒ご理解の程よろしくお願い申し上げます</p>
+    <br>
+  <p></p>
+</div>
+
+<%- include('_mailFooter') %>

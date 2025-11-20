@@ -1,0 +1,21 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+    <h2>Plannerの申請がありました</h2>
+    <p><strong>お名前：</strong> <%= typeof username !== 'undefined' ? username : '不明' %></p>
+    <p><strong>メールアドレス：</strong> <%= typeof email !== 'undefined' ? email : '不明' %></p>
+    <p><strong>メッセージ：</strong></p>
+    <div style="white-space: pre-wrap;"><%= typeof message !== 'undefined' ? message : '' %></div>
+    <br>
+  <p>
+    <% if (typeof resumeUrl !== 'undefined') { %>
+      <a href="<%= resumeUrl %>" style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+        職務履歴書をみる
+      </a>
+    <% } else { %>
+      <span style="color: red;">リンク情報がありません</span>
+    <% } %>
+  </p>
+</div>
+
+<%- include('_mailFooter') %>

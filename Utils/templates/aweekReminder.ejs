@@ -1,0 +1,15 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+  <h2>久しぶりに家計簿の入力しませんか？</h2>
+  <p><%= displayname %>さん、最後の家計簿の入力から <%= diff %> 日が経過しています。</p>
+  <p>未入力の内容があれば、以下から早めに入力しましょう！</p>
+  <p>
+    <a href="<%= url %>/login" style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+      家計簿にログインする
+    </a>
+  </p>
+
+</div>
+
+<%- include('_mailFooter') %>

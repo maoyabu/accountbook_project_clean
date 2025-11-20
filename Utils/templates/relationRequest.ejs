@@ -1,0 +1,18 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+  <div class="email-header">
+    <h1>AllAboutMe からのお知らせ</h1>
+  </div>
+
+  <h2>リレーション申請が届いています</h2>
+  <p><strong><%= senderName %></strong> さんからリレーション申請が届いています。</p>
+  <p>
+    <a href="https://www.allaboutme.jp/relation" style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+      申請を確認する
+    </a>
+  </p>
+
+</div>
+
+<%- include('_mailFooter') %>

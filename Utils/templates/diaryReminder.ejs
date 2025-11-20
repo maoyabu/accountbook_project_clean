@@ -1,0 +1,16 @@
+<%- include('_mailHeader') %>
+
+<div class="email-container">
+  <h2>日記のリマインダー</h2>
+  <p><%= name %>さん</p>
+  <p>昨日の調子はいかがでしたか？昨日のことを振り返って日記をつけましょう！</p>
+  <p>以下のリンクから日記を入力できます：</p>
+  <p>
+    <a href="<%= url %>"　 style="display: inline-block; padding: 10px 20px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+    日記を入力
+    </a>
+  </p>
+
+</div>
+
+<%- include('_mailFooter') %>

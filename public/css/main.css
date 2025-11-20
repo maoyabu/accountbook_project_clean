@@ -1,0 +1,956 @@
+header {
+    color: #fff;
+    background-color: #3a7ca5;
+    padding: 0px;
+}
+
+.navbar-nav {
+    background-color: transparent;
+}
+
+h1 {
+    text-align: center;
+    font-size: xx-large;
+}
+
+h2 {
+    text-align: left;
+    font-size: large;   
+}
+.center-text {
+    text-align: center;
+}
+.right-text {
+    text-align: right;
+    margin-bottom: 5px;
+}
+.left-text {
+    text-align: left;
+}
+.gray-text {
+    color:#dcdcdc;
+}
+.navbar-toggler {
+    background-color: rgba(255, 255, 255, 0.2); /* 透明な白色 */
+    border: 1px solid white; /* 枠線を白色に */
+}
+#mypage_nav {
+    padding: 20px 0px;
+}
+#topPage_bar {
+    padding: 20px 0px;
+}
+#footer_bar {
+    padding: 20px 0px;
+}
+.text-center {
+    text-align: center;
+}
+.text-right {
+    text-align: right;
+}
+tbody tr:nth-child(odd) {
+    background-color: #e9f2fb;
+}
+tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 2px;
+    margin: 0px auto;
+}
+tr {
+    background-color: #3a7ca5;
+    padding: 1px;
+}
+
+td {
+    padding: 1px;
+}
+
+th {
+    background-color: #3a7ca5;
+    color:#fff;
+    text-align: center;
+    padding: 2px; 
+}
+label {
+    font-weight: bold;
+    font-size: 16px;
+}
+h2.profile-heading {
+    font-size: 24px;
+    font-weight: 700;
+    color: #3a7ca5;
+    text-align: center;
+    border-bottom: 2px solid #3a7ca5;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+.limited-text {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.limited-text1 {
+    max-width: 60px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.limited-text2 {
+    width: 50px;  /* 最大幅を設定 */
+    white-space: nowrap;  /* テキストの折り返しを禁止 */
+    overflow: hidden;  /* はみ出た部分を隠す */
+    text-overflow: ellipsis;  /* 省略記号 (...) を表示 */
+}
+.limited-text3 {
+    width: 50px;  /* 最大幅を設定 */
+}
+.limited-text4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;         /* 最大2行まで表示 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#budgetYear {
+    text-align: right;
+    max-width: 100px; /* 例として150pxに設定 */
+    width: 100%;
+  }
+
+nav ul {
+    text-align: center;
+    color: #efefd0;
+    background-color: #16425b;
+}
+nav li {
+    display: inline-block;
+    padding-left: 10px;
+}
+nav p {
+    text-align: center;
+    color: white;
+    background-color: #1a659e;
+    margin-top: 0px;
+}
+.nav-link.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.dropdown-item.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.card-header {
+    width: 100%;
+    margin-bottom: 5px;
+}
+.navbar-avatar {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid white;
+  }
+.navbar-avatar1 {
+width: 100px;
+height: 100px;
+object-fit: cover;
+border-radius: 50%;
+border: 2px solid rgb(0, 0, 0);
+}
+.note-link {
+    text-align: center;
+}
+
+main {
+    width: 100%;
+    max-width: 700px;
+    margin: 120px 0px;
+    padding: 10px;
+}
+
+/* 初期状態では非表示 */
+#income_group, #expense_group, #deduction_group {
+    display: none;
+}
+.login {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    color:#004e89;
+    font-weight: 700;
+    max-width: 400px;
+    margin:20px auto;
+}
+
+.waku-1 {
+    max-width: 600px;
+    margin-right: auto;
+    margin-left: auto;
+    list-style: none;
+}
+
+.waku-3 {
+    font-size: 16px;
+    font-weight: 700;
+    text-align: left;
+    width: 100%;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+.waku-4 {
+    border: 2px solid #D6D7D8;
+    border-radius: 4px;
+    height: 30px;
+    width: 100%;
+    margin: 10px 0px;
+    box-sizing: border-box;
+}
+.waku-5 {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    margin: 20px auto;
+}
+.waku-6 {
+    display: flex;
+    justify-content: center;
+}
+.waku-7 {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    max-width: 400px;
+    margin:20px auto;
+}
+hr {
+    margin: 10px auto;
+}
+.action-button {
+    font-size: 0.875rem;
+    padding: 2px 8px;
+    white-space: nowrap;
+    margin: 2px 2px;
+}
+.a-button {
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: #465cd7;
+    color: #fff;
+    font-size: 16px;
+    padding: 3px 5px;
+}
+.a-button:hover {
+    background: #465cd7c4;
+    color: #fff;
+}
+
+.b-button {
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: #d74646;
+    color: #fff;
+    font-size: 16px;
+}
+.b-button:hover {
+    background: #d74646bc;
+}
+.b2-button {
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: #46c6d7;
+    color: #fff;
+    font-size: 16px;
+}
+.b-button:hover {
+    background: #d74646bc;
+}
+
+.c-button {
+    display: block;
+    margin: 20px auto;
+    padding: 8px 16px;
+    width: 80%;
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: #4676D7;
+    color: #fff;
+  padding: 8px 16px;
+  font-size: 16px;
+}
+
+/* Dashboard monthly table header highlights */
+.dashboard-monthly thead th.th-cumulative-highlight {
+    background-color: #0dcaf0 !important; /* Bootstrap info */
+    color: #000000 !important;            /* black text */
+    font-weight: 700;
+}
+/* top-level month and range headers */
+.dashboard-monthly thead th.th-period-highlight {
+    background-color: #0dcaf0 !important; /* Bootstrap info */
+    color: #000000 !important;            /* black text */
+    font-weight: 700;
+}
+.d-button {
+    display: block;
+    margin: 20px auto;
+    padding: 8px 16px;
+    width: 80%;
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: #32a028;
+    color: #fff;
+    padding: 8px 16px;
+    font-size: 16px;
+}
+.e-button {
+    display: block;
+    margin: 20px auto;
+    padding: 8px 16px;
+    width: 80%;
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: #585858;
+    color: #fff;
+    padding: 8px 16px;
+    font-size: 16px;
+}
+
+.button {
+    border:1px solid #004e89;
+    color: #004e89;
+    background-color: #efefd0;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 4px;
+    min-height: 44px;
+    max-height: 48px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    /* height:60px; */
+    line-height:1.2;
+    width: 100%;
+    max-width: 400px;
+    margin-top: 20px;
+}
+.button:hover {
+    background-color: #cfcfae;
+    color: white;
+}
+.lbutton {
+    background-color: #9d9d9d;
+    border:none;
+    color: white
+}
+
+.button-1 {
+    border:1px solid #004e89;
+    color: #004e89;
+    background-color: #efefd0; */
+    border-radius: 4px;
+    min-height: 44px;
+    max-height: 48px;
+    min-width:160px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    width: 100%;
+    padding:10px 30px;
+}
+
+.button-3 {
+
+    border:1px solid #004e89;
+    color: #004e89;
+    background-color: #e9edc9;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 4px;
+    min-height: 44px;
+    max-height: 48px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    /* height:60px; */
+    line-height:1.2;
+    width: 100%;
+    max-width: 200px;
+    padding: 10px;
+    display: inline-block;
+}
+.button-3:hover {
+    background-color: #cfcfae;
+    color: white;
+}
+.button-4 {
+    border:1px solid #004e89;
+    color: #ffffff;
+    background-color: #a3a3a3;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 4px;
+    min-height: 44px;
+    max-height: 48px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    /* height:60px; */
+    line-height:1.2;
+    width: 100%;
+    max-width: 200px;
+    padding: 10px;
+}
+.button-5 {
+    border:1px solid #ff0000;
+    color: #ffffff;
+    background-color: #ff0000;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 4px;
+    min-height: 44px;
+    max-height: 48px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    /* height:60px; */
+    line-height:1.2;
+    width: 100%;
+    max-width: 200px;
+    padding: 10px;
+}
+.list {
+    display: flex;
+    justify-content: space-between;
+    width: 380px;
+    margin: 10px;
+}
+
+.list1 {
+    list-style: none;
+    padding: 5px;
+}
+
+.list2 {
+    display: flex;
+    justify-content: space-between;
+    width: 380px;
+    margin: 5px;
+}
+.list-group-item {
+    border: none;
+  }
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.form-group label {
+    width: 120px; /* ラベルの幅を統一 */
+    text-align: right; /* 右寄せで揃える */
+    margin-right: 10px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    flex: 1; /* 入力欄を伸ばす */
+    padding: 5px;
+    /* border: 1px solid #ccc; 枠線を薄いグレーに */
+    padding: 5px; /* 内側の余白 */
+    border-radius: 5px; /* 角を丸く */
+}
+select {
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 5px;
+    background-color: hsl(0, 18%, 97%);
+    font-size: 16px;
+    cursor: pointer;
+    text-align: center;
+}
+#amount {
+    text-align: right;
+}
+.top {
+    color:white;
+    font-size:larger;
+    font-weight: bold;
+}
+.logout {
+    color:#ff6b35;
+}
+.top_nav {
+    color:#bde0fe;
+}
+
+footer {
+    text-align: center;
+    color: white;
+    background-color: #3a7ca5;
+    padding-bottom: 5px;
+}
+footer div {
+    padding-top: 5px;
+}
+#container {
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+#container div {
+    width: 200px;
+    text-align: center;
+    flex-basis: 500px;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #004e89; 
+}
+
+.error-field {
+    border: 2px solid red; /* 赤いボーダーを追加 */
+    /* background-color: red; */
+}
+
+.error-message {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.group-link {
+text-decoration: none;
+color: white;
+}
+
+.group-link:hover {
+text-decoration: none;
+color: white;
+}
+
+.info-container {
+    position: relative;
+    display: inline-block;
+}
+
+.info-button {
+    /* background-color: #cacaca; */
+    color: rgb(143, 143, 143);
+    /* border: none; */
+    /* padding: 5px 10px; */
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.info-popup {
+    display: none;
+    position: absolute;
+    top: 35px;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding-top: 18px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 5px;
+    width: 250px;
+    font-size: 14px;
+    z-index: 1000;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.info-container:hover .info-popup {
+    display: block;
+}
+
+.custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #3a7ca5;
+    color: white;
+    border: none;
+    padding: 5px 30px 5px 10px;
+    border-radius: 4px;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='70,100 20,40 120,40' fill='white'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px;
+  }
+
+.offcanvas-menu-custom {
+    background-color: #3a7ca5;
+    color: white;
+  }
+
+  .offcanvas-menu-custom .nav-link {
+    color: white;
+    padding: 12px 20px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .offcanvas-menu-custom .nav-link:hover {
+    background-color: #2d5c7c;
+    text-decoration: none;
+  }
+
+  .offcanvas-menu-custom .nav-link.disabled {
+    color: #ccc !important;
+    pointer-events: none;
+    background-color: transparent;
+  }
+
+  .offcanvas-menu-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+  }
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-wrapper input {
+    padding-right: 60px; /* アイコン分のスペースを確保 */
+}
+
+.eye-icon {
+    position: absolute;
+    right: 10px; /* アイコンを右端に配置 */
+    top: 50%;
+    transform: translateY(-50%); /* 垂直方向に中央に配置 */
+    background: none;
+    border: none;
+    font-size: 20px; /* アイコンのサイズ */
+    cursor: pointer;
+}
+
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10; /* ← 高めにすることで overlap 対策 */
+    background-color: #f8f9fa;
+    text-align: center;
+  }
+
+/* 共通 sticky 列スタイル */
+.sticky-col, .sticky-col2 {
+    box-sizing: border-box;
+    }
+    
+.sticky-col {
+    position: sticky;
+    left: 0;
+    min-width: 110px !important;
+    max-width: 110px !important;
+    box-sizing: border-box; /* ← これが効く！ */
+    z-index: 11;
+    white-space: normal;
+    word-break: break-word;
+    /* background-color: #f8f9fa !important; */
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.05);
+}
+    
+.sticky-col2 {
+    position: sticky;
+    left: 110px !important; /* ← sticky-col と一致させる */
+    min-width: 100px !important;
+    box-sizing: border-box;
+    z-index: 10;
+    white-space: nowrap;
+    /* background-color: #f8f9fa !important; */
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.04);
+    text-align: right !important;
+}
+
+th.sticky-col {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 14; /* 項目を最前面に！ */
+    background-color: #3a7ca5 !important;
+    color: white;
+    text-align: center !important;
+}
+
+th.sticky-col2 {
+    position: sticky;
+    top: 0;
+    left: 110px; /* sticky-colの幅と一致 */
+    min-width: 100px;
+    z-index: 13; /* 項目より低くする！ */
+    background-color: #3a7ca5 !important;
+    color: white;
+    text-align: center !important;
+}
+.navbar-nav .dropdown-menu .dropdown-item {
+    color: #333; /* Dark text color for the items */
+}
+
+.navbar-nav .dropdown:hover .dropdown-menu {
+    display: block;
+}
+.navbar-nav .dropdown-menu .dropdown-item:hover {
+    background-color: #3a7ca5; /* Darker background on hover */
+    color: #fff; /* White text color on hover */
+}
+
+/* Ensure the dropdown appears in the off-canvas menu */
+.offcanvas-body .dropdown-menu {
+    background-color: #f0f8ff;
+}
+  
+.offcanvas-body .dropdown-menu .dropdown-item {
+    color: #333;
+}
+  
+.offcanvas-body .dropdown-menu .dropdown-item:hover {
+    background-color: #3a7ca5;
+    color: #fff;
+}
+
+/* ダッシュボードの遷移アニメーション */
+.dashboard-page {
+    animation: fadeIn 1.0s ease-in-out;
+}
+table td, table th {
+    border: none !important;
+}
+
+li{
+    list-style:none;
+}
+
+#top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000; /* 他の要素の上に表示 */
+    background-color: #fff; /* 背景色を指定しないと下が透けます */
+    /* padding: 10px; */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 影で浮かせると自然 */
+}
+
+#calendar {
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.fc .fc-daygrid-day-top {
+    font-weight: bold;
+    color: #3a7ca5;
+    font-size: 0.95rem;
+}
+
+.fc .fc-toolbar-title {
+    padding: 0 0.5rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.fc .fc-button {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+}
+.fc .fc-button-primary {
+    color: #3a7ca5; /* Bootstrap gray-600 */
+    background-color: #eaf4fb;
+    border: none;
+}
+
+.fc .fc-button-primary:hover {
+    background-color: #f0f0f0;
+    color: #343a40;
+}
+.fc .fc-col-header-cell-cushion {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+/* Highlight today on all FullCalendar views */
+.fc .fc-day-today {
+    background-color: #3a7ca5 !important;
+}
+.fc .fc-day-today * {
+    color: white !important;
+}
+.fc .fc-daygrid-day.fc-day-today {
+    background-color: #0d6efd !important;
+}
+
+.fc .fc-daygrid-day.fc-day-selected {
+    position: relative;
+    background-color: #ffc107 !important;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 2px #fff;
+}
+
+.fc .fc-daygrid-day.fc-day-selected * {
+    color: white !important;
+}
+
+/* Style the FullCalendar "Today" button in the toolbar */
+.fc .fc-toolbar .fc-today-button {
+    background-color: #3a7ca5 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px;
+}
+.fc .fc-today-button:disabled {
+  background-color: #4188fa !important;
+  color: white !important;
+  opacity: 1 !important;
+  cursor: default;
+}
+
+.fc .fc-daygrid-event {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+/* public/css/main.css などに追加 */
+.nav-tabs .nav-link.history-active {
+  border: 1px solid #4caf50;
+  border-bottom: none;
+  background-color: #e6f4ea;
+  color: #4caf50 !important;
+}
+.history-category-active {
+  border: 1px solid #4caf50;
+  border-bottom: none;
+  background-color: #e6f4ea;
+  color: #4caf50 !important;
+}
+
+/* histoiryコメント部分の表示制限 */
+.content-preview {
+max-height: 6.5em; /* 約5行分（1行あたり約1.3em） */
+overflow: hidden;
+position: relative;
+}
+
+.content-preview::after {
+content: '...';
+position: absolute;
+bottom: 0;
+right: 0;
+background: linear-gradient(to right, transparent, white);
+padding-left: 10px;
+}
+
+.content-full {
+display: none;
+}
+
+.truncate-text {
+display: block;
+max-height: 6.5em;
+overflow: hidden;
+position: relative;
+line-height: 1.3em;
+}
+
+.truncate-text::after {
+content: '...';
+position: absolute;
+bottom: 0;
+right: 0;
+background: linear-gradient(to right, transparent, white);
+padding-left: 10px;
+}
+.category-label-box {
+  display: inline-block;
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  color: white;
+}
+
+.section-title {
+    border-bottom: 3px solid #007bff;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {  /* 画面幅 768px 以下 (スマホサイズ) */
+    .hide-on-mobile {
+        display: none;
+    }
+
+    .info-popup {
+        left: 100%;  
+        transform: translateX(-100%);
+        max-width: 90vw; /* 画面の90%以内に収める */
+        white-space: normal; /* テキストを折り返す */
+    }
+
+    .limited-text3 {
+        width: 48px;  /* 最大幅を設定 */
+    }
+    main {
+        padding: 10px;
+    }
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        width: 100%;
+        table-layout: auto;
+    }
+
+}
+
+@media (max-width: 670px) {  /* 画面幅 768px 以下 (スマホサイズ) */
+    main {
+        padding: 50px;
+    }
+}
