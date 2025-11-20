@@ -1,0 +1,76 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <div class="card shadow-sm">
+    <div class="card-header text-white" style="background-color: #3a7ca5;">
+      <h5 class="mb-0">日記の書き出し</h5>
+    </div>
+    <div class="card-body">
+      <form id="exportForm" action="/allaboutme/export-diary" method="POST" class="mb-4 no-js-submit" target="_blank" onsubmit="handleSubmit()">
+
+        <div class="form-group mb-3">
+          <label for="fromDate" class="form-label">書き出す期間（開始）</label>
+          <input type="date" id="fromDate" name="from" class="form-control" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="toDate" class="form-label">書き出す期間（終了）</label>
+          <input type="date" id="toDate" name="to" class="form-control" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="diaryType" class="form-label">日記の種類</label>
+          <select id="diaryType" name="event" class="form-select">
+            <!-- 日記に登録されている項目を動的に挿入 -->
+            <% if (diaryTypes && diaryTypes.length > 0) { %>
+              <% diaryTypes.forEach(function(ev) { %>
+                <option value="<%= ev %>"><%= ev %></option>
+              <% }) %>
+            <% } else { %>
+              <option value="">種類が登録されていません</option>
+            <% } %>
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="layout" class="form-label">書き出しタイプ</label>
+          <select id="layout" name="layout" class="form-select" required>
+            <option value="one">1列</option>
+            <option value="two">2列</option>
+          </select>
+        </div>
+
+        <div class="text-center mt-4">
+          <button type="submit" class="btn btn-primary" style="width: 60%;">表示</button>
+        </div>
+      </form>
+    </div>
+  </div>
+<script>
+  const layoutSelect = document.getElementById("layout");
+  const exportForm = document.getElementById("exportForm");
+
+  layoutSelect.addEventListener("change", () => {
+    const layout = layoutSelect.value;
+    if (layout === "one") {
+      exportForm.action = "/allaboutme/export-diary/one";
+    } else if (layout === "two") {
+      exportForm.action = "/allaboutme/export-diary/two";
+    }
+  });
+
+  // 初期化（ページ読み込み時に正しいactionにセット）
+  window.addEventListener("DOMContentLoaded", () => {
+    layoutSelect.dispatchEvent(new Event("change"));
+  });
+
+  function handleSubmit() {
+    // フォームをリセット
+    setTimeout(() => {
+      exportForm.reset();
+      layoutSelect.dispatchEvent(new Event("change"));
+    }, 100);
+    return true;
+  }
+</script>
+</div>

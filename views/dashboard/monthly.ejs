@@ -1,0 +1,98 @@
+<% layout('layouts/boilerplate') %>
+
+
+  <div class="card mb-3 mt-4">
+    <div class="card-body text-white p-2 rounded" style="background-color: #3a7ca5;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="card-title mb-0"><%= titlePrefix %> 月間サマリー</h5>
+        <form method="GET" action="<%= formAction %>" class="d-flex">
+          <div class="d-flex align-items-center flex-nowrap">
+            <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;">
+            <button type="submit" class="btn btn-primary btn-sm" style="width: 60px;">表示</button>
+          </div>
+        </form>
+      </div>
+      <ul class="list-group">
+        <li class="list-group-item">収入合計：<strong><%= totalIncome.toLocaleString() %></strong></li>
+        <li class="list-group-item">支出合計（支出＋控除）：<strong><%= totalExpense.toLocaleString() %></strong></li>
+        <li class="list-group-item">貯蓄合計：<strong><%= totalSaving.toLocaleString() %></strong></li>
+        <li class="list-group-item">収支（収入 - 支出 - 貯蓄）：<strong><%= balance.toLocaleString() %></strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-body text-white p-2 rounded" style="background-color: #3a7ca5;">
+      <h5 class="card-title">支出内訳（<%= month %>月 & 累計）</h5>
+      <table class="table table-bordered mt-3 dashboard-monthly">
+        <thead class="table-primary text-center">
+          <tr>
+            <th class="text-dark align-middle" rowspan="2">項目</th>
+            <th class="text-dark" colspan="3"><%= month %>月</th>
+            <th class="text-dark th-period-highlight" colspan="3">1月〜<%= month %>月</th>
+          </tr>
+          <tr>
+            <th class="text-dark">合計</th>
+            <th class="text-dark">予算</th>
+            <th class="text-dark">予算差</th>
+            <th class="text-dark th-cumulative-highlight">累計合計</th>
+            <th class="text-dark th-cumulative-highlight">累計予算</th>
+            <th class="text-dark th-cumulative-highlight">累計予算差</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% 
+            let totalSum = 0, totalBudget = 0, totalDiff = 0;
+            let cumTotalSum = 0, cumBudgetSum = 0, cumDiffSum = 0;
+
+            const combinedItems = expenseItems.map(monthItem => {
+              const cumItem = cumulativeItems.find(c => c.item === monthItem.item) || { total: 0, budget: 0, diff: 0 };
+              return {
+                item: monthItem.item,
+                month: monthItem,
+                cumulative: cumItem
+              };
+            });
+
+            for (let data of combinedItems) {
+              const { item, month: monData, cumulative: cum } = data;
+
+              totalSum += monData.total;
+              totalBudget += monData.budget;
+              totalDiff += monData.diff;
+
+              cumTotalSum += cum.total;
+              cumBudgetSum += cum.budget;
+              cumDiffSum += cum.diff;
+          %>
+            <tr>
+              <td class="text-start"><%= item %></td>
+              <td class="text-end">
+                <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>" class="text-decoration-none">
+                  <%= monData.total.toLocaleString() %>
+                </a>
+              </td>
+              <td class="text-end"><%= monData.budget.toLocaleString() %></td>
+              <td class="text-end <%= monData.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= monData.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= monData.diff.toLocaleString() %></td>
+              <td class="text-end">
+                <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&cumulative=1" class="text-decoration-none">
+                  <%= cum.total.toLocaleString() %>
+                </a>
+              </td>
+              <td class="text-end"><%= cum.budget.toLocaleString() %></td>
+              <td class="text-end <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= cum.diff.toLocaleString() %></td>
+            </tr>
+          <% } %>
+          <tr class="table-primary fw-bold">
+            <td class="text-start">合計</td>
+            <td class="text-end"><%= totalSum.toLocaleString() %></td>
+            <td class="text-end"><%= totalBudget.toLocaleString() %></td>
+            <td class="text-end"><%= totalDiff.toLocaleString() %></td>
+            <td class="text-end"><%= cumTotalSum.toLocaleString() %></td>
+            <td class="text-end"><%= cumBudgetSum.toLocaleString() %></td>
+            <td class="text-end"><%= cumDiffSum.toLocaleString() %></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>

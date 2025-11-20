@@ -1,0 +1,147 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'historyEdit' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<h2><i class="fas fa-edit me-2"></i> My Historyの編集</h2>
+<hr>
+<form action="/history/edit/<%= history._id %>" method="POST" enctype="multipart/form-data">
+  <div class="mb-3">
+  <div class="form-check mb-3 bg-success bg-opacity-10 rounded p-2">
+    <input class="form-check-input ms-1" type="checkbox" name="isActive" id="isActive" value="true" <%= history.isActive ? 'checked' : '' %>>
+    <label class="form-check-label" for="isActive">　Active</label>
+  </div>
+  <div class="form-check mb-3 bg-primary bg-opacity-10 rounded p-2">
+    <input class="form-check-input ms-1" type="checkbox" name="isResume" id="isResume" value="true" <%= history.isResume ? 'checked' : '' %>>
+    <label class="form-check-label" for="isResume">　履歴書に掲載する</label>
+  </div>
+    <label for="category">カテゴリー</label>
+    <select name="categoryId" class="form-select" required>
+      <% categories.forEach(cat => { %>
+        <option value="<%= cat._id %>" <%= history.category && cat._id.toString() === history.category._id.toString() ? 'selected' : '' %>>
+          <%= cat.name %>
+        </option>
+      <% }) %>
+    </select>
+  </div>
+
+  <% if (history.category && history.category.fields) { %>
+    <% history.category.fields.forEach((field, index) => { %>
+      <div class="mb-3">
+        <label class="form-label"><%= field.name %></label>
+        <% if (field.type === 'textarea') { %>
+          <textarea name="data_<%= index %>" data-field-name="<%= field.name %>" class="form-control" rows="3" style="height: 107px;"><%= history.data ? history.data[field.name] : '' %></textarea>
+        <% } else { %>
+          <input type="<%= field.type %>" name="data_<%= index %>" data-field-name="<%= field.name %>" class="form-control"
+                 value="<%= history.data ? history.data[field.name] : '' %>">
+        <% } %>
+      </div>
+    <% }) %>
+  <% } %>
+
+  <div class="mb-3">
+    <label for="from_date">開始日</label>
+    <input type="date" name="from_date" class="form-control" value="<%= history.from_date ? history.from_date.toISOString().split('T')[0] : '' %>">
+  </div>
+  <div class="mb-3">
+    <label for="end_date">終了日</label>
+    <input type="date" name="end_date" class="form-control" value="<%= history.end_date ? history.end_date.toISOString().split('T')[0] : '' %>">
+  </div>
+  <div class="mb-3">
+    <label for="url">URL</label>
+    <input type="url" name="url" class="form-control" value="<%= history.url %>">
+  </div>
+  <div class="mb-3">
+    <label for="content">内容</label>
+    <textarea name="content" class="form-control"><%= history.content %></textarea>
+  </div>
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="share" value="on" id="share" <%= history.share ? 'checked' : '' %>>
+    <label class="form-check-label" for="share">共有する</label>
+  </div>
+
+  <% if (history.photos && history.photos.length > 0) { %>
+    <div class="mb-3">
+      <label class="form-label">登録済み写真</label>
+      <div class="row">
+        <% history.photos.forEach((photo, index) => {
+             const url = typeof photo === 'string' ? photo : photo.url;
+             const source = (typeof photo === 'object' && photo.source === 'google') ? 'google' : '';
+        %>
+          <div class="col-md-3 mb-3 text-center">
+            <img src="<%= url %>" alt="写真" class="img-fluid mb-2 rounded" style="max-height: 150px;"<% if (source) { %> data-source="<%= source %>"<% } %>>
+            <input type="hidden" name="existingPhotos[]" value="<%= url %>">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="deletePhotos[]" value="<%= url %>" id="delete_<%= index %>"<% if (source) { %> data-source="<%= source %>"<% } %>>
+              <label class="form-check-label" for="delete_<%= index %>">削除</label>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="mb-3">
+    <label class="form-label">Googleフォトから選択</label><br>
+    <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+  </div>
+  <div id="googlePhotoPreview" class="d-flex flex-wrap mb-3">
+    <% if (Array.isArray(selectedGooglePhotos) && selectedGooglePhotos.length > 0) { %>
+      <% selectedGooglePhotos.forEach((url, index) => { %>
+        <div class="me-2 mb-2 text-center">
+          <input type="hidden" name="selectedGooglePhotos[]" value="<%= url %>">
+          <img src="<%= url %>" class="img-thumbnail mb-1" style="max-height: 100px;">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="deletePhotos[]" value="<%= url %>" id="delPhoto_<%= index %>">
+            <label class="form-check-label small" for="delPhoto_<%= index %>">削除</label>
+          </div>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <div class="mb-3">
+    <label for="photos" class="form-label">写真を追加アップロード</label>
+    <input type="file" name="photos" id="photos" class="form-control" accept="image/*" multiple>
+  </div>
+
+  <button type="submit" class="btn btn-primary">更新</button>
+</form>
+
+<script>
+  function openGooglePhotoPopup() {
+    const width = 800;
+    const height = 600;
+    const left = (window.innerWidth - width) / 2 + window.screenX;
+    const top = (window.innerHeight - height) / 2 + window.screenY;
+    const popup = window.open('/googlePhotos/select?from=historyEdit', 'GooglePhotosSelect', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      alert('ポップアップがブロックされました。ブラウザの設定をご確認ください。');
+    }
+  }
+
+  window.addEventListener('message', function(event) {
+    if (event.origin !== location.origin) return;
+      // Remove all previous Google Photo inputs and previews
+      document.querySelectorAll('#googlePhotoPreview .google-photo-preview').forEach(el => el.remove());
+      const container = document.getElementById('googlePhotoPreview');
+      container.innerHTML = '';
+      event.data.selectedPhotos.forEach(url => {
+        const div = document.createElement('div');
+        div.classList.add('me-2', 'mb-2', 'text-center', 'google-photo-preview');
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selectedGooglePhotos[]';
+        input.value = url;
+        div.appendChild(input);
+
+        const img = document.createElement('img');
+        img.src = url;
+        img.classList.add('img-thumbnail');
+        img.style.maxHeight = '100px';
+        div.appendChild(img);
+
+        container.appendChild(div);
+      });
+    }, false);
+</script>

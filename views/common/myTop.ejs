@@ -1,0 +1,250 @@
+<% layout('layouts/boilerplate') %>
+<div class="text-end">
+  <!-- banner -->
+<div class="text-center my-3">
+  <a href="/planner/about">
+    <picture>
+      <!-- モバイル用バナー（768px以下） -->
+      <source srcset="/images/banner_02.jpg" media="(max-width: 768px)">
+      <!-- デフォルト（PC用） -->
+      <img src="/images/planner_banner.jpg" alt="暮らしアドバイザー募集バナー" class="img-fluid" style="max-width: 728px; height: auto;">
+    </picture>
+  </a>
+</div>
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/B249DE58-FD83-48FA-B740-842680556015/%E3%83%9E%E3%82%A4%E3%83%9A%E3%83%BC%E3%82%B8TOP"
+     target="_blank" rel="noopener"
+     class="badge bg-warning text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div id="datetime" class="text-end text-muted mt-3 me-3" style="font-size: 0.9rem;"></div>
+<!-- お知らせ -->
+<% if (infos && infos.length > 0) { %>
+  <div class="alert alert-info mt-3 mx-3">
+    <h5 class="mb-2"><i class="fa-solid fa-bullhorn"></i> お知らせ</h5>
+    <ul class="mb-0">
+      <% infos.forEach(info => { %>
+        <li>
+          <a href="#" class="info-link" data-bs-toggle="modal" data-bs-target="#infoModal" data-id="<%= info._id %>">
+            <strong><%= info.info_title %></strong>
+          </a>
+          <% if (info.app_url) { %>
+            - <a href="<%= info.app_url %>">ご利用はこちら</a>
+          <% } %>
+          <% if (info.guide_url) { %>
+            - <a href="<%= info.guide_url %>" target="_blank" rel="noopener"><small>詳しくは（外部サイト）</small></a>
+          <% } %>
+        </li>
+      <% }) %>
+      <% if (typeof pendingRelations !== 'undefined' && pendingRelations.length > 0) { %>
+        <li>
+          <strong><i class="fas fa-user-friends"></i> リレーション申請があります:</strong>
+          <a href="/relation">承認待ちリレーションを確認する</a>
+        </li>
+      <% } %>
+      <% if (typeof unreadChats !== 'undefined' && unreadChats.length > 0) { %>
+        <% unreadChats.forEach(chat => { %>
+          <li>
+            <strong><i class="fas fa-comments"></i> 新しいチャットがあります:</strong>
+            <a href="/gchat/<%= chat._id %>"><%= chat.title %></a>
+          </li>
+        <% }) %>
+      <% } %>
+    </ul>
+    <% if (infos && infos.length > 0) { %>
+      <% infos.forEach(info => { %>
+        <div id="info-content-<%= info._id %>" class="d-none">
+          <% const content = info.info_content || ''; %>
+          <% const isHtml = /<\/?[a-z][\s\S]*>/i.test(content); %>
+          <%- isHtml ? content : content.replace(/\r?\n/g, '<br>') %>
+          <div class="mt-3">
+            <% if (info.app_url) { %>
+              <a href="<%= info.app_url %>" class="btn btn-sm btn-primary me-2">アプリ内リンク</a>
+            <% } %>
+            <% if (info.guide_url) { %>
+              <a href="<%= info.guide_url %>" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">詳しいガイド（外部）</a>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+<% } %>
+
+<!-- 未読のお問合せのお知らせ -->
+<% if (typeof hasUnreadSupportReply !== 'undefined' && hasUnreadSupportReply === true) { %>
+  <div class="alert alert-warning mt-3 mx-3">
+    <i class="fa-solid fa-envelope-circle-check"></i>
+    サポートからの返信があります！
+    <button class="btn btn-sm btn-outline-dark ms-2" onclick="markSupportReplyRead()">確認する</button>
+  </div>
+<% } %>
+
+
+<!-- All about meサマリー -->
+<div class="card mb-1 mt-2">
+    <div class="card-body text-white p-2 rounded" style="background-color: #3a7ca5;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="card-title fw-bold mb-0"><i class="fa-solid fa-person"></i> All about me サマリー</span>
+            <a href="/allaboutme/wantolist" class="btn btn-outline-light">my リスト</a>
+        </div>
+        <div class="mt-1"><i class="fa-solid fa-list-check"></i> myリスト</div>
+        <ul class="list-group small" style="line-height: 1.2;">
+            <% if (wantolistItems.length > 0) { %>
+            <% wantolistItems.forEach(item => { %>
+                <li class="list-group-item">
+                <%= item.title %>
+                (<%= item.item %>)
+                </li>
+            <% }) %>
+            <% } else { %>
+            <li class="list-group-item text-muted">
+                まだリストの登録がありません。<a href="/allaboutme/wantolist">登録してみませんか？</a>
+            </li>
+            <% } %>
+        </ul>
+        <div class="mt-1"><i class="fa-solid fa-calendar-days"></i> マイ日記 <small>（昨日の日記）</small></div>
+        <ul class="list-group small" style="line-height: 1.2;">
+          <% 
+            const yesterday = new Date(); 
+            yesterday.setDate(yesterday.getDate() - 1); 
+            const yyyy = yesterday.getFullYear();
+            const mm = (yesterday.getMonth() + 1).toString().padStart(2, '0');
+            const dd = yesterday.getDate().toString().padStart(2, '0');
+            const yesterdayFormatted = `${yyyy}-${mm}-${dd}`;
+            const validEntries = yesterdaysDiary.filter(e => e && e.content && e.content.trim().length > 0);
+          %>
+          <% if (validEntries.length > 0) { %>
+            <% validEntries.forEach(entry => { %>
+                            <% 
+                const rateLabels = ['最悪', '悪い', '普通', '良い', '最高'];
+                const rateText = rateLabels[(entry.rate || 3) - 1] || '不明';
+              %>
+              <li class="list-group-item text-truncate">
+                <%= entry.event %> ／<i class="fa-regular fa-face-smile"></i>:<%= rateText %> ／ <%= entry.content %>
+              </li>
+            <% }) %>
+          <% } else { %>
+            <li class="list-group-item text-muted">
+              昨日の日記が登録されていません。昨日を振り返って登録してみましょう → 
+              <a href="/allaboutme/eventcal?date=<%= yesterdayFormatted %>">登録へ</a>
+            </li>
+          <% } %>
+        </ul>
+    </div>
+</div>
+
+<!-- 家計簿月間サマリー -->
+<div class="card mb-1 mt-1">
+    <div class="card-body text-white p-2 rounded" style="background-color: #3a7ca5;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="card-title fw-bold mb-0"><i class="fa-solid fa-coins text-white"></i> 家計簿サマリー（当月）</span>
+            <a href="/export/dashboard/monthly-g" class="btn btn-outline-light">Dashboard</a>
+        </div>
+        <ul class="list-group">
+            <li class="list-group-item">収入合計：<strong><%= totalIncome.toLocaleString() %></strong></li>
+            <li class="list-group-item">支出合計（支出＋控除）：<strong><%= totalExpense.toLocaleString() %></strong></li>
+            <li class="list-group-item">貯蓄合計：<strong><%= totalSaving.toLocaleString() %></strong></li>
+            <li class="list-group-item">収支（収入 - 支出 - 貯蓄）：<strong><%= balance.toLocaleString() %></strong></li>
+        </ul>
+    </div>
+</div>
+
+<!-- 資産状況サマリー -->
+<div class="card mt-1">
+    <div class="card-body text-white p-2 rounded" style="background-color: #3a7ca5;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="card-title fw-bold mb-0"><i class="fa-regular fa-money-bill-1"></i> 資産状況</span>
+            <a href="/asset/display" class="btn btn-outline-light">資産詳細</a>
+        </div>
+        <div class="list-group" style="background-color: #ffffff;">
+            <h4 class="mt-3 mb-2" style="color: #000000;">　資産合計　¥<%= totalYen.toLocaleString() %></h4>
+            <table class="table borderless mt-3">
+                <tr>
+                <td>金融資産</td>
+                <td class="text-end">¥<%= totalByCf['金融資産'].toLocaleString() %></td>
+                </tr>
+                <tr>
+                <td>実物資産</td>
+                <td class="text-end">¥<%= totalByCf['実物資産'].toLocaleString() %></td>
+                </tr>
+                <tr>
+                <td>無形資産</td>
+                <td class="text-end">¥<%= totalByCf['無形資産'].toLocaleString() %></td>
+                </tr>
+                <tr>
+                <td>負債</td>
+                <td class="text-end">¥<%= totalByCf['負債'].toLocaleString() %></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoModalLabel">お知らせ詳細</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body" id="infoModalBody">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function updateDateTime() {
+    const now = new Date();
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    const formatted = now.getFullYear() + '年' +
+                      (now.getMonth() + 1).toString().padStart(2, '0') + '月' +
+                      now.getDate().toString().padStart(2, '0') + '日（' +
+                      days[now.getDay()] + '） ' +
+                      now.getHours().toString().padStart(2, '0') + ':' +
+                      now.getMinutes().toString().padStart(2, '0') + ':' +
+                      now.getSeconds().toString().padStart(2, '0');
+    document.getElementById('datetime').textContent = formatted;
+  }
+
+  // 初回実行 & 1秒ごとに更新
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
+
+  //お知らせのモーダル表示
+  const infoModal = document.getElementById('infoModal');
+  infoModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const infoId = button.getAttribute('data-id');
+
+    const modalTitle = infoModal.querySelector('.modal-title');
+    const modalBody = infoModal.querySelector('.modal-body');
+
+    const contentElement = document.getElementById('info-content-' + infoId);
+    if (contentElement) {
+      modalTitle.textContent = button.textContent.trim();
+      modalBody.innerHTML = contentElement.innerHTML;
+    }
+  });
+</script>
+<script>
+  async function markSupportReplyRead() {
+    try {
+      const res = await fetch('/support/mark-last-admin-read', {
+        method: 'POST'
+      });
+
+      const text = await res.text();
+
+      if (res.ok) {
+        location.href = '/support';
+      } else {
+        alert('既読処理に失敗しました');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('通信エラーが発生しました');
+    }
+  }
+</script>

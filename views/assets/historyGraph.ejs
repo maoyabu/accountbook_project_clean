@@ -1,0 +1,76 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+  <h5 class="mb-0">資産推移グラフ</h5>
+  <div class="d-flex gap-2">
+    <a href="/asset/history" class="btn btn-outline-secondary btn-sm">履歴一覧へ戻る</a>
+    <a href="/asset/inventory" class="btn btn-primary btn-sm">棚卸しを入力</a>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <% const hasData = (JSON.parse(labels || '[]')).length > 0; %>
+    <% if (!hasData) { %>
+      <div class="alert alert-secondary">グラフに表示するデータがありません。棚卸しを登録してください。</div>
+    <% } else { %>
+      <canvas id="assetHistoryChart" height="120"></canvas>
+    <% } %>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = <%- labels || '[]' %>;
+  const financialData = <%- financialData || '[]' %>;
+  const physicalData = <%- physicalData || '[]' %>;
+
+  if (labels.length > 0) {
+    const ctx = document.getElementById('assetHistoryChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '金融資産',
+            data: financialData,
+            borderColor: '#1f77b4',
+            backgroundColor: 'rgba(31, 119, 180, 0.2)',
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: '実物資産',
+            data: physicalData,
+            borderColor: '#2ca02c',
+            backgroundColor: 'rgba(44, 160, 44, 0.15)',
+            tension: 0.3,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top'
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ¥${Number(ctx.raw || 0).toLocaleString()}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            ticks: {
+              callback: (value) => `¥${Number(value).toLocaleString()}`
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+</script>

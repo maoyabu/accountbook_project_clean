@@ -1,0 +1,140 @@
+<% if (user) { %>
+  <!-- ログイン時の表示 -->
+  <% layout('layouts/boilerplate') %>
+<% } else { %>
+  <!-- 未ログイン時の表示 -->
+  <% layout('layouts/top_boilerplate') %>
+<% } %>
+
+<h1 class="mt-4 pb-4 text-dark">
+    <i class="fa-solid fa-headset"></i> サポートページ
+</h1>
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/75158F8F-DCF3-4A4B-9494-FA1AD5F9F2D4/%E3%82%B5%E3%83%9D%E3%83%BC%E3%83%88"
+     target="_blank" rel="noopener"
+     class="badge bg-warning text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="d-flex justify-content-between align-items-center mt-4 pb-2">
+  <h2 class="text-primary mb-0">
+    <i class="fas fa-question-circle me-2"></i>よくあるご質問
+  </h2>
+  <a href="/support/qa" class="btn btn-primary btn-sm">
+    全てのQ&Aを確認する
+  </a>
+</div>
+<hr style="border-top: 2px solid var(--bs-primary);">
+<!-- よくあるご質問：アコーディオン形式 -->
+<div class="accordion my-3" id="faqAccordion">
+<% faqs.forEach((faq, idx) => { %>
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="faq-heading-<%= idx %>">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-collapse-<%= idx %>" aria-expanded="false" aria-controls="faq-collapse-<%= idx %>">
+        <%= faq.qa_question %>
+      </button>
+    </h2>
+    <div id="faq-collapse-<%= idx %>" class="accordion-collapse collapse" aria-labelledby="faq-heading-<%= idx %>" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        <%= faq.qa_answer %>
+        <% if (faq.url) { %>
+          <div class="mt-2">
+            <a href="<%= faq.url %>" target="_blank" rel="noopener noreferrer">詳しくはこちら</a>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+<% }) %>
+</div>
+
+<h2 class="mt-5 pb-2 text-primary">
+    <i class="fas fa-envelope me-2"></i>お問合せ
+</h2>
+<hr style="border-top: 2px solid var(--bs-primary);">
+<!-- お問合せフォーム -->
+<form action="/support/contact" method="POST" class="my-4">
+  <div class="mb-3">
+    <label for="email" class="form-label">お客様のメールアドレス <span class="text-danger">*</span></label>
+    <input type="email" id="email" name="email" class="form-control" value="<%= user?.email || '' %>" required>
+  </div>
+  <div class="mb-3">
+    <label for="subject" class="form-label">内容の要約 <span class="text-danger">*</span></label>
+    <input type="text" id="subject" name="subject" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label for="message" class="form-label">お問合せ内容 <span class="text-danger">*</span></label>
+    <textarea id="message" name="message" class="form-control" rows="5" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">送信</button>
+  <!-- お問合せフォームここまで -->
+</form>
+
+<% if (inquiries && inquiries.length > 0) { %>
+  <h2 class="mt-5 pb-2 text-primary">
+    <i class="fas fa-comments me-2"></i>お問合せ履歴
+  </h2>
+  <hr style="border-top: 2px solid var(--bs-primary);">
+
+    <div class="accordion my-3">
+    <% inquiries.forEach((inq, idx) => { %>
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="heading-<%= idx %>">
+                    <button class="accordion-button <%= inq.closed ? 'collapsed' : '' %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<%= idx %>" aria-expanded="<%= inq.closed ? 'false' : 'true' %>" aria-controls="collapse-<%= idx %>">
+            <%= inq.title %>
+            <% if (inq.closed) { %>
+              <span class="badge bg-secondary ms-3">
+                <i class="fas fa-check-circle me-1"></i> 対応完了 (<%= new Date(inq.update_date).toLocaleDateString('ja-JP') %>)
+              </span>
+            <% } %>
+            <% if (!inq.isRead && !inq.closed && inq.messages.length > 0 && inq.messages[inq.messages.length - 1].isAdmin) { %>
+              <span class="badge bg-danger ms-3">
+                <i class="fas fa-envelope-open-text me-1"></i> 新着あり
+              </span>
+            <% } %>
+          </button>
+        </h2>
+          <div id="collapse-<%= idx %>" class="accordion-collapse collapse <%= inq.closed ? '' : 'show' %>" aria-labelledby="heading-<%= idx %>">
+          <div class="accordion-body">
+            <form action="/support/mark-read/<%= inq._id %>" method="POST" style="display: none;" id="readForm-<%= idx %>"></form>
+            <script>
+              document.addEventListener("DOMContentLoaded", function () {
+                const collapseEl = document.getElementById("collapse-<%= idx %>");
+                collapseEl?.addEventListener("shown.bs.collapse", function () {
+                  fetch("/support/mark-read/<%= inq._id %>", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Accept": "application/json"
+                    },
+                    body: JSON.stringify({})
+                  }).then(response => {
+                    if (!response.ok) throw new Error("既読更新失敗");
+                  }).catch(err => {
+                    console.error("既読更新エラー:", err);
+                  });
+                }, { once: true });
+              });
+            </script>
+            <% inq.messages.forEach((msg, mIdx) => { %>
+              <div class="mb-3">
+                <strong><%= msg.isAdmin ? 'サポート' : 'あなた' %>：</strong>
+                <small class="text-muted"><%= new Date(msg.entry_date).toLocaleString('ja-JP') %></small>
+                <div class="border rounded p-2 mt-1" style="white-space: pre-wrap;"><%= msg.content %></div>
+              </div>
+            <% }) %>
+
+            <!-- 🔽 返信フォーム -->
+            <form action="/support/reply/<%= inq._id %>" method="POST" class="mt-3">
+              <div class="mb-2">
+                <label for="replyContent-<%= idx %>" class="form-label">返信する</label>
+                <textarea name="replyContent" id="replyContent-<%= idx %>" class="form-control" rows="2" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-sm btn-outline-primary">送信</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>

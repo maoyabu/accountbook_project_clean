@@ -1,0 +1,35 @@
+<ul class="nav nav-tabs mt-2 mb-3" style="border-bottom: 2px solid #3a7ca5;">
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'myresume' ? 'active' : '' %>" href="/resume/myresume"
+       style="<%= page === 'myresume' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>"><i class="fa-solid fa-book"></i> My 履歴書</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'mycv' ? 'active' : '' %>" href="/resume/mycv"
+       style="<%= page === 'mycv' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>"><i class="fa-solid fa-book"></i> My 職務履歴書</a>
+  </li>
+  <% if (currentUser?.hasPlannerCategory) { %>
+    <li class="nav-item">
+      <a class="nav-link <%= page === 'planner' ? 'active' : '' %>" href="/planner/planner"
+         style="<%= page === 'planner' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>">
+        <i class="fa-solid fa-user-tie"></i> Planner 職務履歴書
+      </a>
+    </li>
+  <% } %>
+  <% if (resume) { %>
+    <li class="nav-item">
+      <a class="nav-link <%= page === 'resume' ? 'active' : '' %>" href="/resume/edit/<%= resume._id %>"
+         style="<%= page === 'resume' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>">
+        <i class="fa-solid fa-gear"></i> 履歴書設定
+      </a>
+    </li>
+  <% } else { %>
+  
+    <li class="nav-item">
+      <a class="nav-link" href="/resume/create"
+         style="border: 1px dashed #999; border-bottom: none; background-color: #f9f9f9; color: #999;">
+        <i class="fa-solid fa-gear"></i> 履歴書を設定する
+      </a>
+    </li>
+  <% } %>
+
+</ul>

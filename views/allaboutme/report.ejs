@@ -1,0 +1,111 @@
+<% layout('layouts/boilerplate') %>
+
+<style>
+  .bg-light-green { background-color: #d4edda; }
+  .bg-light-blue { background-color: #dbeffe; }
+  .bg-light-red { background-color: #f8d7da; }
+</style>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-end mb-2">
+    <h1 class="mb-0 fw-bold border-start border-4 ps-3"><i class="fa-regular fa-clipboard"></i> All About me レポート</h1>
+    <form method="GET" action="/allaboutme/report/mylist" class="d-flex align-items-end gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <div>
+          <select name="year" id="year" class="form-select">
+            <% for (let y = currentYear; y >= 2020; y--) { %>
+              <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
+            <% } %>
+          </select>
+        </div>
+        <span class="mx-1">/</span>
+        <div>
+          <select name="month" id="month" class="form-select">
+            <% for (let m = 1; m <= 12; m++) { %>
+              <option value="<%= m %>" <%= m === month ? 'selected' : '' %>><%= m %></option>
+            <% } %>
+          </select>
+        </div>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">表示</button>
+      </div>
+    </form>
+  </div>
+  <div class="card p-4 shadow-sm rounded">
+    <div class="d-flex align-items-center gap-2 mb-4 pb-1">
+      <span class="badge bg-primary fs-5"><i class="fa-solid fa-list-check"></i>  Myリスト Report</span>
+    </div>
+    <div class="mb-1">
+      <h2 class="mb-3 text-primary p-2 rounded" style="background-color: #dbeffe;"><strong>先月新規追加したMyリスト（<%= newItems.length %>件）</strong></h2>
+      <% if (newItems.length > 0) { %>
+        <ul class="list-group mb-3">
+          <% newItems.forEach(item => { %>
+            <li class="list-group-item">
+              <strong><%= item.title %></strong> &lt; <%= item.item %> &gt;
+              <small class="text-muted">（ 登録日: <%= new Date(item.entry_date).toLocaleDateString() %> ）</small>
+            </li>
+          <% }) %>
+        </ul>
+      <% } else { %>
+        <p class="text-muted">新規追加されたMyリストはありません。</p>
+      <% } %>
+    </div>
+    <div>
+      <h2 class="mb-3 text-success p-2 rounded" style="background-color: #d4edda;"><strong>先月に「完了 / 破棄」したMyリスト（<%= completedItems.length %>件）</strong></h2>
+      <% if (completedItems.length > 0) { %>
+        <ul class="list-group mb-3">
+          <% completedItems.forEach(item => { %>
+            <li class="list-group-item">
+              <strong><%= item.title %></strong> &lt; <%= item.item %> &gt;
+              <span class="badge bg-secondary"><%= item.status %></span>
+              <small class="text-muted">（ 変更日: <%= new Date(item.update_date).toLocaleDateString() %> ）</small>
+            </li>
+          <% }) %>
+        </ul>
+      <% } else { %>
+        <p class="text-muted">完了または破棄されたMyリストはありません。</p>
+      <% } %>
+    </div>
+  </div>
+  <div class="card p-4 shadow-sm rounded mt-4">
+    <div class="d-flex align-items-center gap-2 mb-4 pb-1">
+      <span class="badge bg-warning text-dark fs-5"><i class="fa-solid fa-calendar-days"></i> My日記 Report</span>
+      <% if (myDiarySummary.length > 0) { 
+        let totalSum = 0, totalCount = 0;
+        myDiarySummary.forEach(cat => {
+          cat.items.forEach(it => {
+            totalSum += it.avg * it.count;
+            totalCount += it.count;
+          });
+        });
+        const overallAvg = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : '-';
+      %>
+        <span class="badge bg-info text-dark ms-auto fs-6">全体平均: <%= overallAvg %></span>
+      <% } %>
+    </div>
+    <% if (myDiarySummary.length > 0) { %>
+      <% myDiarySummary.forEach(category => { %>
+        <% category.items.forEach(item => { %>
+          <% 
+            let bgClass = '';
+            if (item.avg >= 4.0) {
+              bgClass = 'bg-light-green';
+            } else if (item.avg >= 3.0) {
+              bgClass = 'bg-light-blue';
+            } else {
+              bgClass = 'bg-light-red';
+            }
+          %>
+          <p class="<%= bgClass %> p-1 mb-2 rounded small">
+            <strong><%= category.title %></strong>：<%= item.name %>
+            平均（<%= item.avg.toFixed(1) %>）　<%= item.count %>件
+            （最高:<%= item.detail['5'] || 0 %>件、良い:<%= item.detail['4'] || 0 %>件、普通:<%= item.detail['3'] || 0 %>件、悪い:<%= item.detail['2'] || 0 %>件、最悪:<%= item.detail['1'] || 0 %>件）
+          </p>
+        <% }) %>
+      <% }) %>
+    <% } else { %>
+      <p class="text-muted">My日記のレポートはありません。</p>
+    <% } %>
+  </div>
+</div>

@@ -1,0 +1,95 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'categoryEdit' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container mt-4">
+  <h2><i class="fas fa-edit me-2"></i>カテゴリーの編集</h2>
+  <hr>
+  <form action="/history/categories/<%= category._id %>" method="POST">
+    <div class="mb-3">
+      <label for="name" class="form-label">カテゴリー名</label>
+      <input type="text" name="name" id="name" class="form-control" value="<%= category.name %>" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">フィールド定義</label>
+      <div id="fieldContainer">
+        <% category.fields.forEach((field, index) => { %>
+          <div class="row mb-2 align-items-center">
+            <div class="col-md-5">
+              <input type="text" name="field_names[]" class="form-control" value="<%= field.name %>" placeholder="フィールド名" required>
+            </div>
+            <div class="col-md-4">
+              <select name="field_types[]" class="form-select" required>
+                <option value="text" <%= field.type === 'text' ? 'selected' : '' %>>テキスト</option>
+                <option value="textarea" <%= field.type === 'textarea' ? 'selected' : '' %>>テキストエリア</option>
+                <option value="number" <%= field.type === 'number' ? 'selected' : '' %>>数値</option>
+                <option value="date" <%= field.type === 'date' ? 'selected' : '' %>>日付</option>
+                <option value="url" <%= field.type === 'url' ? 'selected' : '' %>>URL</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+                <i class="fas fa-trash-alt"></i> 削除
+              </button>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="addField()">
+        <i class="fas fa-plus"></i> フィールド追加
+      </button>
+    </div>
+
+    <div class="mb-3">
+      <label for="color" class="form-label">カテゴリーの背景色</label>
+      <input 
+        type="color" 
+        id="color" 
+        name="color" 
+        class="form-control form-control-color" 
+        value="<%= category.color || '#000000' %>"
+      >
+    </div>
+
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" id="share" name="share" <%= category.share ? 'checked' : '' %>>
+      <label class="form-check-label" for="share">このカテゴリーを全ユーザーに共有する</label>
+    </div>
+    <button type="submit" class="btn btn-primary">更新する</button>
+    <a href="/history/categories" class="btn btn-secondary">戻る</a>
+  </form>
+</div>
+
+<script>
+function addField() {
+  const container = document.getElementById('fieldContainer');
+  const div = document.createElement('div');
+  div.className = 'row mb-2 align-items-center';
+  div.innerHTML = `
+    <div class="col-md-5">
+      <input type="text" name="field_names[]" class="form-control" placeholder="フィールド名" required>
+    </div>
+    <div class="col-md-4">
+      <select name="field_types[]" class="form-select" required>
+        <option value="text">テキスト</option>
+        <option value="textarea">テキストエリア</option>
+        <option value="number">数値</option>
+        <option value="date">日付</option>
+        <option value="url">URL</option>
+      </select>
+    </div>
+        <div class="col-md-2">
+      <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+        <i class="fas fa-trash-alt"></i> 削除
+      </button>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function removeField(button) {
+  const fieldRow = button.closest('.row');
+  fieldRow.remove();
+}
+</script>

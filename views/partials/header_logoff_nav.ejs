@@ -1,0 +1,60 @@
+<!-- ✅ ナビゲーションバー -->
+<nav class="navbar navbar-expand-lg" style="background-color: #3a7ca5;">
+  <div class="container-fluid">
+    <a class="navbar-brand text-white" href="/top">
+      <img src="/images/App_icon.png" alt="App Icon" style="width: 24px; height: 24px;">
+      All About me
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu" aria-controls="offcanvasMenu">
+      <i class="fas fa-bars" style="color: white; font-size: 24px;"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto text-start" style="background-color: #3a7ca5; border-radius: 5px;">
+        <li class="nav-item">
+          <a class="nav-link d-flex align-items-center gap-1 text-white" href="/register">
+            <i class="fas fa-user-plus"></i> 新員登録
+          </a>
+        </li>
+        <li class="nav-item me-3">
+          <a class="nav-link d-flex align-items-center gap-1 text-white" href="/login">
+            <i class="fas fa-sign-in-alt"></i> ログイン
+          </a>
+        </li>
+        <li class="nav-item me-3">
+          <a class="nav-link d-flex align-items-center gap-1 text-white" href="/support">
+            <i class="fas fa-headset"></i> お客様サポート
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ✅ オフキャンバスメニュー（右からスライド） -->
+<div class="offcanvas offcanvas-end offcanvas-menu-custom" tabindex="-1" id="offcanvasMenu" aria-labelledby="offcanvasMenuLabel" style="width: 250px;">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title d-flex align-items-center gap-2" id="offcanvasMenuLabel">
+      <i class="fas fa-bars"></i> メニュー
+    </h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body bg-custom-menu">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/register">
+          <i class="fas fa-user-plus"></i> 会員登録
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/login">
+          <i class="fas fa-sign-in-alt"></i> ログイン
+        </a>
+      </li>
+      <li class="nav-item me-3">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/support">
+          <i class="fas fa-headset"></i> お客様サポート
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>

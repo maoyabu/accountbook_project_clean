@@ -1,0 +1,190 @@
+<% layout('layouts/boilerplate') %>
+
+<div>
+<div class="container mt-4">
+  <h3>ユーザー管理</h3>
+
+  <!-- 検索フォーム -->
+  <form action="/admin/users" method="GET" class="mb-3 d-flex">
+    <input type="text" name="q" class="form-control me-2" placeholder="名前・メールで検索" value="<%= query %>" />
+    <button class="btn btn-primary">検索</button>
+  </form>
+
+  <!-- ユーザー一覧 -->
+  <table class="table table-bordered table-hover">
+    <thead style="background-color: #3a7ca5; color: white;">
+      <tr>
+        <th style="width: 10%;">名前</th>
+        <th style="width: 10%;">ユーザー名</th>
+        <th style="width: 15%;">eメール</th>
+        <th style="width: 20%;">グループ</th>
+        <th style="width: 5%;">管理者</th>
+        <th style="width: 5%;">Planner</th>
+        <th style="width: 5%;">有効</th>
+        <th style="width: 20%;">サービス</th>
+        <th style="width: 5%;">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(user => { %>
+        <tr>
+          <td class="text-break"><%= user.displayname || user.username %></td>
+          <td class="text-break"><%= user.username %></td>
+          <td class="text-break"><%= user.email %></td>
+          <td>
+            <%= user.groups && user.groups.length > 0
+              ? user.groups.map(group => group.group_name || group.groupname).join(', ')
+              : '' %>
+          </td>
+          <td><%= user.isAdmin ? '✔' : '' %></td>
+          <td><%= user.isPlanner ? '✔' : '' %></td>
+          <td><%= user.isActive === false ? '✖' : '✔' %></td>
+          <td>
+            <% if (user.services) { %>
+              <% const activeServices = Object.entries(user.services).filter(([key, val]) => val).map(([key]) => {
+                if (key === 'allaboutme') return 'All About me';
+                if (key === 'finance') return '家計簿';
+                if (key === 'assets') return '資産管理';
+                return key;
+              }); %>
+              <%= activeServices.join(', ') %>
+            <% } %>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#userModal" data-id="<%= user._id %>">詳細</button>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<!-- モーダル -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="userForm" method="POST">
+        <input type="hidden" name="_method" value="PUT">
+        <div class="modal-header">
+          <h5 class="modal-title" id="userModalLabel">ユーザー詳細</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="userId">
+          <div class="mb-3">
+            <label class="form-label">表示名</label>
+            <input type="text" class="form-control" name="displayname" id="userDisplayname">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">メール</label>
+            <input type="email" class="form-control" name="email" id="userEmail">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">所属グループ</label>
+            <input type="text" class="form-control" id="userGroups" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">メモ</label>
+            <textarea class="form-control" name="memo" id="userMemo"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">タグ（カンマ区切り）</label>
+            <input type="text" class="form-control" name="tags" id="userTags">
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="userIsAdmin" name="isAdmin">
+            <label class="form-check-label" for="userIsAdmin">管理者</label>
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="userIsPlanner" name="isPlanner">
+            <label class="form-check-label" for="userIsPlanner">Planner</label>
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" id="userIsActive" name="isActive">
+            <label class="form-check-label" for="userIsActive">有効</label>
+          </div>
+          <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="userIsMail" name="isMail">
+              <label class="form-check-label" for="userIsMail">メール通知</label>
+          </div>
+        </div>
+        <hr>
+        <div class="card-body">
+          <div class="mb-2">
+            <label class="form-label">利用サービス</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="userServiceAllAboutMe" name="services_allaboutme">
+              <label class="form-check-label" for="userServiceAllAboutMe">All About me</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="userServiceFinance" name="services_finance">
+              <label class="form-check-label" for="userServiceFinance">家計簿 / Dashboard</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="userServiceAssets" name="services_assets">
+              <label class="form-check-label" for="userServiceAssets">資産管理</label>
+            </div>
+          </div>
+          <div class="modal-footer justify-content-between">
+            <button type="button" class="btn btn-danger" id="deleteTriggerBtn">削除</button>
+            <button type="submit" class="btn btn-success">保存</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 削除フォーム（モーダル外に配置して ID 解決可能に） -->
+<form id="deleteForm" method="POST" class="d-none">
+  <input type="hidden" name="_method" value="DELETE">
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const userModal = document.getElementById('userModal');
+  if (userModal) {
+    userModal.addEventListener('show.bs.modal', async function (event) {
+      const button = event.relatedTarget;
+      const userId = button.getAttribute('data-id');
+
+      const res = await fetch(`/admin/users/${userId}/json`);
+      const user = await res.json();
+
+      const form = document.getElementById('userForm');
+      const delForm = document.getElementById('deleteForm');
+
+      if (!form || !delForm) {
+        console.error('フォームが見つかりません');
+        return;
+      }
+
+      form.action = `/admin/users/${userId}?_method=PUT`;
+      delForm.action = `/admin/users/${userId}/delete`;
+
+      // 各フィールドに値を反映
+      document.getElementById('userDisplayname').value = user.displayname || '';
+      document.getElementById('userEmail').value = user.email || '';
+      document.getElementById('userMemo').value = user.memo || '';
+      document.getElementById('userTags').value = user.tags || '';
+      document.getElementById('userGroups').value = (user.groups || []).map(g => g.group_name || g.groupname).join(', ');
+      document.getElementById('userIsAdmin').checked = !!user.isAdmin;
+      document.getElementById('userIsPlanner').checked = !!user.isPlanner;
+      document.getElementById('userIsActive').checked = user.isActive !== false;
+      document.getElementById('userIsMail').checked = user.isMail !== false;
+      document.getElementById('userServiceAllAboutMe').checked = user.services?.allaboutme !== false;
+      document.getElementById('userServiceFinance').checked = user.services?.finance !== false;
+      document.getElementById('userServiceAssets').checked = user.services?.assets !== false;
+    });
+
+    // 削除トリガーボタンをクリックしたら deleteForm を送信
+    const deleteBtn = document.getElementById('deleteTriggerBtn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        if (confirm('このユーザーを削除してもよろしいですか？')) {
+          document.getElementById('deleteForm').submit();
+        }
+      });
+    }
+  }
+});
+</script>

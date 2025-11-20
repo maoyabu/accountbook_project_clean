@@ -1,0 +1,55 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3><%= info ? 'お知らせ編集' : '新規お知らせ作成' %></h3>
+  <form action="<%= info ? '/admin/info/' + info._id + '?_method=PUT' : '/admin/info' %>" method="POST">
+    <div class="mb-3">
+      <label for="info_title" class="form-label">タイトル</label>
+      <input type="text" id="info_title" name="info_title" class="form-control" value="<%= info?.info_title || '' %>" required>
+    </div>
+    <div class="mb-3">
+      <label for="info_content" class="form-label">お知らせ内容（HTML可）</label>
+      <textarea id="info_content" name="info_content" class="form-control" rows="6"><%= info?.info_content || '' %></textarea>
+      <div class="form-text">※HTMLタグを使用できます（例：&lt;b&gt;太字&lt;/b&gt;、&lt;a href="#"&gt;リンク&lt;/a&gt;）</div>
+    </div>
+    <div class="mb-3">
+      <label for="app_url" class="form-label">アプリ内リンク（例: /dashboard）</label>
+      <input type="text" id="app_url" name="app_url" class="form-control" value="<%= info?.app_url || '' %>" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="guide_url" class="form-label">外部ガイドリンク（任意）</label>
+      <input type="url" id="guide_url" name="guide_url" class="form-control" value="<%= info?.guide_url || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="from_date" class="form-label">掲載開始日</label>
+      <input type="date" id="from_date" name="from_date" class="form-control" value="<%= info?.from_date ? info.from_date.toISOString().split('T')[0] : '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="end_date" class="form-label">掲載終了日</label>
+      <input type="date" id="end_date" name="end_date" class="form-control" value="<%= info?.end_date ? info.end_date.toISOString().split('T')[0] : '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="pub_target" class="form-label">掲載対象</label>
+      <select id="pub_target" name="pub_target" class="form-select" required>
+        <option value="all" <%= info?.pub_target === 'all' ? 'selected' : '' %>>全体（ALL）</option>
+        <% groups.forEach(group => { %>
+          <option value="<%= group._id %>" <%= info?.pub_target?.toString() === group._id.toString() ? 'selected' : '' %>>
+            <%= group.group_name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" id="mail_delivery" name="mail_delivery" <%= info?.mail_delivery ? 'checked' : '' %>>
+      <label class="form-check-label" for="mail_delivery">メール配信する</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary"><%= info ? '更新' : '作成' %></button>
+    <a href="/admin/info" class="btn btn-secondary ms-2">キャンセル</a>
+  </form>
+</div>

@@ -1,0 +1,30 @@
+
+
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>補正後の結果</h3>
+
+  <div class="mb-3">
+    <strong>店舗名：</strong> <%= result.storeName %><br>
+    <strong>金額：</strong> ¥<%= result.amount %><br>
+    <strong>日付：</strong> <%= result.date %>
+  </div>
+
+  <div class="mb-3">
+    <h5>タグ一覧</h5>
+    <% if (result.tags && result.tags.length > 0) { %>
+      <% result.tags.forEach(tag => { %>
+        <% const isUncategorized = tag.category && tag.originalCategory && tag.category === tag.originalCategory; %>
+        <div class="badge <%= isUncategorized ? 'bg-danger' : 'bg-secondary' %> me-1 mb-1">
+          <%= tag.name %>
+          <% if (tag.originalCategory) { %>（<%= tag.originalCategory %> → <% } %>
+          <% if (tag.category) { %><%= tag.category %>）<% } %>
+          <% if (typeof tag.price !== 'undefined') { %> - ¥<%= tag.price %><% } %>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p class="text-muted">タグは見つかりませんでした</p>
+    <% } %>
+  </div>
+</div>

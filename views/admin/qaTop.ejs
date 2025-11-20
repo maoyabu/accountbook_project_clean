@@ -1,0 +1,41 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+
+<div class="mb-3">
+    <a href="/admin/qaEntry" class="btn btn-outline-secondary btn-sm">新規Q&Aを作成する</a>
+</div>  
+<h2>Q&A一覧</h2>
+
+  <% if (qas.length === 0) { %>
+    <p>登録されたQ&Aはありません。</p>
+  <% } else { %>
+    <table class="table table-bordered table-striped">
+      <thead style="background-color: #3a7ca5; color: white;">
+        <tr>
+          <th>カテゴリー</th>
+          <th>質問</th>
+          <th>回答</th>
+          <th>公開</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% qas.forEach(qa => { %>
+          <tr>
+            <td><%= qa.qa_category %></td>
+            <td><%= qa.qa_question %></td>
+            <td><%= qa.qa_answer.length > 50 ? qa.qa_answer.substring(0, 50) + '…' : qa.qa_answer %></td>
+            <td><%= qa.faq_flag ? '◯' : '×' %></td>
+            <td>
+              <a href="/admin/qaEntry/<%= qa._id %>/edit" class="btn btn-sm btn-primary">編集</a>
+              <form action="/admin/qaEntry/<%= qa._id %>?_method=DELETE" method="POST" class="d-inline" onsubmit="return confirm('本当に削除しますか？');">
+                <button class="btn btn-sm btn-danger">削除</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>

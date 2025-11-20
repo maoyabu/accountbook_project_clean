@@ -1,0 +1,60 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'dictionary' %>
+
+<h3>カテゴリ辞書管理</h3>
+<form action="/admin/dictionary/save" method="POST">
+  <table class="table table-bordered">
+    <thead><tr><th>単語</th><th>分類</th><th>操作</th></tr></thead>
+    <tbody id="dictTable">
+      <% dictionary.forEach(item => { %>
+        <tr>
+          <td><input type="text" name="words[]" value="<%= item.word %>" class="form-control"></td>
+          <td>
+            <select name="categories[]" class="form-select" required>
+              <option value="">分類を選択</option>
+              <% ex_cfs.forEach(cf => { %>
+                <option value="<%= cf %>" <%= item.category === cf ? "selected" : "" %>><%= cf %></option>
+              <% }) %>
+            </select>
+          </td>
+          <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">削除</button></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <button type="button" id="addRowBtn" class="btn btn-success mb-3">＋項目追加</button>
+  <hr>
+  <button type="submit" class="btn btn-primary">保存</button>
+</form>
+<script>
+  <%-
+    `document.addEventListener('DOMContentLoaded', () => {
+      function addRow() {
+        const table = document.getElementById('dictTable');
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = \`
+          <td>
+            <input type="text" name="words[]" class="form-control" placeholder="単語" required>
+          </td>
+          <td>
+            <select name="categories[]" class="form-select" required>
+              <option value="">分類を選択</option>
+              ${ex_cfs.map(cf => `<option value="${cf}">${cf}</option>`).join('')}
+            </select>
+          </td>
+          <td>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">削除</button>
+          </td>
+        \`;
+        table.appendChild(newRow);
+      }
+
+      function removeRow(button) {
+        const row = button.closest('tr');
+        row.remove();
+      }
+
+      document.getElementById('addRowBtn').addEventListener('click', addRow);
+    });`
+  %>
+</script>

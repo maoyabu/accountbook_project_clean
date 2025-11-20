@@ -1,0 +1,33 @@
+<% layout('layouts/boilerplate') %>
+
+<main>
+  <div class="p-3 border rounded bg-light mb-4">
+    <form action="/group/budget/save" method="POST">
+        <input type="hidden" name="groupId" value="<%= groupId %>">
+        <input type="hidden" name="year" value="<%= year %>">
+        <table class="table table-bordered">
+          <thead>
+            <tr><th>項目</th><th>予算額</th><th>操作</th></tr>
+          </thead>
+          <tbody id="budgetTableBody">
+            <% budgetItems.forEach((item, index) => { %>
+              <tr>
+                <td>
+                  <input type="text" name="items[<%= index %>][expense_item]" value="<%= item.expense_item %>" class="form-control" required>
+                </td>
+                <td>
+                  <input type="number" name="items[<%= index %>][budget]" value="<%= item.budget %>" class="form-control" required>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">削除</button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        <button type="button" class="btn btn-secondary" onclick="addRow()">＋項目追加</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+    </form>
+  </div>
+  <script src="/js/form.js"></script>
+</main>

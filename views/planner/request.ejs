@@ -1,0 +1,52 @@
+<% layout('layouts/boilerplate') %>
+<h1>暮らしアドバイザー登録申請</h1>
+<hr>
+<h2><strong>【暮らしアドバイザー規約】</strong></h2>
+<div class="border p-3 mb-4" style="max-height: 300px; overflow-y: scroll; background-color: #f8f9fa; font-size: 0.9rem;">
+  <p><strong>第1条　暮らしアドバイザー（以下Planner）とは</strong></p>
+  <p>Plannerとは、自身の実生活を通じて得た知見（例：子育て、家計管理、介護、健康管理、ライフプランなど）をもとに、他者に対して実体験に基づいた助言を提供する役割を担う者です。...</p>
+
+  <p><strong>第2条（Planner登録の流れ）</strong></p>
+  <p>1. 会員登録後、MyHistoryにて経歴【Planner】の登録、およびプロフィールの必須情報を入力すること。<br>
+  2. 入力が完了すると「Planner職務履歴書」タブが表示され、履歴書内容をもとに公開URLを生成できる。<br>
+  3. 公開URLを作成後、「Plannerに申し込む」ボタンが表示され、専用フォームにて申請を行う。... </p>
+
+  <p><strong>第3条（申請と承認）</strong></p>
+  <p>承認された場合、Plannerモデルの adopt が「採用」に変更されます。...</p>
+
+  <p><strong>第4条（契約と活動）</strong></p>
+  <p>利用者がPlannerに助言を依頼する場合、以下の流れで契約が成立します：...</p>
+
+  <p><strong>第5条（Plannerのアクセス範囲）</strong></p>
+  <p>Myリスト（公開されているもの）...家計簿の明細、ダッシュボード、資産管理など</p>
+
+  <p><strong>第6条（Plannerとのコミュニケーション）</strong></p>
+  <p>gChat機能を通じて行います。相談内容に基づいたヒアリングや月1回の家計簿フィードバック等...</p>
+
+  <p><strong>第7条（守秘義務）</strong></p>
+  <p>Plannerは、担当するグループおよび利用者の情報について、許可なく第三者に開示してはなりません。</p>
+
+  <p><strong>第8条（免責事項）</strong></p>
+  <p>Plannerによる助言はあくまで参考意見であり、当サービスは責任を負いません。</p>
+</div>
+<hr>
+<div class="border p-4 rounded mx-auto">
+  <form action="/planner/request" method="POST">
+    <div class="mb-3">
+      <label for="resumeUrl" class="form-label">職務履歴書の公開URL</label>
+      <input type="url" class="form-control" id="resumeUrl" name="resumeUrl" value="<%= url || '' %>" required>
+    </div>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="resumeChecked" name="resumeChecked" required>
+      <label class="form-check-label" for="resumeChecked">プロフィール登録済み</label>
+    </div>
+
+    <div class="mb-3">
+      <label for="message" class="form-label">メッセージ</label>
+      <textarea class="form-control" id="message" name="message" rows="4" required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width: 60%; display: block; margin: 0 auto;">規約に同意して申し込む</button>
+  </form>
+</div>

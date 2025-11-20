@@ -1,0 +1,134 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'historyEntry' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container mt-4">
+  <h2><i class="fas fa-edit me-2"></i> My History 登録</h2>
+    <hr>
+  <form action="/history/entry" method="POST" enctype="multipart/form-data">
+    <div class="form-check mb-3" style="background-color: rgb(248, 224, 190);">
+      <input type="checkbox" class="form-check-input" id="isActive" name="isActive" value="true">
+      <label class="form-check-label" for="isActive">Active中</label>
+    </div>
+    <div class="mb-3">
+      <label for="categoryId" class="form-label">カテゴリーを選択</label>
+      <select id="categoryId" name="categoryId" class="form-select" required onchange="fetchCategoryFields(this.value)">
+        <option value="">-- カテゴリーを選択 --</option>
+        <% categories.forEach(cat => { %>
+          <option value="<%= cat._id %>"><%= cat.name %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div id="dynamic-fields"></div>
+    <div class="mb-3">
+      <label for="from_date" class="form-label">開始日</label>
+      <input type="date" id="from_date" name="from_date" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="end_date" class="form-label">終了日</label>
+      <input type="date" id="end_date" name="end_date" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="url" class="form-label">関連URL</label>
+      <input type="url" id="url" name="url" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="content" class="form-label">内容</label>
+      <textarea id="content" name="content" class="form-control" rows="3"></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="photos" class="form-label">写真を追加</label>
+      <input type="file" id="photos" name="photos" class="form-control" multiple accept="image/*">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Googleフォトから選択</label><br>
+      <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+    </div>
+
+    <div id="googlePhotoPreview" class="d-flex flex-wrap gap-2 mb-3">
+      <!-- JavaScript will inject selected photos here -->
+    </div>
+
+
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="share" name="share" checked>
+      <label class="form-check-label" for="share">共有する</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">登録</button>
+  </form>
+</div>
+
+<script>
+  async function fetchCategoryFields(categoryId) {
+    if (!categoryId) {
+      document.getElementById('dynamic-fields').innerHTML = '';
+      return;
+    }
+
+    const res = await fetch(`/history/category-fields/${categoryId}`);
+    const category = await res.json();
+
+    let html = '';
+    if (category.fields && Array.isArray(category.fields)) {
+      category.fields.forEach((field, index) => {
+        html += `
+        <div class="mb-3">
+          <label for="data_${index}" class="form-label">${field.name}</label>
+          ${field.type === 'textarea'
+            ? `<textarea id="data_${index}" name="data_${index}" data-field-name="${field.name}" class="form-control" rows="3" style="height: 107px;"></textarea>`
+            : `<input type="${field.type}" id="data_${index}" name="data_${index}" data-field-name="${field.name}" class="form-control">`}
+        </div>
+        `;
+      });
+    }
+    document.getElementById('dynamic-fields').innerHTML = html;
+  }
+
+
+  function openGooglePhotoPopup() {
+    const isLinked = <%= currentUser.googleTokens ? 'true' : 'false' %>;
+    const targetUrl = isLinked ? '/googlePhotos/select?from=historyEntry' : '/googlePhotos/auth';
+
+    const width = 800;
+    const height = 600;
+    const left = (window.innerWidth - width) / 2 + window.screenX;
+    const top = (window.innerHeight - height) / 2 + window.screenY;
+
+    const popup = window.open(
+      targetUrl,
+      'GooglePhotosSelect',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      alert('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+      return;
+    }
+
+    popup.focus();
+  }
+
+  window.addEventListener('message', function(event) {
+    if (event.origin !== location.origin) return;
+    if (event.data.selectedPhotos) {
+      const container = document.getElementById('googlePhotoPreview');
+      container.innerHTML = '';
+      event.data.selectedPhotos.forEach(url => {
+        const div = document.createElement('div');
+        div.classList.add('me-2');
+        div.innerHTML = `
+          <input type="hidden" name="selectedGooglePhotos" value="${url}">
+          <img src="${url}=w100-h100" class="img-thumbnail" style="width:100px;height:100px;">
+        `;
+        container.appendChild(div);
+      });
+    }
+  });
+</script>

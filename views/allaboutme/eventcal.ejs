@@ -1,0 +1,587 @@
+<% layout('layouts/boilerplate') -%>
+<% page = 'eventcal' %>
+<% let selectedEvent = typeof locals.selectedEvent !== 'undefined' ? locals.selectedEvent : ''; %>
+<% let selectedRate = typeof locals.selectedRate !== 'undefined' ? locals.selectedRate : 3; %>
+<% let selectedContent = typeof locals.selectedContent !== 'undefined' ? locals.selectedContent : ''; %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/11A0D3D1-F656-42AF-8E71-FF1F0449A773/My%E6%97%A5%E8%A8%98%E3%80%80-%E3%80%80My%E6%97%A5%E8%A8%98%E8%A8%AD%E5%AE%9A"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<style>
+  @keyframes fadeInScale { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  #draftCenterCard.showing { animation: fadeInScale .18s ease-out; }
+  #draftCenterOverlay.hiding { animation: fadeOut .4s ease-in forwards; }
+</style>
+<style>
+  /* Scope overlay positioning to the entry modal only */
+  #entryModal .modal-content { position: relative; }
+</style>
+<form method="GET" action="/allaboutme/eventcal" class="mb-3 d-flex justify-content-end">
+  <input type="hidden" name="date" value="<%= selectedDate %>">
+  <div class="input-group input-group-sm" style="max-width: 300px;">
+    <label class="input-group-text" for="user">表示対象</label>
+    <select name="user" id="user" class="form-select" onchange="this.form.submit()">
+      <% groupMembers.forEach(member => { %>
+        <option value="<%= member._id %>" <%= selectedUserId === member._id.toString() ? 'selected' : '' %>>
+          <%= member.displayname || member.username %><%= member._id.toString() === currentUser._id.toString() ? '（自分）' : '' %>
+        </option>
+      <% }) %>
+    </select>
+  </div>
+</form>
+
+<!-- Removed My日記の一括入力 button from here -->
+<div class="container mt-3">
+  <div class="card mb-4">
+    <div class="card-body">
+<!-- FullCalendar -->
+      <div id="calendar"></div>
+      <% if (selectedUserId === currentUser._id.toString()) { %>
+        <div class="d-flex justify-content-center mt-3">
+          <a href="/allaboutme/eventcal/batch?date=<%= selectedDate %>" class="btn btn-outline-success fw-bold border-2" style="width: 60%;">            My日記の一括入力
+          </a>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <% calevent_items.forEach(item => { %>
+    <div class="accordion mb-2">
+      <div class="accordion-item">
+        <div class="accordion-header px-3 py-2 bg-light border">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="m-0"><strong><%= item %></strong></h6>
+            <% if (selectedUserId === currentUser._id.toString()) { %>
+              <button class="btn btn-sm btn-primary"
+                      onclick="openEntryModal('<%= item %>')">
+                ＋
+              </button>
+            <% } %>
+          </div>
+        </div>
+        <div class="accordion-collapse show">
+          <div class="accordion-body">
+            <% entries.filter(e => e.item === item).forEach(e => { %>
+                <div class="border p-2 mb-2 d-flex justify-content-between align-items-center">
+                    <div class="d-flex flex-wrap align-items-center gap-2 small">
+                      <span><%= e.event %></span>
+                      <span><i class="fa-regular fa-face-smile"></i>: <%= e.rate %>-<%= ['最悪','悪い','普通','良い','最高'][e.rate - 1] %></span>
+                      <% if (e.summary && e.summary.trim().length > 0) { %>
+                        <span class="text-muted"><%= e.summary.substring(0, 20) %><%= e.summary.length > 20 ? '…' : '' %></span>
+                      <% } else if (e.content && e.content.trim().length > 0) { %>
+                        <span class="text-muted"><%= e.content.substring(0, 20) %><%= e.content.length > 20 ? '…' : '' %></span>
+                      <% } %>
+                      <% if (e.share) { %>
+                        <span class="badge bg-primary">共有中</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary">非公開</span>
+                      <% } %>
+                    </div>
+                    <% const isOwner = selectedUserId === currentUser._id.toString(); %>
+                    <% if (isOwner) { %>
+                      <div>
+                          <form method="GET" action="/allaboutme/eventcal/edit/<%= e._id %>" style="display:inline;">
+                              <button class="btn btn-sm btn-outline-secondary" title="編集"><i class="fas fa-edit"></i></button>
+                          </form>
+                          <form method="POST" action="/allaboutme/eventcal/delete/<%= e._id %>" onsubmit="return confirm('削除しますか？');" style="display:inline;">
+                              <button class="btn btn-sm btn-outline-danger" title="削除"><i class="fas fa-trash-alt"></i></button>
+                          </form>
+                      </div>
+                    <% } %>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<% if (selectedUserId === currentUser._id.toString()) { %>
+<!-- モーダル -->
+<div class="modal fade" id="entryModal" tabindex="-1" aria-labelledby="entryModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" enctype="multipart/form-data" action="<%= editingEntry ? '/allaboutme/eventcal/edit/' + editingEntry._id : '/allaboutme/eventcal' %>">
+        <div class="modal-header">
+          <h5 class="modal-title" id="entryModalLabel"><%= editingEntry ? '日記編集' : '日記登録' %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Centered overlay message for draft save -->
+          <div id="draftCenterOverlay" class="d-none" aria-live="polite" aria-atomic="true"
+               style="position: absolute; inset: 0; display: grid; place-items: center; z-index: 20;">
+            <!-- message card only (no backdrop) -->
+            <div id="draftCenterCard" class="shadow rounded p-4" style="min-width: 280px; max-width: 90%; text-align:center; background:#e8f5e9; border:1px solid #b7dfc3;">
+              <div class="mb-2">
+                <i class="fa-regular fa-circle-check" style="font-size: 2rem; color: #2e7d32;"></i>
+              </div>
+              <div class="fw-bold" style="color:#2e7d32;">下書きとして保存しました</div>
+              <div class="text-muted" style="font-size: .9rem; color:#4f8a53;">このまま編集を続けられます</div>
+            </div>
+          </div>
+          <input type="hidden" name="item" id="modalItem" value="<%= editingEntry ? editingEntry.item : '' %>">
+          <input type="hidden" name="existingId" id="existingId" value="<%= editingEntry ? editingEntry._id : '' %>">
+          <div class="mb-2">
+            <label for="date" class="form-label">年⽉⽇</label>
+            <input type="date" class="form-control" name="date" value="<%= editingEntry ? editingEntry.date.toISOString().substring(0,10) : selectedDate %>" required>
+          </div>
+          <div class="mb-2">
+            <label for="event" class="form-label">日記</label>
+            <select class="form-select" name="event" required>
+              <% events.filter(ev => ev.item === (editingEntry ? editingEntry.item : '')).forEach(ev => { %>
+                <option value="<%= ev.event %>" <%= (editingEntry && editingEntry.event === ev.event) || (!editingEntry && selectedEvent === ev.event) ? 'selected' : '' %>><%= ev.event %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">満足度<i class="fa-regular fa-face-smile"></i>（選択してください）</label>
+            <select class="form-select" name="rate" required>
+              <% const rateOptions = ['最悪', '悪い', '普通', '良い', '最高']; %>
+              <% for (let i = 5; i >= 1; i--) { %>
+                <option value="<%= i %>" <%= (editingEntry ? editingEntry.rate : selectedRate) == i ? 'selected' : '' %>><%= rateOptions[i - 1] %></option>
+              <% } %>
+            </select>
+          </div>
+
+          <!-- 追加: タイトル(1行) -->
+          <div class="mb-2">
+            <label for="title" class="form-label">タイトル</label>
+            <textarea class="form-control" name="title" rows="1"><%= editingEntry ? (editingEntry.title || '') : '' %></textarea>
+          </div>
+
+          <div class="mb-2">
+            <label for="content" class="form-label d-flex justify-content-between align-items-center">
+              <span>内容</span>
+              <button type="button" id="aiSummarizeBtn" class="btn btn-sm btn-outline-success">AIで要約</button>
+            </label>
+            <textarea class="form-control" name="content" id="contentTextarea" rows="5"><%= editingEntry ? editingEntry.content : (typeof selectedContent !== 'undefined' ? selectedContent : '') %></textarea>
+          </div>
+
+          <!-- 追加: サマリー(3行) -->
+          <div class="mb-2">
+            <label for="summary" class="form-label">サマリー</label>
+            <textarea class="form-control" name="summary" rows="3"><%= editingEntry ? (editingEntry.summary || '') : '' %></textarea>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="share" id="modalShare" <%= editingEntry ? (editingEntry.share ? 'checked' : '') : 'checked' %>>
+            <label class="form-check-label" for="modalShare">共有する</label>
+          </div>
+          <div class="mb-3">
+            <label for="modalPhotos" class="form-label">写真を追加</label>
+            <input type="file" class="form-control" name="photos" id="modalPhotos" multiple accept="image/*">
+          </div>
+          <% if (selectedPhotos && selectedPhotos.length > 0) { %>
+            <div class="mb-3">
+              <label class="form-label">登録済みの画像（削除可）</label>
+              <div class="row">
+                <% selectedPhotos.forEach((photo, index) => {
+                     const url = typeof photo === 'string' ? photo : photo.url;
+                     const source = typeof photo === 'string' ? (url.startsWith('http') ? 'google' : 'local') : photo.source;
+                %>
+                  <div class="col-3 mb-2 text-center">
+                    <img src="<%= url %>" class="img-fluid border mb-1"><br>
+                    <input type="hidden" name="selectedGooglePhotos" value="<%= url %>">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="deletePhotoUrls" value="<%= url %>" id="delPhoto<%= index %>">
+                      <label class="form-check-label small" for="delPhoto<%= index %>">削除</label>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            </div>
+          <% } %>
+          <!-- Google Photos 連携セクション（常にボタンでポップアップ起動） -->
+          <div class="mb-3">
+            <label class="form-label">Googleフォトから選択</label><br>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+          </div>
+          <div id="googlePhotoPreview" class="d-flex flex-wrap mt-2">
+            <!-- JavaScript will inject new selected photos here -->
+          </div>
+        </div>
+        <div class="modal-footer d-flex gap-2">
+          <button type="submit" name="saveAction" value="draft" class="btn btn-outline-success" style="width: 40%;">一時保存</button>
+          <button type="submit" name="saveAction" value="<%= editingEntry ? 'update' : 'publish' %>" class="btn btn-outline-primary" style="width: 40%;"><%= editingEntry ? '更新' : '登録' %></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<script>
+function openEntryModal(item) {
+    document.getElementById('modalItem').value = item;
+
+    const allOptions = JSON.parse('<%- JSON.stringify(events) %>');
+    const eventSelect = document.querySelector('#entryModal select[name="event"]');
+    eventSelect.innerHTML = '';
+
+    const filtered = allOptions.filter(ev => ev.item === item);
+    filtered.forEach(ev => {
+        const opt = document.createElement('option');
+        opt.value = ev.event;
+        opt.textContent = ev.event;
+        eventSelect.appendChild(opt);
+    });
+
+    const form = document.querySelector('#entryModal form');
+    if (form) {
+        form.setAttribute('action', '/allaboutme/eventcal');
+        // Clear existingId when starting a fresh entry from the "+" button
+        const existingIdInput = form.querySelector('#existingId');
+        if (existingIdInput) existingIdInput.value = '';
+
+        form.querySelector('textarea[name="content"]').value = '';
+        form.querySelector('input[name="photos"]').value = '';
+        form.querySelector('select[name="rate"]').value = '3';
+
+        if (eventSelect && eventSelect.options.length > 0) {
+            eventSelect.selectedIndex = 0;
+            // Ensure main submit button is "登録" for new entries
+            const mainSubmit = form.querySelector('button[type="submit"][name="saveAction"]:not([value="draft"])');
+            if (mainSubmit) {
+              mainSubmit.value = 'publish';
+              mainSubmit.textContent = '登録';
+            }
+        }
+
+        const dateInput = form.querySelector('input[name="date"]');
+        if (dateInput) dateInput.value = "<%= selectedDate %>";
+
+        form.querySelector('#modalItem').value = item;
+
+        const shareCheckbox = form.querySelector('input[name="share"]');
+        if (shareCheckbox) shareCheckbox.checked = true;
+
+        const photoPreview = document.getElementById('googlePhotoPreview');
+        if (photoPreview) photoPreview.innerHTML = '';
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('entryModal'));
+    modal.show();
+}
+
+function openGooglePhotoPopup() {
+  const isLinked = <%= currentUser.googleTokens ? 'true' : 'false' %>;
+  const targetUrl = isLinked ? '/googlePhotos/select' : '/googlePhotos/auth';
+
+  const width = 800;
+  const height = 600;
+  const left = (window.innerWidth - width) / 2 + window.screenX;
+  const top = (window.innerHeight - height) / 2 + window.screenY;
+
+  const popup = window.open(
+    targetUrl,
+    'GooglePhotosSelect',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  );
+
+  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+    alert('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+    return;
+  }
+
+  popup.focus();
+}
+
+// この位置で常に親画面がメッセージ受信できるようにしておく
+window.addEventListener('message', function(event) {
+  if (event.origin !== location.origin) return;
+  if (event.data.selectedPhotos) {
+    const container = document.getElementById('googlePhotoPreview');
+    if (!container) return;
+
+    container.innerHTML = '';
+    event.data.selectedPhotos.forEach(url => {
+      const div = document.createElement('div');
+      div.classList.add('me-2', 'mb-2');
+
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'selectedGooglePhotos';
+      input.value = url;
+      div.appendChild(input);
+
+      const img = document.createElement('img');
+      img.src = url + (url.startsWith('http') ? '=w100-h100' : '');
+      img.classList.add('img-fluid', 'border');
+      div.appendChild(img);
+
+      container.appendChild(div);
+    });
+
+    const modalEl = document.getElementById('entryModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
+  }
+}, false);
+
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'ja',
+        height: 600,
+        contentHeight: 300,
+        aspectRatio: 1.6,
+        dayMaxEventRows: false,
+        themeSystem: 'bootstrap5',
+        headerToolbar: {
+            left: 'prev',
+            center: 'title',
+            right: 'next'
+        },
+        selectable: true,
+        dateClick: function(info) {
+            document.querySelectorAll('.fc-daygrid-day').forEach(el => {
+            el.classList.remove('fc-day-selected');
+            });
+            info.dayEl.classList.add('fc-day-selected');
+            window.location.href = `/allaboutme/eventcal?date=${info.dateStr}`;
+        },
+        validRange: {
+            start: new Date().getFullYear() - 1 + '-01-01',
+            end: new Date().getFullYear() + 1 + '-12-31'
+        },
+        initialDate: "<%= selectedDate %>",
+        dayHeaderFormat: { weekday: 'short' },
+        dayCellContent: function(arg) {
+          return { html: String(arg.date.getDate()) };
+        },
+        events: function(fetchInfo, successCallback, failureCallback) {
+          const data = <%- JSON.stringify(calendarSummary || {}) %>;
+          const events = Object.keys(data).map(dateStr => ({
+            title: '📝',
+            start: dateStr,
+            allDay: true,
+            display: 'auto', // allow default inline rendering of events
+            extendedProps: { hasEntry: true }
+          }));
+          successCallback(events);
+        },
+        eventContent: function(arg) {
+          if (arg.event.extendedProps.hasEntry) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="#fd7e14" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 3v18h14V3H5zm13 17H6V4h12v16z"/>
+                <path d="M8 6h8v2H8zm0 4h8v2H8zm0 4h5v2H8z"/>
+              </svg>
+            `;
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'center';
+            return { domNodes: [wrapper] };
+          }
+        },
+        eventClick: function(info) {
+          if (info.event.extendedProps.hasEntry) {
+            const dateStr = info.event.startStr;
+            fetch(`/allaboutme/eventcal/day-detail?date=${dateStr}`)
+              .then(res => res.text())
+              .then(html => {
+                const container = document.getElementById('dayDetailModalBody');
+                try {
+                  const entries = JSON.parse(html);
+                  if (Array.isArray(entries)) {
+                    container.innerHTML = entries.map(entry => {
+                      const photosHtml = (entry.photos || []).map(photo => {
+                        const url = typeof photo === 'string' ? photo : photo.url;
+                        // Updated: add modal trigger for each photo
+                        return `<img src="${url}" class="img-thumbnail me-2 mb-2" style="max-height: 100px; cursor: pointer;" onclick="showPhotoModal('${url}')">`;
+                      }).join('');
+                      return `
+                        <div class="mb-3 border-bottom pb-2">
+                          <div class="fw-bold">${entry.item} - ${entry.event}</div>
+                          <div>満足度: ${entry.rate} / 5</div>
+                          ${entry.summary && entry.summary.trim() ? `<div class="mt-1" style="white-space: pre-wrap;">${entry.summary}</div>` : (entry.content ? `<div class="text-muted mt-1" style="white-space: pre-wrap;">${entry.content}</div>` : '')}
+                          ${photosHtml ? `<div class="d-flex flex-wrap mt-2">${photosHtml}</div>` : ''}
+                        </div>
+                      `;
+                    }).join('');
+                  } else {
+                    container.innerHTML = html;
+                  }
+                } catch (e) {
+                  container.innerHTML = html;
+                }
+                new bootstrap.Modal(document.getElementById('dayDetailModal')).show();
+              });
+          }
+        }
+    });
+    calendar.render();
+
+    const selectedDate = "<%= selectedDate %>";
+    document.querySelectorAll('.fc-daygrid-day').forEach(dayEl => {
+      const dateStr = dayEl.getAttribute('data-date');
+      if (dateStr === selectedDate) {
+        dayEl.classList.add('fc-day-selected');
+      }
+    });
+
+  <% if (editingEntry && selectedUserId === currentUser._id.toString()) { %>
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('entryModal'));
+    modal.show();
+  <% } %>
+});
+</script>
+
+<script>
+// 写真拡大用モーダル表示関数
+function showPhotoModal(url) {
+  const modalImg = document.getElementById('photoModalImage');
+  if (modalImg) {
+    modalImg.src = url;
+    const photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
+    photoModal.show();
+  }
+}
+</script>
+
+<script>
+(function() {
+  // Intercept the draft button to send via AJAX and keep modal open
+  document.addEventListener('click', async function(e) {
+    const btn = e.target.closest('button[name="saveAction"][value="draft"]');
+    if (!btn) return;
+    const form = btn.closest('form');
+    if (!form) return;
+    e.preventDefault();
+
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+
+    try {
+      const fd = new FormData(form);
+      fd.set('saveAction', 'draft');
+
+      const resp = await fetch(form.action, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+
+      if (!resp.ok) {
+        const msg = await resp.text().catch(() => '');
+        throw new Error(msg || '一時保存に失敗しました');
+      }
+
+      // Try to parse JSON; if it has id, remember as existingId for later final保存
+      try {
+        const data = await resp.json();
+        if (data && data.id) {
+          const existingIdInput = form.querySelector('#existingId');
+          if (existingIdInput) existingIdInput.value = data.id;
+          // 仕上げ保存ボタンのラベルは「登録」のままでOK（サーバ側はexistingIdで更新に切替）
+        }
+      } catch (_) {}
+
+      // Show centered overlay message without closing modal
+      const overlay = document.getElementById('draftCenterOverlay');
+      const card = document.getElementById('draftCenterCard');
+      if (overlay && card) {
+        overlay.classList.remove('d-none');
+        overlay.classList.remove('hiding');
+        card.classList.add('showing');
+        // auto hide after 1400ms
+        setTimeout(() => {
+          card.classList.remove('showing');
+          overlay.classList.add('hiding');
+          setTimeout(() => {
+            overlay.classList.add('d-none');
+            overlay.classList.remove('hiding');
+          }, 220);
+        }, 1400);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('一時保存に失敗しました');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }, { passive: false });
+})();
+</script>
+
+<script>
+// 内容をChatGPTで要約してサマリーへ反映
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('#aiSummarizeBtn');
+  if (!btn) return;
+  const contentEl = document.getElementById('contentTextarea');
+  const summaryEl = document.querySelector('textarea[name="summary"]');
+  if (!contentEl || !summaryEl) return;
+
+  const text = (contentEl.value || '').trim();
+  if (!text) {
+    alert('内容にテキストを入力してください。');
+    return;
+  }
+
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '要約中...';
+
+  try {
+    const resp = await fetch('/allaboutme/eventcal/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text, maxChars: 180, lang: 'ja' })
+    });
+    if (!resp.ok) {
+      const msg = await resp.text().catch(()=>'');
+      throw new Error(msg || '要約に失敗しました');
+    }
+    const data = await resp.json();
+    if (data && data.summary) {
+      summaryEl.value = data.summary;
+    } else {
+      alert('要約結果を取得できませんでした。');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('要約に失敗しました');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+</script>
+
+<!-- 日記の一覧用のモーダル -->
+<div class="modal fade" id="dayDetailModal" tabindex="-1" aria-labelledby="dayDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dayDetailModalLabel">日記の一覧</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body" id="dayDetailModalBody" style="font-size: 0.9rem;">
+        <!-- AJAXで読み込まれる -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 写真拡大用モーダル -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark">
+      <div class="modal-body p-0">
+        <img id="photoModalImage" src="" class="img-fluid w-100" alt="拡大写真">
+      </div>
+    </div>
+  </div>
+</div>

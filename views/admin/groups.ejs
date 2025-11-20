@@ -1,0 +1,35 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>グループ管理</h3>
+
+  <table class="table table-bordered table-hover">
+    <thead style="background-color: #3a7ca5; color: white;">
+      <tr>
+        <th>グループ名</th>
+        <th>メンバー数</th>
+        <th>作成者</th>
+        <th>作成日</th>
+        <th>更新日</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% groups.forEach(group => { %>
+        <tr>
+          <td><%= group.group_name %></td>
+          <td><%= group.memberCount %></td>
+          <td><%= group.createdBy %></td>
+          <td><%= new Date(group.createdAt).toLocaleString('ja-JP') %></td>
+          <td><%= new Date(group.updatedAt).toLocaleString('ja-JP') %></td>
+          <td>
+            <a href="/admin/groups/<%= group._id %>/edit" class="btn btn-sm btn-primary">編集</a>
+            <form action="/admin/groups/<%= group._id %>/delete" method="POST" class="d-inline">
+              <button class="btn btn-sm btn-danger" onclick="return confirm('本当に削除しますか？');">削除</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

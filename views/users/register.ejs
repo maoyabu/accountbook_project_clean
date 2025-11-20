@@ -1,0 +1,67 @@
+<% layout('layouts/top_boilerplate') %>
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/2DE27623-692C-4288-ADA9-D1DE16FE4D03/%E6%96%B0%E8%A6%8F%E4%BC%9A%E5%93%A1%E7%99%BB%E9%8C%B2"
+     target="_blank" rel="noopener"
+     class="badge bg-warning text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+    <div class="waku-1">
+        <div class = "waku-2">
+            <form action="/register" method="POST">
+                <% if (query?.group) { %>
+                    <input type="hidden" name="group" value="<%= query.group %>">
+                <% } %>
+                <div class="mb-3">
+                    <label class="waku-3" for="username">ログインネーム（変更は出来ません）</label>
+                    <input class="waku-4 <%= errors?.username ? 'error-field' : '' %>" type="text" id="username" name = "username" value="<%= formData?.username || '' %>" placeholder="ユーザーネームを入力してください">
+                    <% if (errors?.username) { %>
+                        <div class="error-message"><%= errors.username %></div>
+                    <% } %>
+                </div>
+                <div class="mb-3">
+                    <label class="waku-3" for="email">メールアドレス</label>
+                    <input class="waku-4 <%= errors?.email ? 'error-field' : '' %>" type="email" id="email" name = "email" value="<%= formData?.email || '' %>" placeholder="メールアドレスを入力してください">
+                    <% if (errors?.email) { %>
+                        <div class="error-message"><%= errors.email %></div>
+                    <% } %>
+                </div>
+                <div class="mb-3">
+                    <label class="waku-3" for="password">パスワード</label>
+                    <div class="input-wrapper">
+                        <input class="waku-4  <%= errors?.password ? 'error-field' : '' %>" type="password" id="password" name="password" placeholder="パスワードは英数字6文字以上">
+                        <button class="eye-icon" type="button" onclick="togglePassword('password')"><i class="fa-regular fa-eye"></i></button>
+                    </div>
+                    <label class="waku-3" for="password_check">パスワード</label>
+                    <div class="input-wrapper">
+                        <input class="waku-4  <%= errors?.password ? 'error-field' : '' %>" type="password" id="password_check" name="password_check" placeholder="パスワードをもう一度入力してください">
+                        <button class="eye-icon" type="button" onclick="togglePassword('password_check')"><i class="fa-regular fa-eye"></i></button>
+                    </div>
+                    <% if (errors?.password) { %>
+                        <div class="error-message"><%= errors.password %></div>
+                    <% } %>
+                </div>
+                <div class="waku-5">
+                    <button class="button-3">登録する</button>
+                    <div class="spinner-border text-dark d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+                        <span class="visually-hidden">送信中...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <hr>
+        <div class="waku-5">
+            <label for="login">既にアカウントをお持ちの方</label>
+        </div>
+        <a class = "login" href="/login">ログイン画面へ</a>
+    </div>
+    <script>
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            if (input.type === "password") {
+                input.type = "text";
+            } else {
+                input.type = "password";
+            }
+        }
+    </script>

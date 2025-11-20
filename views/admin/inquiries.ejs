@@ -1,0 +1,75 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-5">
+  <h1>お問い合わせ一覧</h1>
+  <ul class="nav nav-tabs mt-4" id="inquiryTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">対応中</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="closed-tab" data-bs-toggle="tab" data-bs-target="#closed" type="button" role="tab">完了</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3" id="inquiryTabsContent">
+    <div class="tab-pane fade show active" id="active" role="tabpanel">
+      <% const activeInquiries = inquiries.filter(i => !i.closed); %>
+      <% if (activeInquiries.length > 0) { %>
+        <table class="table table-striped table-bordered">
+          <thead style="background-color: #3a7ca5; color: white;">
+            <tr>
+              <th>タイトル</th>
+              <th>ユーザー名</th>
+              <th>ステータス</th>
+              <th>日付</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% activeInquiries.forEach(inquiry => { %>
+              <tr>
+                <td><%= inquiry.title %></td>
+                <td><%= inquiry.user ? inquiry.user.displayname || inquiry.user.username || '匿名' : '匿名' %></td>
+                <td><%= inquiry.status || '未設定' %></td>
+                <td><%= inquiry.entry_date ? new Date(inquiry.entry_date).toLocaleString('ja-JP') : '' %></td>
+                <td><a href="/admin/inquiries/<%= inquiry._id %>" class="btn btn-primary btn-sm">詳細</a></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <p>対応中のお問い合わせはありません。</p>
+      <% } %>
+    </div>
+
+    <div class="tab-pane fade" id="closed" role="tabpanel">
+      <% const closedInquiries = inquiries.filter(i => i.closed); %>
+      <% if (closedInquiries.length > 0) { %>
+        <table class="table table-striped table-bordered">
+          <thead style="background-color: #3a7ca5; color: white;">
+            <tr>
+              <th>タイトル</th>
+              <th>ユーザー名</th>
+              <th>ステータス</th>
+              <th>日付</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% closedInquiries.forEach(inquiry => { %>
+              <tr>
+                <td><%= inquiry.title %></td>
+                <td><%= inquiry.user ? inquiry.user.displayname || inquiry.user.username || '匿名' : '匿名' %></td>
+                <td><%= inquiry.status || '未設定' %></td>
+                <td><%= inquiry.entry_date ? new Date(inquiry.entry_date).toLocaleString('ja-JP') : '' %></td>
+                <td><a href="/admin/inquiries/<%= inquiry._id %>" class="btn btn-primary btn-sm">詳細</a></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <p>完了済みのお問い合わせはありません。</p>
+      <% } %>
+    </div>
+  </div>
+</div>

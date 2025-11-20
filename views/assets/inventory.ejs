@@ -1,0 +1,72 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="card shadow-sm mt-3">
+  <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
+    <h5 class="mb-0"><%= inventoryTitle %></h5>
+    <div class="d-flex gap-2">
+      <a href="/asset/history" class="btn btn-warning btn-sm">履歴一覧</a>
+      <a href="/asset" class="btn btn-light btn-sm">資産入力へ戻る</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <% if (targetInventory) { %>
+      <div class="alert alert-success">
+        この棚卸しは <%= new Date(targetInventory.updatedAt || targetInventory.createdAt).toLocaleString('ja-JP') %> に
+        <%= targetInventory.updatedBy?.displayname || targetInventory.updatedBy?.username || '不明なユーザー' %> が保存済みです。上書きして更新できます。
+      </div>
+    <% } else if (latestInventory) { %>
+      <div class="alert alert-info">
+        前回（<%= latestInventory.inventoryMonth.getFullYear() %>年<%= String(latestInventory.inventoryMonth.getMonth() + 1).padStart(2, '0') %>月）
+        の棚卸し金額を初期表示しています。今回の棚卸し金額に更新してください。
+      </div>
+    <% } else { %>
+      <div class="alert alert-secondary">
+        初めての棚卸しです。現在の資産金額を入力してください。
+      </div>
+    <% } %>
+
+    <% if (inventoryRows.length === 0) { %>
+      <p class="text-muted">登録されている資産がありません。まず資産を登録してください。</p>
+    <% } else { %>
+      <form action="/asset/inventory" method="POST">
+        <input type="hidden" name="inventoryMonth" value="<%= targetMonthValue %>">
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 120px;">区分</th>
+                <th style="width: 150px;">項目</th>
+                <th>内容</th>
+                <th style="width: 90px;">コード</th>
+                <th style="width: 180px;" class="text-end">棚卸し金額(円)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% inventoryRows.forEach((row, idx) => { %>
+                <tr>
+                  <td><%= row.asset.asset_cf %></td>
+                  <td><%= row.asset.asset_item %></td>
+                  <td><%= row.asset.content %></td>
+                  <td><%= row.asset.code %></td>
+                  <td>
+                    <input type="hidden" name="items[<%= idx %>][asset]" value="<%= row.asset._id %>">
+                    <input type="number"
+                           name="items[<%= idx %>][amountYen]"
+                           class="form-control form-control-sm text-end"
+                           value="<%= row.amountYen %>"
+                           step="1">
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted small">前回棚卸しの数値を初期表示しています。必要に応じて修正し、保存してください。</p>
+        <div class="d-flex justify-content-between">
+          <a href="/asset/history" class="btn btn-outline-secondary">履歴を見る</a>
+          <button type="submit" class="btn btn-primary">棚卸しを保存</button>
+        </div>
+      </form>
+    <% } %>
+  </div>
+</div>

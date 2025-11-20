@@ -1,0 +1,50 @@
+<% layout('layouts/boilerplate') %>
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/33EAF36C-74B4-4157-BADD-9B777DF0BD2E/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E6%9C%80%E8%BF%91%E3%81%AE%E5%85%A5%E5%8A%9B-%E6%A4%9C%E7%B4%A2-EXCEL%E6%9B%B8%E5%87%BA%E3%81%97"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="container mt-2">
+    <div class="card shadow-sm">
+      <div class="card-header text-white" style="background-color: #3a7ca5;">
+        <h5 class="mb-1"><i class="fa-solid fa-file-export"></i> 明細の書き出し</h5>
+        <p class="mb-0 gray-text">年か日付はどちらかしか選択できません。条件は指定した項目だけで絞られます</p>
+      </div>
+      <div class="card-body">
+        <form id="export-form" action="/export" method="GET" class="row g-3">
+            
+            <div class="col-md-3">
+                <label for="year" class="form-label">年</label>
+                <input type="number" name="year" id="year" class="form-control" placeholder="例: 2024">
+            </div>
+            <div class="w-100"></div> <!-- 改行 -->
+            <div class="col-md-4">
+                <label for="from" class="form-label">日付（From）</label>
+                <input type="date" name="from" id="from" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="to" class="form-label">日付（To）</label>
+                <input type="date" name="to" id="to" class="form-control">
+            </div>
+            <hr>
+            <div class="col-md-6">
+                <label for="user" class="form-label">使用者</label>
+                <select name="user" id="user" class="form-select">
+                <option value="">全員</option>
+                <% allUsers.forEach(user => { %>
+                    <option value="<%= user._id %>"><%= user.displayname || user.username %></option>
+                <% }) %>
+                </select>
+            </div>
+            <hr>
+            <div class="col-12 text-center mt-3">
+                <button type="button" class="c-button px-4 py-2" style="min-width: 200px;" onclick="confirmExport()">
+                <i class="fas fa-file-export me-1"></i> 書き出し
+                </button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>

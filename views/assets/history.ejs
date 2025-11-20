@@ -1,0 +1,61 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+  <h5 class="mb-0">資産棚卸し履歴</h5>
+  <div class="d-flex gap-2">
+    <a href="/asset/history/graph" class="btn btn-outline-primary btn-sm">グラフ表示</a>
+    <a href="/asset/inventory" class="btn btn-primary btn-sm">最新の棚卸しを入力</a>
+  </div>
+</div>
+
+<% if (!history || history.length === 0) { %>
+  <div class="alert alert-secondary">まだ棚卸し履歴がありません。</div>
+<% } else { %>
+  <% history.forEach(entry => { %>
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
+        <span><%= entry.label %> 棚卸し</span>
+        <small class="text-end">
+          更新: <%= entry.updatedAt ? new Date(entry.updatedAt).toLocaleString('ja-JP') : '-' %><br>
+          <%= entry.updatedBy?.displayname || entry.updatedBy?.username || '記録なし' %>
+        </small>
+      </div>
+      <div class="card-body">
+        <div class="row mb-2">
+          <div class="col-md-8">
+            <strong>合計</strong> ¥<%= entry.totalYen.toLocaleString() %>
+          </div>
+          <div class="col-md-4 text-md-end text-muted small">
+            <span class="me-2">金融資産: ¥<%= (entry.totalByCf['金融資産'] || 0).toLocaleString() %></span>
+            <span class="me-2">実物資産: ¥<%= (entry.totalByCf['実物資産'] || 0).toLocaleString() %></span>
+            <span>無形資産: ¥<%= (entry.totalByCf['無形資産'] || 0).toLocaleString() %></span>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 120px;">区分</th>
+                <th style="width: 150px;">項目</th>
+                <th>内容</th>
+                <th style="width: 90px;">コード</th>
+                <th class="text-end" style="width: 140px;">金額(円)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% entry.items.forEach(item => { %>
+                <tr>
+                  <td><%= item.asset_cf %></td>
+                  <td><%= item.asset_item %></td>
+                  <td><%= item.content %></td>
+                  <td><%= item.code %></td>
+                  <td class="text-end">¥<%= item.amountYen.toLocaleString() %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+<% } %>

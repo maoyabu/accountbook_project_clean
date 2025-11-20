@@ -1,0 +1,293 @@
+<% if (user) { %>
+    <!-- ログイン時の表示 -->
+    <% layout('layouts/boilerplate') %>
+<% } else { %>
+    <!-- 未ログイン時の表示 -->
+    <% layout('layouts/top_boilerplate') %>
+<% } %>
+
+<style>
+        .app-banner-header {
+            background-image: url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop'); /* 例: url('https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop'); */
+            background-size: cover;
+            background-position: center;
+            padding: 3rem 0; /* バナーの高さを調整 */
+            border-radius: 0.5rem; /* バナーの角を少し丸める */
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+            color: #ffffff; /* 基本の文字色を白に */
+        }
+
+        .banner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.45); /* 半透明の黒いオーバーレイ */
+            border-radius: 0.5rem; /* 親要素の角丸に合わせる */
+            z-index: 1; /* コンテンツより下に配置 */
+        }
+
+        .banner-content {
+            z-index: 2; /* オーバーレイより上に配置 */
+        }
+
+        .app-banner-header h2 {
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5); /* テキストに見やすさのための影を追加 */
+        }
+
+        .banner-guide-icon {
+            font-size: 1.9rem; /* アイコンサイズ調整 */
+            color: rgba(255, 255, 255, 0.85); /* やや透明感のある白 */
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            width: 2.8rem; /* 円形の背景のための幅 */
+            height: 2.8rem; /* 円形の背景のための高さ */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .banner-guide-icon:hover {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        body {
+            background-color: #f8f9fa; /* Bootstrapのbg-lightに近い色 */
+        }
+        .section-card {
+            background-color: #fff;
+            border-radius: 0.75rem; /* rounded-xlに近い */
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); /* shadow-lg */
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        .section-card:hover {
+            box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2); /* shadow-xlに近いホバー効果 */
+        }
+        .list-icon {
+            color: #0d6efd; /* Bootstrap primary color */
+            width: 1.25em; /* アイコンサイズ調整 */
+        }
+        .highlight-box {
+            border-left: 0.25rem solid #0d6efd; /* Bootstrap primary color for border */
+            background-color: rgba(13, 110, 253, 0.05); /* Primary color with low opacity */
+        }
+         .highlight-box-warning {
+            border-left: 0.25rem solid #ffc107; /* Bootstrap warning color for border */
+            background-color: rgba(255, 193, 7, 0.05); /* Warning color with low opacity */
+        }
+        .section-title {
+            color: #0a58ca; /* Bootstrap primary darker shade */
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #dee2e6; /* Bootstrap default border color */
+            margin-bottom: 1.5rem;
+        }
+        .subsection-title {
+             color: #343a40; /* Darker text color */
+        }
+
+        /* main要素自体をbody中央に表示し最大幅960pxに調整 */
+        main {
+            max-width: 960px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Guide icon link: no longer fixed, now inline in header */
+        .guide-icon-link {
+            position: static;
+            font-size: 1.6rem;
+            color: #0d6efd;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            padding: 0.3em 0.4em;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        .guide-icon-link:hover {
+            opacity: 1;
+            color: #0a58ca;
+            text-decoration: none;
+        }
+
+        /* === 体系図スタイル（All About me / Myself / Finance） === */
+        .service-map { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .service-map .root { margin-bottom: 4px; }
+        .service-map .branch { display: flex; gap: 24px; justify-content: center; align-items: stretch; width: 100%; max-width: 780px; position: relative; }
+        .service-map .branch::before { content: ""; position: absolute; top: -10px; left: 10%; right: 10%; height: 2px; background: #d0e3ff; }
+        /* 子機能グループ: 左=Myself / 右=Finance（50%/50%） */
+        .service-map .leaf-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%; max-width: 980px; position: relative; align-items: start; }
+        .service-map .leaf-groups::before { content: ""; position: absolute; top: -10px; left: 5%; right: 5%; height: 2px; background: #e8eef9; }
+        .service-map .leaf-group { padding-top: 6px; }
+        .service-map .leafs { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(140px,1fr)); }
+        /* Myself は2x2（上: リスト/日記、下: History/Relation） */
+        .service-map .leaf-group.group-myself .leafs { grid-template-columns: 1fr 1fr; }
+        .service-map .leaf-group.group-finance .leafs { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 768px) { .service-map .leaf-groups { grid-template-columns: 1fr; } }
+        @media (max-width: 576px) { .service-map .leafs { grid-template-columns: 1fr; } }
+        .service-map .node { background: #ffffff; border: 1px solid #e5eaf3; border-radius: 10px; padding: 10px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .service-map .node .node-title { font-weight: 600; color: #0a58ca; display: inline-flex; align-items: center; gap: 6px; }
+        .service-map .node .node-desc { font-size: 0.85rem; color: #6c757d; margin-top: 4px; }
+        .service-map .node.pillar .node-title { color: #0d6efd; }
+        .service-map .node.root { border-color: #bcd7ff; background: #eef6ff; }
+        /* Myself: Yellow */
+        .service-map .node.pillar-myself { border-color: #ffe08a; background: #fffdf3; }
+        .service-map .node.pillar-myself .node-title { color: #b8860b; }
+        .service-map .leaf-group.group-myself .node { border-color: #ffe8a1; background: #fffaf0; }
+        .service-map .leaf-group.group-myself .node .node-title { color: #c58a00; }
+        /* Finance: Green */
+        .service-map .node.pillar-finance { border-color: #a9e5a1; background: #f4fff4; }
+        .service-map .node.pillar-finance .node-title { color: #198754; }
+        .service-map .leaf-group.group-finance .node { border-color: #c7f1c4; background: #f6fff6; }
+        .service-map .leaf-group.group-finance .node .node-title { color: #1e7e34; }
+
+        /* Section color themes */
+        .section-yellow { background-color: #fffdf3; border: 1px solid #ffe8a1; }
+        .section-yellow .section-title, .section-yellow h2, .section-yellow .subsection-title { color: #b8860b; }
+        .section-yellow .list-icon { color: #c58a00; }
+        .section-green { background-color: #f6fff6; border: 1px solid #c7f1c4; }
+        .section-green .section-title, .section-green h2, .section-green .subsection-title { color: #1e7e34; }
+        .section-green .list-icon { color: #198754; }
+</style>
+
+    <div class="container py-2 py-md-2" style="position:relative;"> <!-- max-w-5xl に近い -->
+        <header class="mb-4 app-banner-header position-relative">
+            <div class="banner-overlay"></div>
+            <div class="banner-content container d-flex justify-content-between align-items-center position-relative">
+                <h2 class="h4 text-white fw-semibold mb-0">All About me について</h2>
+                <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH" target="_blank" rel="noopener" class="banner-guide-icon" title="ご利用ガイド">
+                    <i class="fa-solid fa-circle-info"></i>
+                </a>
+            </div>
+        </header>
+        <main class="p-0 mt-0 mb-1">
+            <section class="p-4 p-md-5 section-card mb-5">
+                <h2 class="h2 fw-semibold section-title">All About me サービス概要</h2>
+                <p class="text-muted leading-relaxed mb-3">本サービスは大きく「Finance」と「Myself」の二つのサービスで構成されています。Financeの配下には「家計簿」「資産管理」の2つのサービス、Myselfの中には4つのサービスがあります。</p>
+                <div class="service-map">
+                    <div class="node root"><div class="node-title"><i class="fa-solid fa-seedling"></i>All About me</div></div>
+                    <div class="branch">
+                        <div class="node pillar pillar-finance"><div class="node-title"><i class="fa-solid fa-wallet"></i> Finance</div></div>
+                        <div class="node pillar pillar-myself"><div class="node-title"><i class="fa-solid fa-user"></i> Myself</div></div>
+                    </div>
+                    <div class="leaf-groups">
+                        <div class="leaf-group group-finance">
+                            <div class="leafs">
+                                <div class="node leaf"><div class="node-title"><i class="fa-solid fa-coins"></i> 家計簿</div><div class="node-desc">収入・控除・貯蓄・支出の管理</div></div>
+                                <div class="node leaf"><div class="node-title"><i class="fa-solid fa-piggy-bank"></i> 資産管理</div><div class="node-desc">資産の登録と見える化</div></div>
+                            </div>
+                        </div>
+                        <div class="leaf-group group-myself">
+                            <div class="leafs">
+                                <div class="node leaf"><div class="node-title"><i class="fa-solid fa-list-check"></i> Myリスト</div><div class="node-desc">やりたい事・不安/課題の可視化</div></div>
+                                <div class="node leaf"><div class="node-title"><i class="fa-regular fa-calendar"></i> My日記</div><div class="node-desc">毎日の出来事/指標を記録</div></div>
+                                <div class="node leaf"><div class="node-title"><i class="fa-regular fa-clock"></i> MyHistory</div><div class="node-desc">自分史・足跡のアーカイブ</div></div>
+                                <div class="node leaf"><div class="node-title"><i class="fa-solid fa-people-arrows"></i> MyRelation</div><div class="node-desc">関係の設定と共有</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-green mb-5">
+                <h2 class="h2 fw-medium subsection-title mb-3">Finance</h2>
+                <p class="text-muted leading-relaxed mb-3">夫婦や家族、サークルや町内会などグループの間で収入や控除、貯蓄、支出を共同で管理することができる家計簿サービスと資産を共有して管理できるサービスです。</p>
+                <p class="text-muted leading-relaxed mb-3">もちろん自分ひとりだけでも管理することも可能です。</p>
+                <div class="mt-4 p-3 rounded highlight-box-warning">
+                     <p class="text-dark small leading-relaxed"><span class="fw-semibold">（予定）</span>オプションで当サイトがご用意するプロのフィナンシャルアドバイザーと契約する事で毎月や年間で家計に関するアドバイスを受けたり、相談したりすることが出来るようになる予定です。（有料）</p>
+                </div>
+            </section>
+
+            <!-- Finance: 家計簿 -->
+            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
+                <h2 class="h4 fw-semibold section-title">家計簿</h2>
+                <p class="text-muted leading-relaxed mb-3">家計簿の最大の特徴は“グループで記入できること”。仲間や家族と一緒に予算を立て、日々の支出をすぐに振り返ることで、お金の使い方そのものを前向きに変えていける家計管理サービスです。</p>
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">ダッシュボード（月次/年次）、支出内訳、収支の可視化</span></li>
+                    <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">予算設定と差分の把握、明細の検索・絞り込み・複製</span></li>
+                    <li class="d-flex align-items-start"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">Excel出力、項目/支払方法の管理</span></li>
+                </ul>
+            </section>
+
+            <!-- Finance: 資産管理 -->
+            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
+                <h2 class="h4 fw-semibold section-title">資産管理</h2>
+                <p class="text-muted leading-relaxed mb-3">資産の登録・分類・評価を行い、一覧や明細から保有状況を把握します。グループ内共有にも対応し、将来的な推移把握にも役立ちます。</p>
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">資産の登録・編集・削除、分類ごとの集計</span></li>
+                    <li class="d-flex align-items-start"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">台帳ビューでの一覧・明細確認</span></li>
+                </ul>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-yellow mb-5">
+                <h2 class="h2 fw-medium subsection-title mb-3">Myself</h2>
+                <p class="text-muted leading-relaxed mb-3">自分の過去（歴史）と現在、そしてこれからを自分に可視化するために記録するサービスです。</p>
+                <p class="text-muted leading-relaxed">Myselfには4つのサービスがございます：
+                    <span class="fw-semibold text-primary">「Myリスト」</span>、
+                    <span class="fw-semibold text-primary">「My日記」</span>、
+                    <span class="fw-semibold text-primary">「MyHistory」</span>、
+                    <span class="fw-semibold text-primary">「MyRelation」</span>の4つです。
+                </p>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+                <h2 class="h4 fw-semibold section-title">Myリスト</h2>
+                <p class="text-muted leading-relaxed mb-3">自分の過去（歴史）から現在、そしてこれからの事（あくまでも予定ではない）を可視化するもの。</p>
+                <ul class="list-unstyled mb-4">
+                    <li class="d-flex align-items-start mb-2">
+                        <i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i>
+                        <span class="text-muted leading-relaxed">普段自分がやってて楽しいことや、これから起こる事で楽しみにしていること さらに、これからチャレンジしてみたいと思っている事など。</span>
+                    </li>
+                    <li class="d-flex align-items-start">
+                        <i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i>
+                        <span class="text-muted leading-relaxed">なかなか人には言えないけど普段自分が感じている不安や心配事、不満なこと、不快な事 実際に困っていることなど。</span>
+                    </li>
+                </ul>
+                <p class="text-muted leading-relaxed mb-3">それらを明文化して自分の気持ちを整理して、これからの行動のために繋げるために可視化する。</p>
+                <p class="text-muted leading-relaxed mb-4">また、完了したものや解決できたものやあきらめた事なども残しておく事で振り返りも出来る様になります。</p>
+                
+                <div class="p-3 rounded mb-4 highlight-box">
+                    <p class="text-dark leading-relaxed small">自分で解決出来ない事や相談したいなと感じたときに、身近に相談できる人がいれば、この情報を元に 相談したりアドバイスを受けたりサポートしてもらうときの助けにもなります。 身近な人に相談しにくい時は専門家に相談出来るようなサービスも将来的には提供する事を計画しています。</p>
+                </div>
+                
+                <p class="text-muted leading-relaxed mb-1 small">あくまでも自分自身のことなので基本的には他人には公開せず、自分の中にとどめておくことができます。</p>
+                <p class="text-muted leading-relaxed small">共有したいときに共有したい人だけに共有する事もできます。</p>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+                <h2 class="h4 fw-semibold section-title">My日記</h2>
+                <p class="text-muted leading-relaxed mb-3">毎日の出来事を記録するサービスですが、日々日課としている事は項目として自分でオリジナルな項目を設定することが出来て、項目毎に記録する事が出来るようになります。</p>
+                <p class="text-muted leading-relaxed mb-3">例えば、毎日の食事の事やその日の体調や気分、よく眠れたかどうか、生活のサイクルとして薬を飲んだかどうかとか体重の測定や血圧の測定とか、散歩やサイクリングとか日課としているものをやったかどうかを記録したりすることが出来ます。</p>
+                <p class="text-muted leading-relaxed">毎日日記に何を書こうか悩んでなかなか筆が進まないという事があるかと思いますが、行動の記録をしている中でその日の振り返りをしながら日記を書き進めやすくすることをサポートします。</p>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+                <h2 class="h4 fw-semibold section-title">My History</h2>
+                <p class="text-muted leading-relaxed mb-3">自分史的なものなのですが、仕事の経歴や学校のことだけでなく自分が過ごしてきた日々の足跡を記録していつでもそれをみて懐かしんだり、振り返ったりする事をサポートするサービスです。</p>
+                <p class="text-muted leading-relaxed">例えば転勤とかが多く色んな住まいを過ごしてきたことや、それに伴って転校した学校の事。自分が乗り継いできた車やバイク、自転車など乗り物のことや、Gadgetや電話番号など自分の足跡として残しておきたいなと思っている事を写真と一緒に記録する事が出来るようになります。</p>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+                <h2 class="h4 fw-semibold section-title">My Relation</h2>
+                <p class="text-muted leading-relaxed mb-3">このサービスを利用している人と繋がり、その人との関係性を設定しお互いの情報を共有し合うことができるようになります。</p>
+                <p class="text-muted leading-relaxed">共有する内容はMyリストやMy日記、MyHistoryの中で自分が共有した許可情報のみとなり、許可された情報は閲覧が可能となります。</p>
+            </section>
+
+
+        </main>
+
+        <!-- 下部ガイドリンク -->
+        <section class="mt-5 mb-4 p-3 p-md-4 text-center bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded shadow-sm">
+            <p class="text-muted">ご利用ガイドをご覧ください（外部サイト）</p>
+            <p class="text-muted">
+              ガイドページは
+              <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH" target="_blank" rel="noopener" class="text-primary fw-medium text-decoration-underline">
+                こちらから
+              </a>
+              ご確認ください
+            </p>
+        </section>
+    </div>

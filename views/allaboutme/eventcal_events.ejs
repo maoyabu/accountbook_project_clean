@@ -1,0 +1,80 @@
+<% layout('layouts/boilerplate') -%>
+<% page = 'eventcal_events' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/11A0D3D1-F656-42AF-8E71-FF1F0449A773/My%E6%97%A5%E8%A8%98%E3%80%80-%E3%80%80My%E6%97%A5%E8%A8%98%E8%A8%AD%E5%AE%9A"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="container">
+  <div class="card mb-2 mt-2">
+      <div class="card-body text-white p-2 rounded" style="background-color: #3a7ca5;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title mb-0">日記のイベント項目の登録</h5>
+        </div>
+      <div class="bg-white p-3 rounded shadow-sm">
+        <form id="eventForm" action="<%= editingEvent ? '/allaboutme/eventcal_events/' + editingEvent._id + '/edit' : '/allaboutme/eventcal_events' %>" method="POST" enctype="application/x-www-form-urlencoded">
+          <div class="mb-2">
+            <label class="form-label text-dark">表示順</label>
+            <input type="number" class="form-control" name="display_order" value="<%= editingEvent ? editingEvent.display_order : '' %>" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-dark">項目</label>
+            <select class="form-select" name="item" required>
+              <% calevent_items.forEach(i => { %>
+              <option value="<%= i %>" <%= editingEvent && editingEvent.item === i ? 'selected' : '' %>><%= i %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-dark">イベント</label>
+            <input type="text" class="form-control" name="event" id="eventInput" value="<%= editingEvent ? editingEvent.event : '' %>" required>
+          </div>
+
+          <% if (editingEvent) { %>
+          <input type="hidden" name="_method" value="PUT">
+          <div class="text-center">
+            <button type="submit" class="btn btn-success" style="width: 60%;">更新</button>            <a href="/allaboutme/eventcal_events" class="btn btn-secondary">キャンセル</a>
+          </div>
+          <% } else { %>
+            <div class="text-center">
+              <button type="submit" class="btn btn-success" style="width: 60%;">登録</button>            </div>
+          <% } %>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <table class="table table-bordered text-center">
+        <thead>
+            <tr style="background-color: #3a7ca5; color: white;">
+            <th>表示順</th>
+            <th>項目</th>
+            <th>イベント</th>
+            <th>編集</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% events.forEach(e => { %>
+            <tr>
+                <td><%= e.display_order %></td>
+                <td><%= e.item %></td>
+                <td><%= e.event %></td>
+                <td>
+                <form method="GET" action="/allaboutme/eventcal_events" style="display:inline;">
+                    <input type="hidden" name="edit" value="<%= e._id %>">
+                    <button class="btn btn-sm"><i class="fas fa-pen"></i></button>
+                </form>
+                <form method="POST" action="/allaboutme/eventcal_events/<%= e._id %>/delete" style="display:inline;" onsubmit="return confirm('削除しますか？')">
+                    <button type="submit" class="btn btn-sm text-danger"><i class="fas fa-trash-alt"></i></button>
+                </form>
+                </td>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+  </div>
+</div>

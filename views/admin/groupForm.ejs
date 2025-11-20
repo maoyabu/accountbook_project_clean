@@ -1,0 +1,26 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>グループ情報編集</h3>
+
+  <form action="/admin/groups/<%= group._id %>?_method=PUT" method="POST">
+    <div class="mb-3">
+      <label for="group_name" class="form-label">グループ名</label>
+      <input type="text" name="group_name" id="group_name" class="form-control" value="<%= group.group_name %>" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="createdBy" class="form-label">グループ管理者</label>
+      <select name="createdBy" id="createdBy" class="form-select" required>
+        <% users.forEach(user => { %>
+          <option value="<%= user._id %>" <%= group.createdBy && group.createdBy._id.toString() === user._id.toString() ? 'selected' : '' %>>
+            <%= user.displayname || user.username %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-success">保存</button>
+    <a href="/admin/groups" class="btn btn-secondary ms-2">キャンセル</a>
+  </form>
+</div>

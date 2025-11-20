@@ -1,0 +1,44 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+
+  <div class="mb-3">
+    <a href="/admin/qa" class="btn btn-outline-secondary btn-sm">Q&A一覧を見る</a>
+  </div>
+
+  <h2>Q&A 登録</h2>
+
+  <form action="<%= qa ? '/admin/qaEntry/' + qa._id + '?_method=PUT' : '/admin/qaEntry' %>" method="POST" class="mb-4">
+    <div class="mb-3">
+      <label for="qa_category" class="form-label">カテゴリー</label>
+      <select name="qa_category" id="qa_category" class="form-select" required>
+        <option value="">選択してください</option>
+        <% qaCategories.forEach(cat => { %>
+          <option value="<%= cat %>" <%= qa && qa.qa_category === cat ? 'selected' : '' %>><%= cat %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="qa_question" class="form-label">質問</label>
+      <input type="text" name="qa_question" id="qa_question" class="form-control" value="<%= qa ? qa.qa_question : '' %>" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="qa_answer" class="form-label">回答</label>
+      <textarea name="qa_answer" id="qa_answer" class="form-control" rows="4" required><%= qa ? qa.qa_answer : '' %></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="url" class="form-label">関連URL（任意）</label>
+      <input type="url" name="url" id="url" class="form-control" value="<%= qa ? qa.url : '' %>">
+    </div>
+
+    <div class="form-check mb-3">
+      <input type="checkbox" name="faq_flag" id="faq_flag" class="form-check-input" <%= qa && qa.faq_flag ? 'checked' : '' %>>
+      <label for="faq_flag" class="form-check-label">FAQとして公開する</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">登録</button>
+  </form>
+</div>

@@ -1,0 +1,211 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'relationdetail' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container mt-4">
+    <div class="text-end mb-2">
+    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1B0724C9-975D-46F3-95CF-1D44AAC5CF48/My-Relation"
+      target="_blank" rel="noopener"
+      class="badge bg-success text-white text-decoration-none p-2">
+      ガイド
+    </a>
+  </div>
+  <div class="border rounded p-3 mb-3">
+    <h3><i class="fa-solid fa-people-group"></i> My relation</h3>
+    <hr>
+    <form action="/relation/<%= relation._id %>?_method=PUT" method="POST">
+      <div class="mb-3 d-flex align-items-center gap-3">
+        <% if (relation.relationUserId?.avatar) { %>
+          <img src="<%= relation.relationUserId.avatar %>" alt="avatar" class="rounded-circle" style="width: 80px; height: 80px;">
+        <% } else { %>
+          <div class="text-muted">アバター未設定</div>
+        <% } %>
+        <span class="badge bg-primary fs-6">
+          Relation User：<%= relation.relationUserId?.displayname || relation.relationUserId?.username %> さん
+        </span>
+      </div>
+      <div class="mb-3">
+        <label for="relationship" class="form-label">関係性</label>
+        <select name="relationship" id="relationship" class="form-select" required>
+          <% relationshipOptions.forEach(opt => { %>
+            <option value="<%= opt %>" <%= relation.relationship === opt ? 'selected' : '' %>><%= opt %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">これまでのノート</label>
+        <% if (relation.relationNote && relation.relationNote.length > 0) { %>
+          <ul class="list-group mb-2">
+            <% relation.relationNote.forEach(note => { %>
+              <li class="list-group-item"><%= note %></li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <p class="text-muted">ノートはまだありません。</p>
+        <% } %>
+
+        <label for="relationNote" class="form-label">ノートを追加</label>
+        <textarea name="relationNote" id="relationNote" class="form-control" rows="3" placeholder="新しいノートを入力"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">このユーザーに共有する情報</label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="sharedTypes" value="wantolist"
+            <%= sharedTypes.includes('wantolist') ? 'checked' : '' %> >
+          <label class="form-check-label">マイリスト</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="sharedTypes" value="diary"
+            <%= sharedTypes.includes('diary') ? 'checked' : '' %> >
+          <label class="form-check-label">日記</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="sharedTypes" value="history"
+            <%= sharedTypes.includes('history') ? 'checked' : '' %> >
+          <label class="form-check-label">MyHistory</label>
+        </div>
+      </div>
+      <hr>
+      <button type="submit" class="btn btn-primary">保存</button>
+      <a href="/relation" class="btn btn-secondary">戻る</a>
+    </form>
+  </div>
+  <div class="border rounded p-3 mb-3">
+    <span class="badge bg-success fs-6"><i class="fa-solid fa-circle-info"></i> 共有されている情報</span>
+    <div class="mt-2">
+      <p class="form-control-plaintext"><strong>誕生日：</strong><%= relation.relationUserId?.birth_date ? relation.relationUserId.birth_date.toLocaleDateString() : '未設定' %></p>
+      <p class="form-control-plaintext"><strong>性別：</strong><%= relation.relationUserId?.sex || '未設定' %></p>
+      <p class="form-control-plaintext"><strong>血液型：</strong>
+        <% if (relation.relationUserId?.blood) { %>
+          <%= relation.relationUserId.blood %><%= relation.relationUserId.rh || '' %>
+        <% } else { %>
+          未設定
+        <% } %>
+      </p>
+      <div class="mb-3">
+        <label class="form-label">
+          <i class="fa-solid fa-share-nodes text-success"></i> あなたに共有している情報
+        </label>
+        <ul class="list-group">
+          <% const typeMap = { wantolist: 'マイリスト', diary: '日記', history: 'MyHistory' }; %>
+          <% if (sharedTypesToMe && sharedTypesToMe.length > 0) { %>
+            <% sharedTypesToMe.forEach(type => { %>
+              <% const link = type === 'wantolist'
+                ? `/allaboutme/wantolist?userId=${relation.relationUserId._id}&fromRelation=1`
+                : type === 'diary'
+                ? `/allaboutme/eventcal?userId=${relation.relationUserId._id}&fromRelation=1`
+                : type === 'history'
+                ? `/history/list?user=${relation.relationUserId._id}&fromRelation=1`
+                : '#'; %>
+              <li class="list-group-item py-2">
+                📌 <a href="<%= link %>"><%= typeMap[type] || type %></a>
+              </li>
+            <% }) %>
+          <% } else { %>
+            <li class="list-group-item text-muted text-center">共有されている情報はありません</li>
+          <% } %>
+        </ul>
+
+        <% if (sharedTypesToMe.includes('history') && sharedActiveHistories && sharedActiveHistories.length > 0) { %>
+          <div class="mt-4">
+            <div class="col-12">
+              <h5><i class="fas fa-clock"></i> 相手のMyHistory（公開中）</h5>
+            </div>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+              <% sharedActiveHistories.forEach((history, idx) => { %>
+                <div class="col">
+                  <div data-bs-toggle="modal" data-bs-target="#historyModal<%= idx %>" style="cursor:pointer;">
+                    <div class="card h-100 shadow-sm">
+                      <div class="card-header text-white" style="background-color: <%= history.category?.color || '#0d6efd' %>;">
+                        <strong><%= history.category?.name || 'カテゴリー未設定' %></strong>
+                      </div>
+                      <div class="card-body" style="height: 300px; overflow: hidden;">
+                        <% if (history.photos && history.photos.length > 0) { %>
+                          <div class="mb-3 text-center">
+                            <img src="<%= typeof history.photos[0] === 'string' ? history.photos[0] : history.photos[0].url %>" alt="履歴画像" class="img-fluid rounded" style="max-height: 200px; object-fit: cover;">
+                          </div>
+                        <% } %>
+                        <ul class="mb-2">
+                          <% for (const [key, value] of Object.entries(history.data || {})) {
+                               if (value && value.trim() !== '') {
+                                 const fieldDef = history.category?.fields && history.category.fields.find(f => f.name === key);
+                                 const isTextarea = fieldDef?.type === 'textarea';
+                          %>
+                            <% if (isTextarea) { %>
+                              <li class="content-preview" style="max-height: 7.5em; overflow: hidden; position: relative;">
+                                <strong><%= key %>:</strong>
+                                <%- value.replace(/\n/g, '<br>') %>
+                              </li>
+                            <% } else { %>
+                              <li><strong><%= key %>:</strong> <%= value %></li>
+                            <% } %>
+                          <% }} %>
+                        </ul>
+                        <% if (history.url) { %>
+                          <p><a href="<%= history.url %>" target="_blank" rel="noopener">🔗 関連リンク</a></p>
+                        <% } %>
+                        <% if (history.content) { %>
+                          <div>
+                            <strong>コメント</strong><br>
+                            <p class="content-preview" style="max-height: 7.5em; overflow: hidden; position: relative;">
+                              <%- history.content.replace(/\n/g, '<br>') %>
+                              <span class="read-more text-primary" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#historyModal<%= idx %>">...もっと見る</span>
+                            </p>
+                          </div>
+                        <% } %>
+                        <p><strong>From - To:</strong>
+                          <%= history.from_date ? new Date(history.from_date).toLocaleDateString('ja-JP') : '—' %> 〜
+                          <%= history.end_date ? new Date(history.end_date).toLocaleDateString('ja-JP') : '—' %>
+                        </p>
+                        <p><input class="form-check-input me-1" type="checkbox" disabled <%= history.share ? 'checked' : '' %>> 共有する</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Modal -->
+                  <div class="modal fade" id="historyModal<%= idx %>" tabindex="-1" aria-labelledby="historyModalLabel<%= idx %>" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                      <div class="modal-content">
+                        <div class="modal-header" style="background-color: <%= history.category?.color || '#0d6efd' %>;">
+                          <h5 class="modal-title text-white" id="historyModalLabel<%= idx %>"><%= history.category?.name || 'カテゴリー未設定' %></h5>
+                          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                        </div>
+                        <div class="modal-body">
+                          <% if (history.photos && history.photos.length > 0) { %>
+                            <div class="mb-3 text-center">
+                              <% history.photos.forEach(photo => { %>
+                                <img src="<%= typeof photo === 'string' ? photo : photo.url %>" class="img-fluid rounded mb-2" style="max-height: 200px; object-fit: cover;">
+                              <% }) %>
+                            </div>
+                          <% } %>
+                          <ul class="mb-3">
+                            <% for (const [key, value] of Object.entries(history.data || {})) {
+                                 if (value && value.trim() !== '') { %>
+                              <li><strong><%= key %>:</strong> <%- value.replace(/\n/g, '<br>') %></li>
+                            <% }} %>
+                          </ul>
+                          <% if (history.url) { %>
+                            <p><strong>リンク:</strong> <a href="<%= history.url %>" target="_blank" rel="noopener"><%= history.url %></a></p>
+                          <% } %>
+                          <% if (history.content) { %>
+                            <p><strong>コメント:</strong><br><%- history.content.replace(/\n/g, '<br>') %></p>
+                          <% } %>
+                          <p><strong>From - To:</strong>
+                            <%= history.from_date ? new Date(history.from_date).toLocaleDateString('ja-JP') : '—' %> 〜
+                            <%= history.end_date ? new Date(history.end_date).toLocaleDateString('ja-JP') : '—' %></p>
+                          <p><input class="form-check-input me-1" type="checkbox" disabled <%= history.share ? 'checked' : '' %>> 共有する</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+</div>

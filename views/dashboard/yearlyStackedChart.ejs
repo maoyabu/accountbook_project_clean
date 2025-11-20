@@ -1,0 +1,63 @@
+<% layout('layouts/boilerplate') %>
+
+<head>
+    <meta charset="UTF-8">
+    <title>支出項目 年別グラフ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  </head>
+  <body>
+    <div class="mt-4">
+      <h3>【年別支出項目別グラフ】</h3>
+      <hr>
+      <div style="width:100%; margin:auto;">
+          <canvas id="myChart" height="300"></canvas>
+      </div>
+    </div>
+    <script>
+      const labels = <%- JSON.stringify(labels) %>;
+      const datasets = <%- JSON.stringify(datasets) %>;
+  
+      Chart.register(ChartDataLabels);
+  
+      const ctx = document.getElementById('myChart').getContext('2d');
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          plugins: {
+            legend: {
+              position: 'bottom'
+            },
+            datalabels: {
+              formatter: (value, context) => {
+                const dataIndex = context.dataIndex;
+                const total = context.chart.data.datasets
+                  .map(ds => ds.data[dataIndex])
+                  .reduce((a, b) => a + b, 0);
+                if (total === 0) return '';
+                const percentage = ((value / total) * 100).toFixed(1);
+                return `${percentage}%`;
+              },
+              color: 'white',
+              anchor: 'center',
+              align: 'center',
+              font: {
+                weight: 'bold',
+                size: 10
+              }
+            }
+          },
+          responsive: true,
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    </script>
+  </body>

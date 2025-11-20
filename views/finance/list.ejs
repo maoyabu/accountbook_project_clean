@@ -1,0 +1,159 @@
+<% layout('layouts/boilerplate') %>
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/33EAF36C-74B4-4157-BADD-9B777DF0BD2E/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E6%9C%80%E8%BF%91%E3%81%AE%E5%85%A5%E5%8A%9B-%E6%A4%9C%E7%B4%A2-EXCEL%E6%9B%B8%E5%87%BA%E3%81%97"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<form method="GET" action="/finance/list" class="d-flex align-items-center justify-content-end mt-2 mb-2">
+  <label for="sortOrder" class="me-2 mb-0 fw-bold">並び順：</label>
+  <select name="sortOrder" id="sortOrder" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+    <option value="date" <%= sortOrder === 'date' ? 'selected' : '' %>>使用日順</option>
+    <option value="update_date" <%= sortOrder === 'update_date' ? 'selected' : '' %>>更新日順</option>
+  </select>
+</form>
+<div class="list-frame">
+  <div class="list-header">
+    <h5 class="mb-0">直近の入力 - <%= count <= 20 ? count : '20' %> 件 / <%= count %>件</h5>
+  </div>
+<style>
+  /* ヘッダと一覧を同じ左右幅にそろえる */
+  .list-frame { margin-left: -12px; margin-right: -12px; }
+  @media (max-width: 768px) { .list-frame { margin-left: -16px; margin-right: -16px; } }
+  .list-header {
+    background-color: #3a7ca5; color: #fff;
+    padding: 10px 0; /* 横幅は margin で統一 */
+    padding-left: 10px; /* 左端に余白を確保して文字が枠に接しないように */
+    border-top-left-radius: 4px; border-top-right-radius: 4px;
+    margin-top: 8px; margin-bottom: 8px;
+    margin-left: 14px; margin-right: 14px;
+  }
+  /* テーブル側の左右マージンはフレームで管理するため0に */
+  .list-body { padding: 0; }
+  /* ヘッダと同じ左右マージンでテーブルも揃える */
+  .list-frame .table-responsive { margin-left: 14px !important; margin-right: 14px !important; }
+  :root { --action-gap: 4px; --edge-gap: 8px; }
+  /* 横並びの操作ボタン */
+  .actions-cell { white-space: nowrap; padding-right: var(--edge-gap); overflow: visible; text-overflow: clip; }
+  .actions-inline { display: inline-flex; gap: var(--action-gap); align-items: center; flex-wrap: nowrap; }
+  .actions-inline form { display: inline; margin: 0; }
+  .actions-inline .btn { padding: 0.15rem 0.4rem; line-height: 1; }
+
+  /* 列幅と省略 */
+  .table-fixed { table-layout: fixed; width: 100%; }
+  .table-fixed th, .table-fixed td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 操作セルは省略記号を出さずに内側でカット */
+  .table-fixed td.actions-cell { overflow: hidden !important; text-overflow: clip !important; }
+  /* 日付 */
+  .table-fixed th.col-date, .table-fixed td.col-date { width: calc(10ch + 12px); max-width: calc(10ch + 12px); }
+  /* 大区分 */
+  .table-fixed th.col-cf, .table-fixed td.col-cf { width: calc(8ch + 8px); max-width: calc(8ch + 8px); text-align: center; }
+  /* 小区分（明細） */
+  .table-fixed th.col-class, .table-fixed td.col-class { width: calc(8ch + 8px); max-width: calc(8ch + 8px); }
+  /* 金額 */
+  .table-fixed th.col-amount, .table-fixed td.col-amount { width: 100px; text-align: right; }
+  /* 種別 */
+  .table-fixed th.col-type, .table-fixed td.col-type { width: 110px; }
+  /* 使用者（漢字2文字=4ch + 余白） */
+  .table-fixed th.col-user, .table-fixed td.col-user { width: calc(4ch + 8px); max-width: calc(4ch + 8px); padding: 0 4px; }
+  /* 操作列 */
+  .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 110px; }
+
+  /* すべての幅で左右マージンを狭める（検索結果のスタイル互換）
+     ただし list ではヘッダ幅と揃えるため直後で上書き */
+  .table-responsive { margin-left: -12px !important; margin-right: -12px !important; }
+  /* list コンテナではヘッダと同じ内側余白で揃える */
+  .list-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
+
+  /* <=992px: 種別・使用者を非表示 */
+  @media (max-width: 992px) {
+    .table-fixed th.col-type, .table-fixed td.col-type,
+    .table-fixed th.col-user, .table-fixed td.col-user { display: none !important; }
+    .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
+  }
+  /* <=768px: 大区分・小区分も非表示 → 日付/内容/金額/操作のみ */
+  @media (max-width: 768px) {
+    .list-header { margin-left: 16px; margin-right: 16px; }
+    .list-frame .table-responsive { margin-left: 16px !important; margin-right: 16px !important; }
+    .table-fixed th.col-cf, .table-fixed td.col-cf,
+    .table-fixed th.col-class, .table-fixed td.col-class { display: none !important; }
+    .table-fixed th.col-date, .table-fixed td.col-date { width: 7.8rem; max-width: 7.8rem; }
+    .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.8rem; max-width: 6.8rem; }
+    .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.8rem; max-width: 6.8rem; }
+    .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
+  }
+
+  /* <=570px: 最低限の左右マージンを確保（約4px）し、内容を優先的に縮める */
+  @media (max-width: 570px) {
+    /* ヘッダとテーブルの左右に最小余白(8px)を確保 */
+    .list-frame { margin-left: -8px; margin-right: -8px; }
+    .list-header { margin-left: 8px; margin-right: 8px; }
+    .list-frame .table-responsive { margin-left: 8px !important; margin-right: 8px !important; }
+    .table-fixed th.col-date, .table-fixed td.col-date { width: 7.6rem; max-width: 7.6rem; }
+    .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.6rem; max-width: 6.6rem; }
+    .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.6rem; max-width: 6.6rem; }
+    .table-fixed th.col-content, .table-fixed td.col-content { width: auto; }
+  }
+</style>
+
+<div class="list-body">
+  <div class="table-responsive">
+  <table class="table table-fixed w-100 m-0" style="border: 2px solid #3a7ca5; border-collapse: collapse;">
+    <thead style="background-color: #3a7ca5; color: white;">
+      <tr>
+        <th class="col-date">日付</th>
+        <th class="col-cf">区分</th>
+        <th class="hide-on-mobile col-class">区分</th>
+        <th class="col-content">内容</th>
+        <th class="col-amount">金額</th>
+        <th class="hide-on-mobile col-type">種別</th>
+        <th class="col-user">使用</th>
+        <th class="col-actions"><i class="fas fa-tools" title="操作"></i></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (let finance of finances) { %>
+        <tr data-id="<%= finance.id %>">
+          <td class="col-date"><%= finance.date.toISOString().split('T')[0] %></td>
+          <td class="col-cf text-center"><%= finance.cf %></td>
+          <td class="hide-on-mobile col-class">
+            <%= finance.income_item === 'Please Choice' ? '' : finance.income_item %>
+            <%= finance.expense_item === 'Please Choice' ? '' : finance.expense_item %>
+            <%= finance.dedu_item === 'Please Choice' ? '' : finance.dedu_item %>
+            <%= finance.saving_item === 'Please Choice' ? '' : finance.saving_item %>
+          </td>
+          <td class="limited-text4 col-content"><%= finance.content %></td>
+          <td class="text-right col-amount">¥<%= finance.amount %></td>
+          <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
+          <td class="limited-text2 col-user"><%= finance.user?.displayname || '不明' %></td>
+          <td class="actions-cell">
+            <div class="actions-inline">
+              <% if (
+                (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
+                (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
+              ) { %>
+                <form action="/finance/<%= finance._id %>/edit" method="GET">
+                  <button type="submit" class="btn btn-primary btn-sm" title="編集"><i class="fas fa-edit"></i></button>
+                </form>
+              <% } %>
+              <form action="/finance/<%= finance._id %>/duplicate" method="POST">
+                <button type="submit" class="btn btn-info btn-sm text-white" title="複製"><i class="fas fa-copy"></i></button>
+              </form>
+              <% if (
+                (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
+                (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
+              ) { %>
+                <form action="/finance/<%= finance._id %>?_method=DELETE" method="POST" onsubmit="return confirm('本当に削除しますか？')">
+                  <button type="submit" class="btn btn-danger btn-sm" title="削除"><i class="fas fa-trash-alt"></i></button>
+                </form>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+  </div>
+</div>
+</div>

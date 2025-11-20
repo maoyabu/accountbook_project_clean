@@ -1,0 +1,138 @@
+<% layout('layouts/boilerplate') %>
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/DF9C355B-DF21-4DD0-80E2-CC3A5A2CE876/gChat"
+     target="_blank" rel="noopener"
+     class="badge bg-warning text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="container mt-4 mb-5 p-4 rounded" style="background-color: #f4f8fb;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3><i class="fas fa-comments"></i> gChats</h3>
+    <button class="btn btn-primary shadow" data-bs-toggle="modal" data-bs-target="#createChatModal">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
+
+  <% if (chats.length === 0) { %>
+    <div class="text-center text-muted mt-5">
+      現在、このグループにチャットは存在しません。
+    </div>
+  <% } %>
+
+  <% chats.forEach(chat => { %>
+    <div class="card mb-3 shadow-sm rounded" style="border-radius: 12px; transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-start gap-3" onclick="location.href='/gchat/<%= chat._id %>'" style="cursor: pointer; flex: 1;">
+          <div style="position: relative; width: 48px;">
+            <% if (chat.avatars && chat.avatars.length > 0) { %>
+              <% chat.avatars.slice(0, 3).forEach((avatar, index) => { %>
+                <% const imageSrc = avatar && (avatar.startsWith('http') || avatar.startsWith('/images/')) ? avatar : '/images/def_user_icon.png'; %>
+                <img src="<%= imageSrc %>" class="rounded-circle" style="width: 46px; height: 46px; position: absolute; top: 0; left: <%= index * 32 %>px; border: 2px solid white;" alt="avatar">
+              <% }) %>
+              <% if (chat.avatars.length > 3) { %>
+                <span class="badge bg-secondary" style="position: absolute; top: 0; left: 66px;">+<%= chat.avatars.length - 3 %></span>
+              <% } %>
+            <% } else { %>
+              <img src="/images/default-avatar.png" class="rounded-circle" style="width: 46px; height: 46px;" alt="avatar">
+            <% } %>
+          </div>
+          <div style="margin-left: 60px;">
+            <strong class="mb-1 d-block" style="font-size: 1.1rem;"><%= chat.title %></strong>
+            <% if (chat.group && activeGroupId.toString() !== chat.group._id.toString()) { %>
+              <div class="text-danger small mt-1">※このチャットは「<%= chat.group.name %>」グループにあります</div>
+            <% } %>
+            <small class="text-muted">
+              <%= chat.latestMessage ? chat.latestMessage : 'チャットを開始しましょう' %>
+              <% if (chat.latestMessageAt) { %>
+                ・<%= new Date(chat.latestMessageAt).toLocaleTimeString() %>
+              <% } %>
+            </small>
+            <% if (chat.unreadCount && chat.unreadCount > 0) { %>
+              <span class="badge bg-danger ms-2" style="font-size: 0.8rem;">未読 <%= chat.unreadCount %></span>
+            <% } %>
+          </div>
+        </div>
+        <form action="/gchat/<%= chat._id %>/delete?_method=DELETE" method="POST" onsubmit="return confirm('このチャットを削除しますか？');" class="ms-2">
+          <button type="submit" class="btn btn-sm btn-outline-danger" title="削除"><i class="fas fa-trash-alt"></i></button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+
+  <% if (otherGroupChats && otherGroupChats.length > 0) { %>
+    <div class="mt-5">
+      <h5 class="text-secondary">他のグループに所属するチャット</h5>
+      <% otherGroupChats.forEach(chat => { %>
+        <div class="card mb-3 shadow-sm rounded" style="border-radius: 12px;">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="d-flex flex-column">
+              <strong class="text-dark"><%= chat.title %></strong>
+              <% if (chat.group && chat.group.name) { %>
+                <div class="text-danger small">※このチャットは「<%= chat.group.name %>」グループにあります</div>
+              <% } else { %>
+                <div class="text-danger small">※このチャットは別のグループにあります</div>
+              <% } %>
+              <small class="text-muted"><%= chat.latestMessage || 'チャットを開始しましょう' %></small>
+            </div>
+            <a href="/group/<%= chat.group._id %>/switch?redirect=/gchat/<%= chat._id %>" class="btn btn-outline-primary btn-sm ms-2">開く</a>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<!-- Modal for Chat Creation -->
+<div class="modal fade" id="createChatModal" tabindex="-1" aria-labelledby="createChatModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-sm" style="background-color: #ffffff;">
+      <form action="/gchat/create" method="POST">
+        <input type="hidden" name="groupId" value="<%= activeGroupId %>">
+        <div class="modal-header">
+          <h5 class="modal-title w-100 text-center text-primary fw-bold" id="createChatModalLabel">新規チャット作成</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="chatType" class="form-label">チャット種別</label>
+            <select name="type" id="chatType" class="form-select shadow-sm" required>
+              <option value="group">グループ全体</option>
+              <option value="private">特定ユーザー</option>
+            </select>
+          </div>
+          <div class="mb-3 d-none" id="privateUserSelect">
+            <label for="targetUser" class="form-label">対象ユーザー</label>
+            <select name="targetUserId" id="targetUser" class="form-select shadow-sm">
+              <% groupMembers.forEach(member => { %>
+                <% if (member._id.toString() !== currentUser._id.toString()) { %>
+                  <option value="<%= member._id %>"><%= member.displayname || member.username %></option>
+                <% } %>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="title" class="form-label">チャットタイトル</label>
+            <input type="text" class="form-control shadow-sm" name="title" id="title" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">作成</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<script>
+  document.getElementById('chatType').addEventListener('change', function () {
+    const privateSelect = document.getElementById('privateUserSelect');
+    if (this.value === 'private') {
+      privateSelect.classList.remove('d-none');
+    } else {
+      privateSelect.classList.add('d-none');
+    }
+  });
+</script>

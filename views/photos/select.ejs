@@ -1,0 +1,102 @@
+<% layout('layouts/plate') %>
+
+<div class="container mt-4">
+  <div class="container">
+    <h5>Google Photos から写真を選択</h5>
+    <form method="GET" action="/googlePhotos/select">
+      <div class="row mb-3">
+        <div class="col-md-5">
+          <label>アルバム:</label>
+          <select name="albumId" class="form-select form-select-sm">
+            <option value="">-- 全ての写真 --</option>
+            <% albums.forEach(album => { %>
+              <option value="<%= album.id %>" <%= album.id === albumId ? 'selected' : '' %>><%= album.title %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-3">
+            <label>開始日:</label>
+            <input type="date" id="startDate" name="start" value="<%= startDate || '' %>" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+            <label>終了日:</label>
+            <input type="date" id="endDate" name="end" value="<%= endDate || '' %>" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="submit" class="btn btn-outline-primary btn-sm w-100">絞り込み</button>
+        </div>
+      </div>
+    </form>
+    <form action="/googlePhotos/from-select" method="POST"></form>
+    <div class="row">
+      <% items.forEach(item => { %>
+        <div class="col-4 mb-3 photo-card" data-date="<%= item.mediaMetadata.creationTime.substring(0,10) %>">
+          <div class="card">
+            <img src="<%= item.baseUrl %>=w200-h200" class="card-img-top" alt="photo" onclick="previewImage('<%= item.baseUrl %>')" style="cursor: pointer;">
+            <div class="card-body text-center">
+              <input type="checkbox" name="selectedPhotos" value="<%= item.baseUrl %>" class="form-check-input">
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary">選択完了</button>
+    </div>
+    <div id="selectedCount" class="mt-2 text-end text-muted">選択中: 0 枚</div>
+  </div>
+</div>
+
+<!-- 画像プレビューモーダル -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <img id="modalPreviewImg" src="" class="img-fluid rounded">
+    </div>
+  </div>
+</div>
+
+<script>
+//選択した写真を親に送る
+function sendSelectedPhotos() {
+    const selected = [];
+    document.querySelectorAll('input[name="selectedPhotos"]:checked').forEach(cb => {
+      selected.push(cb.value);
+    });
+
+    if (selected.length === 0) {
+      alert('1枚以上選択してください。');
+      return;
+    }
+
+    // 親ウィンドウに送信
+    window.opener.postMessage({ selectedPhotos: selected }, window.location.origin);
+    window.close();
+  }
+
+//サムネイルの拡大プレビュー
+function previewImage(url) {
+  const modalImg = document.getElementById('modalPreviewImg');
+  modalImg.src = url + '=w800-h800';
+  const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+  modal.show();
+}
+
+//選択した数をカウント
+function updateSelectionCount() {
+  const count = document.querySelectorAll('input[name="selectedPhotos"]:checked').length;
+  document.getElementById('selectedCount').textContent = `選択中: ${count} 枚`;
+}
+
+document.querySelectorAll('input[name="selectedPhotos"]').forEach(cb => {
+  cb.addEventListener('change', updateSelectionCount);
+});
+
+// 初期表示時にも選択数を更新
+updateSelectionCount();
+
+
+// Expose functions to global scope if needed
+window.sendSelectedPhotos = sendSelectedPhotos;
+window.previewImage = previewImage;
+</script>

@@ -1,0 +1,93 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>利用ログ・アクセス解析</h3>
+
+  <ul class="nav nav-tabs" id="logTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">ログイン履歴</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="page-tab" data-bs-toggle="tab" data-bs-target="#page" type="button" role="tab">ページアクセス</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="action-tab" data-bs-toggle="tab" data-bs-target="#action" type="button" role="tab">アクションログ</button>
+    </li>
+  </ul>
+
+  <div class="tab-content border border-top-0 p-3" id="logTabContent">
+    <div class="tab-pane fade show active" id="login" role="tabpanel">
+      <h5>ログイン履歴</h5>
+      <table class="table table-bordered table-sm">
+        <thead style="background-color: #3a7ca5; color: white;">
+          <tr>
+            <th>日時</th>
+            <th>ユーザー名</th>
+            <th>IPアドレス</th>
+            <th>成功/失敗</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% loginLogs.forEach(log => { %>
+            <tr>
+              <td><%= log.timestamp %></td>
+              <td><%= log.username %></td>
+              <td><%= log.ip %></td>
+              <td><%= log.success ? '成功' : '失敗' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane fade" id="page" role="tabpanel">
+      <h5>ページアクセス履歴</h5>
+      <table class="table table-bordered table-sm">
+        <thead style="background-color: #3a7ca5; color: white;">
+          <tr>
+            <th>日時</th>
+            <th>ユーザー名</th>
+            <th>アクセスページ</th>
+            <th>IPアドレス</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pageLogs.forEach(log => { %>
+            <tr>
+              <td><%= log.timestamp %></td>
+              <td><%= log.username %></td>
+              <td><%= log.page %></td>
+              <td><%= log.ip %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane fade" id="action" role="tabpanel">
+      <h5>アクションログ</h5>
+      <table class="table table-bordered table-sm">
+        <thead style="background-color: #3a7ca5; color: white;">
+          <tr>
+            <th>日時</th>
+            <th>ユーザー名</th>
+            <th>アクション</th>
+            <th>対象</th>
+            <th>IPアドレス</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% actionLogs.forEach(log => { %>
+            <tr>
+              <td><%= log.timestamp %></td>
+              <td><%= log.username %></td>
+              <td><%= log.action %></td>
+              <td><%= log.target %></td>
+              <td><%= log.ip %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

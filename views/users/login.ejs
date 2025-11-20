@@ -1,0 +1,34 @@
+<% layout('layouts/top_boilerplate') %>
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/38BA6125-E4EB-456A-9985-480D131669B0/%E3%83%AD%E3%82%B0%E3%82%A4%E3%83%B3"
+     target="_blank" rel="noopener"
+     class="badge bg-warning text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+    <div class="waku-1">
+        <div class = "waku-2">
+            <form action="/login" method="POST" novalidate>
+                <div class="mb-3">
+                    <label class="waku-3" for="username">ユーザー名 または メールアドレス</label>
+                    <input class="waku-4" type="text" id="username" name="username" placeholder="ユーザー名またはメールアドレスを入力してください"><br>
+                </div>
+                <div class="mb-3">
+                    <label class="waku-3" for="password">パスワード</label>
+                    <input class="waku-4" type="password" id="password" name = "password" placeholder="英数字6文字以上"><br>
+                </div>
+                <div class="waku-5">
+                    <button class="button-3">ログイン</button>
+                    <div class="spinner-border text-dark d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+                        <span class="visually-hidden">送信中...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="waku-5"><a href="/forgot-password">パスワードを忘れた方はこちら</a></div>
+        <hr>
+        <div class="waku-5">
+            <label for="login">まだ会員ではない方</label>
+        </div>
+        <a class = "login" href="/register">新規会員登録</a>
+    </div>

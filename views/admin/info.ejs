@@ -1,0 +1,49 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>お知らせ管理</h3>
+
+  <!-- 新規作成ボタン -->
+  <div class="mb-3">
+    <a href="/admin/info/new" class="btn btn-primary">＋新規お知らせ</a>
+  </div>
+
+  <!-- お知らせ一覧 -->
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>掲載日</th>
+        <th>タイトル</th>
+        <th>対象</th>
+        <th>配信</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% infos.forEach(info => { %>
+        <tr>
+          <td><%= info.from_date ? info.from_date.toISOString().split('T')[0] : '-' %></td>
+          <td><%= info.info_title %></td>
+          <td>
+            <% if (info.pub_target === 'all') { %>
+              全員
+            <% } else if (info.target_group && info.target_group.group_name) { %>
+              <%= info.target_group.group_name %>
+            <% } else { %>
+              （不明）
+            <% } %>
+          </td>
+          <td><%= info.mail_delivery ? 'あり' : 'なし' %></td>
+          <td>
+            <div class="d-flex gap-2">
+              <a href="/admin/info/<%= info._id %>/edit" class="btn btn-outline-success btn-sm"><i class="fas fa-edit"></i></a>
+              <form action="/admin/info/<%= info._id %>/delete" method="POST" onsubmit="return confirm('本当に削除しますか？');" class="m-0">
+                  <button type="submit" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,74 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/F541BF02-F996-44F2-AC86-B27DACA13A46/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E3%81%BE%E3%81%A8%E3%82%81%E3%81%A6%E5%85%A5%E5%8A%9B"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+    <div class="card shadow-sm mt-2">
+        <div class="card-header text-white mb-1 d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
+            <h5 class="mb-0">【登録済】まとめて入力項目</h5>
+            <a href="/matomete/regular-entry/manage" class="btn btn-warning btn-sm">編集</a>
+        </div>
+        <form action="/matomete/regular-entry/update" method="POST">
+            <table class="table table-bordered">
+            <thead class="table-primary">
+                <tr>
+                <th style="background-color: #3a7ca5;">区分</th>
+                <th style="background-color: #3a7ca5;">項目</th>
+                <th style="background-color: #3a7ca5;">内容</th>
+                <th style="width:80px; background-color:#3a7ca5;">金額</th>
+                <th style="background-color: #3a7ca5;">支払種別</th>
+                <th style="background-color: #3a7ca5;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% regularEntries.forEach((entry, idx) => { %>
+                <tr>
+                    <td><%= entry.cf %></td>
+                    <td>
+                    <%= entry.cf === '収入' ? entry.income_item :
+                        entry.cf === '支出' ? entry.expense_item :
+                        entry.cf === '控除' ? entry.dedu_item : '' %>
+                    </td>
+                    <td><%= entry.content %></td>
+                    <td>
+                        <input type="number" name="items[<%= idx %>][amount]" value="<%= entry.amount %>" class="form-control form-control-sm text-end" required>
+                        <input type="hidden" name="items[<%= idx %>][id]" value="<%= entry._id %>">
+                    </td>
+                    <td><%= entry.payment_type %></td>
+                    <td class="text-center">
+                        <input type="checkbox" name="items[<%= idx %>][skip]" value="1">
+                    <br><small>除外</small>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+            </table>
+            <!-- 年月の選択（カレンダー形式） -->
+            <div class="mb-3">
+                <% const now = new Date(); %>
+                <% const defaultYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; %>
+                <div class="form-group mb-4 d-flex justify-content-center">
+                    <div style="width: 50%;">
+                        <label for="targetMonth" class="form-label fw-bold text-center w-100">登録対象の年月:</label>
+                        <input type="month" id="targetMonth" name="targetMonth" class="form-control text-center" value="<%= defaultYearMonth %>" required>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <p>この内容で指定した年月の収支データを一括で登録します</p>
+                <button type="submit" class="btn btn-danger mb-4" style="width: 80%;">まとめて入力実行</button>
+            </div>
+        </form>
+    </div>
+
+
+<script>
+  document.getElementById('targetMonth').addEventListener('change', function () {
+    const [year, month] = this.value.split('-');
+    document.getElementById('selectedMonth').textContent = `${year}年${parseInt(month)}月`;
+  });
+</script>

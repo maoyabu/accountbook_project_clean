@@ -1,0 +1,83 @@
+<% layout('layouts/boilerplate') %>
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/9FEF0134-024D-41B5-8B4D-44E9E627B86F/%E8%B3%87%E7%94%A3%E7%AE%A1%E7%90%86"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="container mt-0">
+    <!-- 資産状況サマリー -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
+        <span class="fw-bold">資産状況</span>
+        <div class="d-flex gap-2">
+          <a href="/asset/history" class="btn btn-outline-light btn-sm">棚卸し履歴</a>
+          <a href="/asset" class="btn btn-warning btn-sm">編集</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <h4>資産合計　¥<%= totalYen.toLocaleString() %></h4>
+        <table class="table borderless mt-3">
+          <tr>
+            <td>金融資産</td>
+            <td class="text-end">¥<%= totalByCf['金融資産'].toLocaleString() %></td>
+          </tr>
+          <tr>
+            <td>実物資産</td>
+            <td class="text-end">¥<%= totalByCf['実物資産'].toLocaleString() %></td>
+          </tr>
+          <tr>
+            <td>無形資産</td>
+            <td class="text-end">¥<%= totalByCf['無形資産'].toLocaleString() %></td>
+          </tr>
+          <tr>
+            <td>負債</td>
+            <td class="text-end">¥<%= totalByCf['負債'].toLocaleString() %></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+<!-- 資産明細 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header text-white" style="background-color: #3a7ca5;">
+        <strong>資産明細</strong>
+        </div>
+        <table class="table table-bordered table-sm mb-0">
+        <thead>
+            <tr style="background-color: #3a7ca5;">
+                <th>区分</th>
+                <th>項目</th>
+                <th>code</th>
+                <th>内容</th>
+                <th class="text-end">円換算金額</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% assets.forEach(asset => { %>
+            <tr>
+                <td><%= asset.asset_cf %></td>
+                <td><%= asset.asset_item %></td>
+                <td><%= asset.code %></td>
+                <td><%= asset.content %></td>
+                <td class="text-end">¥<%= asset.amount.toLocaleString() %></td>
+            </tr>
+            <% }) %>
+        </tbody>
+        </table>
+    </div>
+
+    <!-- レート情報 -->
+    <div class="card mb-4">
+        <div class="card-body text-muted small">
+        <p>※ 円/＄レート（取得時点）: <%= exchangeRate %> 円</p>
+        <% if (stockPrices) { %>
+            <% Object.entries(stockPrices).forEach(([code, price]) => { %>
+            <p>※ 株式 <%= code %>: 1株（前日終値） = <%= price.toLocaleString() %> 円</p>
+            <% }) %>
+        <% } %>
+        </div>
+    </div>
+
+</div>

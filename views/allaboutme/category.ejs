@@ -1,0 +1,146 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'historyCategory' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container">
+<div class="text-end">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1BEE7958-A1BF-425A-B3C6-416596371620/My-History-My-History%E8%A8%AD%E5%AE%9A"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2><i class="fas fa-edit me-2"></i>カテゴリーの作成</h2>
+    <a href="/history/categories/shared" class="btn btn-outline-info mb-2">
+      <i class="fas fa-users me-2"></i> 共有カテゴリー一覧へ
+    </a>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <form action="/history/categories" method="POST" class="mb-4">
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="name" class="form-label">カテゴリー名</label>
+              <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+
+            <div id="fields-container" class="mb-3">
+              <label class="form-label">フィールド</label>
+              <div class="input-group mb-2">
+                <input type="text" name="field_names[]" class="form-control" placeholder="フィールド名（例：郵便番号）" required>
+                <select name="field_types[]" class="form-select">
+                  <option value="text">テキスト</option>
+                  <option value="textarea">テキストエリア</option>
+                  <option value="date">日付</option>
+                  <option value="number">数値</option>
+                  <option value="url">URL</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="button" id="add-field" class="btn btn-sm btn-secondary mb-3">＋ フィールドを追加</button><br>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="color" class="form-label">カテゴリーの背景色</label>
+              <input
+                type="color"
+                id="color"
+                name="color"
+                class="form-control form-control-color"
+                value="#000000"
+              >
+            </div>
+
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="share" name="share"
+                <%= (typeof category !== 'undefined' && category.share) || (typeof share !== 'undefined' && (share === 'true' || share === true || share === 'on')) ? 'checked' : '' %>>
+              <label class="form-check-label" for="share">このカテゴリーを全ユーザーに共有する</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center">
+          <button type="submit" class="btn btn-primary mt-4" style="width: 60%;">カテゴリーを作成</button>
+        </div>
+      </form>
+    </div>
+</div>
+
+  <h2 class="mt-4"><i class="fa-solid fa-folder-open"></i> Myカテゴリー</h2>
+  <hr>
+  <% if (categories && categories.length > 0) { %>
+    <ul class="list-group">
+      <% categories.forEach(category => { %>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span class="category-label-box" style="background-color: <%= category.color || '#000000' %>;">
+            <strong><%= category.name %></strong>
+            <small class="ms-2 text-white">（フィールド: <%= category.fields.length %>）</small>
+          </span>
+          <span>
+            <a href="/history/categories/<%= category._id %>/edit" class="btn btn-sm btn-outline-primary me-2">編集</a>
+            <form action="/history/categories/<%= category._id %>/delete" method="POST" class="d-inline" onsubmit="return confirm('本当に削除しますか？');">
+                <button type="submit" class="btn btn-danger btn-sm">削除</button>
+            </form>
+          </span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p>まだカテゴリーは作成されていません。</p>
+  <% } %>
+</div>
+
+<script>
+  let fieldIndex = 1;
+  document.getElementById('add-field').addEventListener('click', function () {
+    const container = document.getElementById('fields-container');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+      <input type="text" name="field_names[]" class="form-control me-2" placeholder="フィールド名（例：郵便番号）" required>
+      <select name="field_types[]" class="form-select type-selector">
+        <option value="text">テキスト</option>
+        <option value="textarea">テキストエリア</option>
+        <option value="date">日付</option>
+        <option value="number">数値</option>
+        <option value="url">URL</option>
+      </select>
+    `;
+    container.appendChild(div);
+    fieldIndex++;
+    // Listen for changes to the select to switch input/textarea
+    const selectEl = div.querySelector('.type-selector');
+    selectEl.addEventListener('change', function () {
+      const container = this.closest('.input-group');
+      if (this.value === 'textarea') {
+        const input = container.querySelector('input[name="field_names[]"]');
+        if (input) {
+          const textarea = document.createElement('textarea');
+          textarea.name = 'field_names[]';
+          textarea.className = 'form-control me-2';
+          textarea.placeholder = 'フィールド名（例：郵便番号）';
+          textarea.required = true;
+          input.replaceWith(textarea);
+        }
+      } else {
+        const textarea = container.querySelector('textarea[name="field_names[]"]');
+        if (textarea) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.name = 'field_names[]';
+          input.className = 'form-control me-2';
+          input.placeholder = 'フィールド名（例：郵便番号）';
+          input.required = true;
+          textarea.replaceWith(input);
+        }
+      }
+    });
+  });
+</script>

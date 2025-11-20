@@ -1,0 +1,42 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h2>Q&A一覧</h2>
+
+  <!-- カテゴリ選択 -->
+  <form method="GET" class="mb-4">
+    <label for="categorySelect" class="form-label">カテゴリーで絞り込み:</label>
+    <select name="category" id="categorySelect" class="form-select" onchange="this.form.submit()">
+      <option value="">すべて表示</option>
+      <% categories.forEach(cat => { %>
+        <option value="<%= cat %>" <%= selectedCategory === cat ? 'selected' : '' %>><%= cat %></option>
+      <% }) %>
+    </select>
+  </form>
+
+  <% if (qas.length === 0) { %>
+    <p>該当するQ&Aはありません。</p>
+  <% } else { %>
+    <div class="accordion" id="qaAccordion">
+      <% qas.forEach((qa, idx) => { %>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="qa-heading-<%= idx %>">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#qa-collapse-<%= idx %>" aria-expanded="false" aria-controls="qa-collapse-<%= idx %>">
+              <%= qa.qa_question %>
+            </button>
+          </h2>
+          <div id="qa-collapse-<%= idx %>" class="accordion-collapse collapse" aria-labelledby="qa-heading-<%= idx %>">
+            <div class="accordion-body">
+              <%= qa.qa_answer %>
+              <% if (qa.url) { %>
+                <div class="mt-2">
+                  <a href="<%= qa.url %>" target="_blank" rel="noopener noreferrer">詳しくはこちら</a>
+                </div>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>

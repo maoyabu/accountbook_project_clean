@@ -1,0 +1,14 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>OCR読み取り結果の確認</h3>
+
+  <form action="/ocr/confirm" method="POST">
+    <div class="mb-3">
+      <label for="ocrText" class="form-label">読み取り内容</label>
+      <textarea class="form-control" id="ocrText" name="ocrText" rows="15" readonly><%= ocrText %></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">GPTで補正を実行</button>
+  </form>
+</div>

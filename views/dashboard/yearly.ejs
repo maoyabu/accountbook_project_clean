@@ -1,0 +1,130 @@
+<% layout('layouts/boilerplate') %>
+<% var month = typeof month !== 'undefined' ? month : new Date().getMonth() + 1; %>
+
+<!-- Year Selector Card -->
+  <div class="card mb-3 mt-4 rounded">
+    <div class="card-body text-white p-2 d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
+      
+      <!-- 年セレクタ部分 -->
+      <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
+        <select id="year-select" name="year" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
+          <% for (let y = 2022; y <= new Date().getFullYear(); y++) { %>
+            <option value="<%= y %>" <%= year === y ? 'selected' : '' %>><%= y %></option>
+          <% } %>
+        </select>
+        <span>年 <%= titlePrefix %>の年間サマリー</span>
+      </form>
+
+      <!-- Excel出力ボタン -->
+      <form method="GET" action="/export/dashboard/yearly-g-exls" class="mb-0" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '出力中...'; setTimeout(() => { this.querySelector('button').disabled = false; this.querySelector('button').textContent = 'Excel出力'; }, 3000);">
+        <input type="hidden" name="year" value="<%= year %>">
+        <button type="submit" class="btn btn-sm btn-light">Excel出力</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table Card -->
+  <div class="card mb-3 rounded">
+    <div class="card-body p-2" style="background-color: #3a7ca5;">
+      <div style="overflow-x: auto;">
+        <table class="table table-bordered table-sm text-end" style="table-layout: auto;">
+          <!-- <table class="table table-bordered table-sm text-end align-middle" style="width: 80%; margin: auto; table-layout: auto;"> -->
+          <thead>
+            <tr>
+              <th class="sticky-top sticky-col header-fixed" style="border-left: none; border-right: none;">項目</th>
+              <th class="sticky-top sticky-col2 header-fixed" style="border-left: none; border-right: none;">予算</th>
+              <% for (let m = 1; m <= 12; m++) { %>
+              <th class="sticky-top" style="background-color: #3a7ca5; color: white; border-left: none; border-right: none;"><%= m %>月</th>
+              <% } %>
+              <th class="sticky-top" style="background-color: #3a7ca5; color: white; border-left: none; border-right: none;">累計</th>
+              <th class="sticky-top" style="background-color: #3a7ca5; color: white;">累計差</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% const cfList = ['収入', '貯蓄', '控除', '支出']; %>
+            <% cfList.forEach((cf, index) => { %>
+              <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                <td class="sticky-col fw-bold text-center"><%= cf %></td>
+                <td class="sticky-col2"><%= totalBudgets[cf]?.toLocaleString() || '0' %></td>
+                <% for (let m = 1; m <= 12; m++) { %>
+                  <td><%= (monthlySummary[m]?.[cf] || 0).toLocaleString() %></td>
+                <% } %>
+                <td class="fw-bold"><%= Array.from({ length: 12 }, (_, i) => monthlySummary[i+1]?.[cf] || 0).reduce((a, b) => a + b, 0).toLocaleString() %></td>
+                <%
+                  const isIncome = cf === '収入';
+                  const total = Array.from({ length: 12 }, (_, i) => monthlySummary[i+1]?.[cf] || 0).reduce((a, b) => a + b, 0);
+                  const currentYear = new Date().getFullYear();
+                  const currentMonth = new Date().getMonth() + 1;
+                  const budgetMonth = year === currentYear ? currentMonth : 12;
+                  const budget = (totalBudgets?.[cf] || budgetMap?.[cf] || 0) * budgetMonth;
+                  const isSaving = cf === '貯蓄';
+                  const diff = isIncome || isSaving ? total - budget : budget - total;
+                %>
+                <td class="fw-bold <%= diff < 0 ? 'text-danger' : '' %>" style="<%= diff < 0 ? 'background-color: #f8d7da;' : '' %>">
+                  <%= diff.toLocaleString() %>
+                </td>
+              </tr>
+            <% }) %>
+        
+            <!-- 収支計 -->
+            <tr class="table-warning">
+              <td class="sticky-col fw-bold text-center">収支</td>
+              <td class="sticky-col2"></td>
+              <% for (let m = 1; m <= 12; m++) {
+                const income = monthlySummary[m]?.['収入'] || 0;
+                const save = monthlySummary[m]?.['貯蓄'] || 0;
+                const dedu = monthlySummary[m]?.['控除'] || 0;
+                const expe = monthlySummary[m]?.['支出'] || 0;
+                const balance = income - save - dedu - expe;
+              %>
+                <td><%= balance.toLocaleString() %></td>
+              <% } %>
+              <td class="fw-bold"><%= Array.from({ length: 12 }, (_, i) => {
+                const m = i + 1;
+                return (monthlySummary[m]?.['収入'] || 0)
+                    - (monthlySummary[m]?.['貯蓄'] || 0)
+                    - (monthlySummary[m]?.['控除'] || 0)
+                    - (monthlySummary[m]?.['支出'] || 0);
+              }).reduce((a, b) => a + b, 0).toLocaleString() %></td>
+              <td></td>
+            </tr>
+        
+            <!-- 空行 -->
+            <tr><td colspan="16" style="height: 10px; border: none;"></td></tr>
+        
+            <!-- 支出内訳 -->
+            <% ex_cfs.forEach((item, index) => { %>
+              <!-- <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>"> -->
+                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                <td class="sticky-col text-start"><%= item %></td>
+                <td class="sticky-col2"><%= budgetMap[item]?.toLocaleString() || '0' %></td>
+                <% for (let m = 1; m <= 12; m++) { %>
+                  <td>
+                    <a
+                      href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&item=<%= encodeURIComponent(item) %>"
+                      class="text-decoration-none">
+                      <%= (monthlyExpensesDetail[m]?.[item] || 0).toLocaleString() %>
+                    </a>
+                  </td>
+                <% } %>
+                <td class="fw-bold">
+                  <a
+                    href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&item=<%= encodeURIComponent(item) %>"
+                    class="text-decoration-none">
+                    <%= Array.from({ length: 12 }, (_, i) => monthlyExpensesDetail[i+1]?.[item] || 0).reduce((a, b) => a + b, 0).toLocaleString() %>
+                  </a>
+                </td>
+                <%
+                  const diff = (budgetMap?.[item] || 0) * month -
+                               Array.from({ length: 12 }, (_, i) => monthlyExpensesDetail[i+1]?.[item] || 0).reduce((a, b) => a + b, 0);
+                %>
+                <td class="fw-bold <%= diff < 0 ? 'text-danger' : '' %>" style="<%= diff < 0 ? 'background-color: #f8d7da;' : '' %>">
+                  <%= diff.toLocaleString() %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>

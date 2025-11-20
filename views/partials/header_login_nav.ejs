@@ -1,0 +1,219 @@
+<% const activeGroupStr = typeof activeGroupId !== 'undefined' && activeGroupId ? activeGroupId.toString() : null; %>
+<% const hasGroup = currentUser && currentUser.groups && currentUser.groups.length > 0 && activeGroupStr && currentUser.groups.some(group => group._id.toString() === activeGroupStr); %>
+
+<header id="top-nav">
+<nav class="navbar navbar-expand-lg" style="background-color: #3a7ca5;">
+  <div class="container-fluid">
+    <div class="d-flex align-items-center">
+      <% if (currentUser && (currentUser.displayname || currentUser.username)) { %>
+        <span class="nav-link text-white ms-2">
+          <img src="<%= currentUser.avatar %>" alt="" class="navbar-avatar">
+          <% if (currentUser.isAdmin) { %>
+            <span class="badge" style="background-color: goldenrod; color: white; margin-left: 0.5rem;"><a href="/admin" style="color: white; text-decoration: none;">All About me管理者</a></span>
+          <% } %>
+          <%= currentUser.displayname ? `　${currentUser.displayname}` : `　${currentUser.username}` %> さん
+        </span>
+      <% } else { %>
+        <span class="nav-link text-white ms-2">ログインしていません</span>
+      <% } %>
+    </div>
+    <ul class="navbar-nav ms-auto flex-row" style="background-color: #3a7ca5; border-radius: 5px;">
+      <li class="nav-item me-3">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/setting">
+          <i class="fas fa-cog"></i> 設定
+        </a>
+      </li>
+      <li class="nav-item me-3">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/support">
+          <i class="fas fa-headset"></i> サポート
+        </a>
+      </li>
+      <li class="nav-item me-3">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/logout">
+          <i class="fas fa-sign-out-alt"></i> ログアウト
+        </a>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<nav class="navbar navbar-expand-lg" style="background-color: #d5e9f6;">
+  <div class="container-fluid d-flex align-items-center">
+    <div>
+        <a class="navbar-brand d-flex align-items-center gap-1" href="/myTop/top" style="color: #3a7ca5; margin-right: 3px;"">
+          <img src="/images/App_icon.png" alt="App Icon" style="width: 30px; height: 30px;">Top
+        </a>
+    </div>
+
+    <% if (currentUser && currentUser.groups && currentUser.groups.length === 1) { %>
+      <!-- ✅ 条件分岐: currentUser.groups.length === 1 -->
+      <span class="ms-3" style="color: #3a7ca5;"><%= currentUser.groups[0].group_name %></span>
+
+    <% } else if (currentUser && currentUser.groups && currentUser.groups.length > 1) { %>
+      <!-- ✅ 条件分岐: currentUser.groups.length > 1 -->
+      <form action="/group/select" method="POST" class="d-inline-block" style="margin-left: 5px;">
+        <select name="groupId" class="custom-select form-select-sm" onchange="this.form.submit()">
+          <% currentUser.groups.forEach(group => { %>
+            <option value="<%= group._id %>" <%= (String(group._id) === String(activeGroupId)) ? 'selected' : '' %>><%= group.group_name %></option>
+          <% }) %>
+        </select>
+      </form>
+
+    <% } else { %>
+      <!-- ⚠️ 条件分岐: currentUser.groups が空または undefined -->
+    <% } %>
+    <ul class="navbar-nav flex-row ms-auto d-none d-lg-flex" style="background-color: #3a7ca5; border-radius: 5px;">
+      <li class="nav-item me-3">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/gchat">
+          <i class="fas fa-comments"></i> Chats
+        </a>
+      </li>
+      <li class="nav-item me-3 dropdown">
+        <a class="nav-link d-flex align-items-center gap-1 text-white dropdown-toggle <%= hasGroup && services.allaboutme ? '' : 'disabled' %>"
+          href="#" id="navbarDropdownAllAboutMe" role="button"
+          data-bs-toggle="<%= services.allaboutme ? 'dropdown' : '' %>" aria-expanded="false">
+          <i class="fa-solid fa-person"></i> Myself
+        </a>
+        <% if (services.allaboutme) { %>
+        <ul class="dropdown-menu" aria-labelledby="navbarDropdownAllAboutMe">
+          <li><a class="dropdown-item" href="/allaboutme/wantolist"><i class="fa-solid fa-list-check"></i> マイリスト</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/eventcal"><i class="fa-solid fa-calendar-days"></i> マイ日記</a></li>
+          <li><a class="dropdown-item" href="/history/list"><i class="fa-solid fa-clock-rotate-left"></i> My Histrory</a></li>
+          <li><a class="dropdown-item" href="/relation"><i class="fa-solid fa-people-group"></i> My Relation</a></li>
+          <li><a class="dropdown-item" href="/resume/myresume"><i class="fa-solid fa-book"></i> My 履歴書</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/report/mylist"><i class="fa-regular fa-clipboard"></i> レポート</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/export-diary"><i class="fa-regular fa-clipboard"></i> My日記書出し</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/eventcal_events"><i class="fas fa-cog"></i> マイ日記設定</a></li>
+          <li><a class="dropdown-item" href="/history/categories"><i class="fas fa-cog"></i> My Histrory設定</a></li>
+        </ul>
+        <% } %>
+      </li>
+      <li class="nav-item me-3 dropdown">
+                    <a class="nav-link d-flex align-items-center gap-1 text-white dropdown-toggle <%= hasGroup && services.finance ? '' : 'disabled' %>" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fa-solid fa-coins text-white"></i> 家計簿
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/list' : '#' %>"><i class="fa-solid fa-rectangle-list"></i> 最近の入力</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/entry' : '#' %>"><i class="fas fa-plus-circle"></i> 新規登録</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/receipt/new' : '#' %>"><i class="fa-solid fa-receipt"></i> レシートから登録</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/matomete/regular-entry/push' : '#' %>"><i class="fa-solid fa-square-plus"></i> まとめて入力</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/search' : '#' %>"><i class="fa-solid fa-magnifying-glass-plus"></i> 検索</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/view' : '#' %>"><i class="fas fa-file-export"></i> EXCEL書出し</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/budget' : '#' %>"><i class="fas fa-cog"></i> 各種設定</a></li>
+          <!-- Add more items as needed -->
+          </ul>
+      </li>
+      <li class="nav-item me-3 dropdown">
+        <a class="nav-link d-flex align-items-center gap-1 text-white dropdown-toggle <%= hasGroup && services.finance ? '' : 'disabled' %>" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-chart-bar text-white"></i> Dashboard
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/monthly-g' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Monthly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/yearly-g' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Yearly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/monthly-m' : '#' %>"><i class="fas fa-chart-bar"></i> 個人 Monthly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/yearly-m' : '#' %>"><i class="fas fa-chart-bar"></i> 個人 Yeraly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/yearly-stacked' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Yearlyグラフ</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/monthly-stacked' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Monthlyグラフ</a></li>
+          <!-- Add more items as needed -->
+        </ul>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-1 text-white <%= services.assets ? '' : 'disabled' %>" href="<%= services.assets ? '/asset/display' : '#' %>">
+          <i class="fa-regular fa-money-bill-1"></i> 資産管理
+        </a>
+      </li>
+
+    </ul>
+    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu" aria-controls="offcanvasMenu">
+      <i class="fas fa-bars" style="color: #3a7ca5; font-size: 24px;"></i>
+    </button>
+  </div>
+</nav>
+
+<div class="offcanvas offcanvas-end offcanvas-menu-custom" tabindex="-1" id="offcanvasMenu" aria-labelledby="offcanvasMenuLabel" style="width: 300px;">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title d-flex align-items-center gap-2" id="offcanvasMenuLabel"><i class="fas fa-bars"></i> MENU</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link <%= hasGroup ? '' : 'disabled' %>" href="<%= hasGroup ? '/myTop/top' : '#' %>">
+          <i class="fas fa-home"></i> Top
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/gchat">
+          <i class="fas fa-comments"></i> Chats
+        </a>
+      </li>
+      <li class="nav-item me-3 dropdown">
+          <a class="nav-link d-flex align-items-center gap-1 text-white dropdown-toggle <%= hasGroup && services.allaboutme ? '' : 'disabled' %>" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fa-solid fa-person"></i> Myself
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <li><a class="dropdown-item <%= hasGroup && services.allaboutme ? '' : 'disabled' %>" href="<%= hasGroup && services.allaboutme ? '/allaboutme/wantolist' : '#' %>"><i class="fa-solid fa-list-check"></i> マイリスト</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.allaboutme ? '' : 'disabled' %>" href="<%= hasGroup && services.allaboutme ? '/allaboutme/eventcal' : '#' %>"><i class="fa-solid fa-calendar-days"></i> マイ日記</a></li>
+          <li><a class="dropdown-item" href="/history/list"><i class="fa-solid fa-clock-rotate-left"></i> My Histrory</a></li>
+          <li><a class="dropdown-item" href="/relation"><i class="fa-solid fa-people-group"></i> My relation</a></li>
+          <li><a class="dropdown-item" href="/resume/myresume"><i class="fa-solid fa-book"></i> My 履歴書</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/report/mylist"><i class="fa-regular fa-clipboard"></i> レポート</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/export-diary"><i class="fa-regular fa-clipboard"></i> My日記書出し</a></li>
+          <li><a class="dropdown-item" href="/allaboutme/eventcal_events"><i class="fas fa-cog"></i> マイ日記設定</a></li>
+          <li><a class="dropdown-item" href="/history/categories"><i class="fas fa-cog"></i> My Histrory設定</a></li>
+          <!-- Add more items as needed -->
+          </ul>
+      </li>
+      <li class="nav-item me-3 dropdown">
+                    <a class="nav-link d-flex align-items-center gap-1 text-white dropdown-toggle <%= hasGroup && services.finance ? '' : 'disabled' %>" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fa-solid fa-coins text-white"></i> 家計簿
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/list' : '#' %>"><i class="fa-solid fa-rectangle-list"></i> 最近の入力</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/entry' : '#' %>"><i class="fas fa-plus-circle"></i> 新規登録</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/receipt/new' : '#' %>"><i class="fa-solid fa-receipt"></i> レシートから登録</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/matomete/regular-entry/push' : '#' %>"><i class="fa-solid fa-square-plus"></i> まとめて入力</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/search' : '#' %>"><i class="fa-solid fa-magnifying-glass-plus"></i> 検索</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/view' : '#' %>"><i class="fas fa-file-export"></i> EXCEL書出し</a></li>
+            <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/finance/budget' : '#' %>"><i class="fas fa-cog"></i> 各種設定</a></li>
+          <!-- Add more items as needed -->
+          </ul>
+      </li>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle <%= hasGroup && services.finance ? '' : 'disabled' %>" href="#" id="offcanvasNavbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-chart-bar text-white"></i> Dashboard
+        </a>
+        <ul class="dropdown-menu" aria-labelledby="offcanvasNavbarDropdown">
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/monthly-g' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Monthly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/yearly-g' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Yearly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/monthly-m' : '#' %>"><i class="fas fa-chart-bar"></i> 個人 Monthly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/dashboard/yearly-m' : '#' %>"><i class="fas fa-chart-bar"></i> 個人 Yearly</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/yearly-stacked' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Yearlyグラフ</a></li>
+          <li><a class="dropdown-item <%= hasGroup && services.finance ? '' : 'disabled' %>" href="<%= hasGroup && services.finance ? '/export/monthly-stacked' : '#' %>"><i class="fas fa-chart-bar"></i> グループ Monthlyグラフ</a></li>
+          <!-- Add more items as needed -->
+        </ul>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= services.assets ? '' : 'disabled' %>" href="<%= services.assets ? '/asset/display' : '#' %>">
+          <i class="fa-regular fa-money-bill-1"></i> 資産管理
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/setting">
+          <i class="fas fa-cog"></i> 設定
+        </a>
+      </li>
+      <li class="nav-item me-3">
+        <a class="nav-link d-flex align-items-center gap-1 text-white" href="/support">
+          <i class="fas fa-headset"></i> サポート
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="/logout">
+          <i class="fas fa-sign-out-alt"></i> ログアウト
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+</header>

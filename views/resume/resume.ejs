@@ -1,0 +1,128 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'resume' %>
+
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/B38889F6-6A53-4529-9300-8798C8634ECE/My-%E5%B1%A5%E6%AD%B4%E6%9B%B8"
+    target="_blank" rel="noopener"
+    class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+
+<%- include('../partials/resume_tabs_nav') %>
+
+<div class="container mt-4">
+  <form action="/resume/save" method="POST" enctype="multipart/form-data">
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="last_name_kana" class="form-label">氏よみ</label>
+        <input type="text" id="last_name_kana" name="last_name_kana" class="form-control" value="<%= resume?.last_name_kana || '' %>">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="first_name_kana" class="form-label">名よみ</label>
+        <input type="text" id="first_name_kana" name="first_name_kana" class="form-control" value="<%= resume?.first_name_kana || '' %>">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="last_name" class="form-label">氏</label>
+        <input type="text" id="last_name" name="last_name" class="form-control" value="<%= resume?.last_name || '' %>" required>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="first_name" class="form-label">名</label>
+        <input type="text" id="first_name" name="first_name" class="form-control" value="<%= resume?.first_name || '' %>" required>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="zip" class="form-label">郵便番号（自動入力対応）</label>
+      <input type="text" id="zip" name="zip" class="form-control" value="<%= resume?.zip || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="prefecture" class="form-label">都道府県</label>
+      <input type="text" id="prefecture" name="prefecture" class="form-control" value="<%= resume?.prefecture || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="city" class="form-label">市区町村</label>
+      <input type="text" id="city" name="city" class="form-control" value="<%= resume?.city || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="address" class="form-label">それ以下の住所</label>
+      <input type="text" id="address" name="address_detail" class="form-control" value="<%= resume?.address_detail || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="tel_home" class="form-label">自宅電話番号</label>
+      <input type="text" id="tel_home" name="home_phone" class="form-control" value="<%= resume?.home_phone || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="tel_mobile" class="form-label">携帯電話番号</label>
+      <input type="text" id="tel_mobile" name="mobile_phone" class="form-control" value="<%= resume?.mobile_phone || '' %>">
+    </div>
+
+    <div class="mb-3">
+      <label for="summary" class="form-label">職務要約</label>
+      <textarea id="summary" name="summary" class="form-control" rows="4" required><%- resume?.summary || '' %></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="skills" class="form-label">資格・特技</label>
+      <textarea id="skills" name="skills" class="form-control" rows="4" required><%- resume?.skills || '' %></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="experience" class="form-label">活かせる経験・知識・技術等</label>
+      <textarea id="experience" name="experience" class="form-control" rows="4" required><%- resume?.experience || '' %></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="pr" class="form-label">自己PR</label>
+      <textarea id="pr" name="self_promotion" class="form-control" rows="4" required><%- resume?.self_promotion || '' %></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="photo" class="form-label">掲載用写真</label>
+      <% if (resume?.photo_url) { %>
+        <div class="mb-2">
+          <img src="<%= resume.photo_url %>" alt="掲載用写真" class="img-thumbnail" width="200">
+        </div>
+      <% } %>
+      <input type="file" id="photo" name="photo" class="form-control" accept="image/*">
+    </div>
+
+    <button type="submit" class="btn btn-primary">保存する</button>
+  </form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const zipInput = document.getElementById('zip');
+  const prefectureInput = document.getElementById('prefecture');
+  const cityInput = document.getElementById('city');
+  const addressInput = document.getElementById('address');
+
+  zipInput.addEventListener('blur', () => {
+    const zip = zipInput.value.trim();
+    if (!zip) return;
+
+    fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.results && data.results.length > 0) {
+          const result = data.results[0];
+          prefectureInput.value = result.address1;
+          cityInput.value = result.address2 + result.address3;
+        } else {
+          alert('該当する住所が見つかりませんでした。');
+        }
+      })
+      .catch(() => {
+        alert('住所の取得に失敗しました。');
+      });
+  });
+});
+</script>

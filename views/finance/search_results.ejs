@@ -1,0 +1,307 @@
+<% layout('layouts/boilerplate') %>
+    <div class="text-end">
+    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1B0724C9-975D-46F3-95CF-1D44AAC5CF48/My-Relation"
+      target="_blank" rel="noopener"
+      class="badge bg-success text-white text-decoration-none p-2">
+      ガイド
+    </a>
+  </div>
+  <div class="sr-frame">
+  <div class="card-header text-white mb-0 mt-2 sr-header" style="background-color: #3a7ca5;">
+    <h5 class="mb-0">検索結果: <%= count %> 件</h5>
+  </div>
+  <div class="sr-body">
+  <% if ((typeof enableFilterBar !== 'undefined' && enableFilterBar) || page === 'search') { %>
+  <form method="GET" action="<%= page === 'search' ? '/finance/search/results' : '/export/dashboard/yearly-detail' %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2">
+    <!-- 基本条件を維持する隠しフィールド -->
+    <% if (page !== 'search') { %>
+      <!-- finance/search 用: 元の検索条件を維持 -->
+      <input type="hidden" name="scope" value="<%= filters?.scope || '' %>">
+      <input type="hidden" name="year" value="<%= filters?.year || '' %>">
+      <% if (filters?.month) { %>
+        <input type="hidden" name="month" value="<%= filters.month %>">
+      <% } %>
+      <input type="hidden" name="item" value="<%= filters?.item || '' %>">
+    <% } %>
+
+    <div>
+      <label class="form-label mb-1">期間（From）</label>
+      <input type="date" name="from" class="form-control form-control-sm" value="<%= filters?.from || '' %>">
+    </div>
+    <div>
+      <label class="form-label mb-1">期間（To）</label>
+      <input type="date" name="to" class="form-control form-control-sm" value="<%= filters?.to || '' %>">
+    </div>
+    <% if (page === 'search') { %>
+    <div>
+      <label class="form-label mb-1">収支区分</label>
+      <select name="cf" class="form-select form-select-sm">
+        <option value="">すべて</option>
+        <% (la_cfs || []).filter(v=>v!=='Please Choice').forEach(v => { %>
+          <option value="<%= v %>" <%= (filters?.cf || '') === v ? 'selected' : '' %>><%= v %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div id="block-expense" style="display: none;">
+      <div>
+        <label class="form-label mb-1">支出項目</label>
+        <select name="expense_item" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <% (ex_cfs || []).forEach(v => { %>
+            <option value="<%= v %>" <%= (filters?.expense_item || '') === v ? 'selected' : '' %>><%= v %></option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+    <div id="block-income" style="display: none;">
+      <div>
+        <label class="form-label mb-1">収入項目</label>
+        <select name="income_item" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <% (in_items || []).forEach(v => { %>
+            <option value="<%= v %>" <%= (filters?.income_item || '') === v ? 'selected' : '' %>><%= v %></option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+    <div id="block-dedu" style="display: none;">
+      <div>
+        <label class="form-label mb-1">控除項目</label>
+        <select name="dedu_item" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <% (dedu_cfs || []).forEach(v => { %>
+            <option value="<%= v %>" <%= (filters?.dedu_item || '') === v ? 'selected' : '' %>><%= v %></option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+    <div id="block-saving" style="display: none;">
+      <div>
+        <label class="form-label mb-1">貯蓄項目</label>
+        <select name="saving_item" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <% (saving_cfs || []).forEach(v => { %>
+            <option value="<%= v %>" <%= (filters?.saving_item || '') === v ? 'selected' : '' %>><%= v %></option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+    <div id="block-hint" class="text-muted small">収支区分を選択すると項目で絞り込めます。</div>
+    <% } %>
+    <!-- 並び順は不要のため削除 -->
+    <div>
+      <label class="form-label mb-1">種別</label>
+      <select name="payment_type" class="form-select form-select-sm">
+        <option value="Please Choice">すべて</option>
+        <% (pay_cfs || []).forEach(p => { %>
+          <option value="<%= p %>" <%= (filters?.payment_type || '') === p ? 'selected' : '' %>><%= p %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label class="form-label mb-1">使用</label>
+      <select name="user" class="form-select form-select-sm">
+        <option value="">すべて</option>
+        <% (whos || []).forEach(w => { %>
+          <option value="<%= w._id %>" <%= (filters?.user || '') === (w._id?.toString()) ? 'selected' : '' %>><%= w.displayname %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="ms-auto d-flex gap-2">
+      <button type="submit" class="btn btn-sm btn-primary">絞り込み</button>
+      <% if (page === 'search') { %>
+        <a class="btn btn-sm btn-outline-secondary" href="/finance/search/results">リセット</a>
+      <% } else { %>
+        <a class="btn btn-sm btn-outline-secondary" href="/export/dashboard/yearly-detail?scope=<%= filters?.scope %>&year=<%= filters?.year %><%= filters?.month ? ('&month=' + filters.month) : '' %>&item=<%= encodeURIComponent(filters?.item || '') %>">リセット</a>
+      <% } %>
+    </div>
+  </form>
+  <% } %>
+
+  <% if (page === 'search') { %>
+  <script>
+    (function(){
+      const cfSel = document.querySelector('form select[name="cf"]');
+      const show = (id, flag) => { const el = document.getElementById(id); if (el) el.style.display = flag ? '' : 'none'; };
+      function toggleBlocks() {
+        const v = cfSel ? cfSel.value : '';
+        show('block-expense', v === '支出');
+        show('block-income',  v === '収入');
+        show('block-dedu',    v === '控除');
+        show('block-saving',  v === '貯蓄');
+        show('block-hint',    !v);
+      }
+      if (cfSel) {
+        cfSel.addEventListener('change', toggleBlocks);
+      }
+      // 初期反映
+      toggleBlocks();
+    })();
+  </script>
+  <% } %>
+
+  <style>
+    /* フレーム: ヘッダとテーブルの左右幅を統一 */
+    .sr-frame { margin-left: -12px; margin-right: -12px; }
+    .sr-header { margin-left: 14px; margin-right: 14px; border-top-left-radius: 4px; border-top-right-radius: 4px; padding-left: 10px; }
+    .sr-body { padding: 0 14px; }
+    .sr-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
+
+    @media (max-width: 768px) {
+      .sr-frame { margin-left: -16px; margin-right: -16px; }
+      .sr-header { margin-left: 16px; margin-right: 16px; }
+      .sr-body { padding: 0 16px; }
+      .sr-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
+    }
+    @media (max-width: 570px) {
+      .sr-frame { margin-left: -8px; margin-right: -8px; }
+      .sr-header { margin-left: 8px; margin-right: 8px; }
+      .sr-body { padding: 0 8px; }
+      .sr-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
+    }
+
+    /* 絞り込みフォームの視認性向上 */
+    .filter-bar { background-color: #e9f4fb; border: 1px solid #3a7ca5; border-radius: 6px; padding: 8px 10px; }
+    .filter-bar label { color: #0f4973; font-weight: 600; }
+    :root { --action-gap: 4px; --edge-gap: 8px; }
+    /* 横並びの操作ボタンを1行に収める */
+    .actions-cell { white-space: nowrap; padding-right: var(--edge-gap); overflow: visible; text-overflow: clip; }
+    .actions-inline { display: inline-flex; gap: var(--action-gap); align-items: center; flex-wrap: nowrap; }
+    .actions-inline form { display: inline; margin: 0; }
+    .actions-inline .btn { padding: 0.15rem 0.4rem; line-height: 1; }
+    /* 右端余白はセルのpaddingで確保し、ボタンのはみ出しを防止 */
+
+    /* 列幅とオーバーフロー抑制 */
+    .table-fixed { table-layout: fixed; width: 100%; }
+    .table-fixed th, .table-fixed td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 操作セルは省略記号を出さずに内側でカット */
+    .table-fixed td.actions-cell { overflow: hidden !important; text-overflow: clip !important; }
+    /* 日付は YYYY-MM-DD が収まる幅に */
+    .table-fixed th.col-date,
+    .table-fixed td.col-date {
+      width: calc(10ch + 12px);
+      max-width: calc(10ch + 12px);
+    }
+    /* 区分は漢字4文字(=半角8文字)程度に */
+    .table-fixed th.col-cf,
+    .table-fixed td.col-cf {
+      width: calc(8ch + 8px);
+      max-width: calc(8ch + 8px);
+      text-align: center;
+    }
+    /* 支出区分など明細の区分列は漢字4文字分程度に */
+    .table-fixed th.col-class,
+    .table-fixed td.col-class  {
+      width: calc(8ch + 8px);
+      max-width: calc(8ch + 8px);
+    }
+    .table-fixed th.col-amount, .table-fixed td.col-amount { width: 100px; text-align: right; }
+    .table-fixed th.col-type,   .table-fixed td.col-type   { width: 110px; }
+    /* 使用者列は漢字2文字(=半角4文字)相当 + 両側に隙間 */
+    .table-fixed th.col-user,
+    .table-fixed td.col-user {
+      width: calc(4ch + 8px);
+      max-width: calc(4ch + 8px);
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+    .table-fixed th.col-actions,.table-fixed td.actions-cell { width: 110px; }
+
+    /* すべての幅で左右マージンを狭めてフル活用 */
+    .table-responsive { margin-left: -12px !important; margin-right: -12px !important; }
+
+    /* すべての幅で左右マージンを狭めてフル活用 */
+    .table-responsive { margin-left: -12px !important; margin-right: -12px !important; }
+
+    /* 992px以下: 種別・使用者は非表示（優先度低） */
+    @media (max-width: 992px) {
+      .table-fixed th.col-type,
+      .table-fixed td.col-type,
+      .table-fixed th.col-user,
+      .table-fixed td.col-user { display: none !important; }
+      .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
+    }
+
+    /* 768px以下: 大区分・小区分も非表示 → 日付・内容・金額・操作の4列だけ */
+    @media (max-width: 768px) {
+      .table-responsive { margin-left: -16px !important; margin-right: -16px !important; }
+      .table-fixed th.col-cf,
+      .table-fixed td.col-cf,
+      .table-fixed th.col-class,
+      .table-fixed td.col-class { display: none !important; }
+      .table-fixed th.col-date, .table-fixed td.col-date { width: 7.8rem; max-width: 7.8rem; }
+      .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.8rem; max-width: 6.8rem; }
+      .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.8rem; max-width: 6.8rem; }
+      .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
+    }
+
+    /* 570px以下: 最低限の左右マージンを確保（約4px）し枠が潰れないように */
+    @media (max-width: 570px) {
+      .table-responsive { margin-left: -8px !important; margin-right: -8px !important; }
+      /* 主要列は維持しつつコンテンツ列を優先的に縮める */
+      .table-fixed th.col-date, .table-fixed td.col-date { width: 7.6rem; max-width: 7.6rem; }
+      .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.6rem; max-width: 6.6rem; }
+      .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.6rem; max-width: 6.6rem; }
+      .table-fixed th.col-content, .table-fixed td.col-content { width: auto; }
+    }
+  </style>
+
+  <div class="table-responsive">
+    <table class="table table-fixed w-100 m-0" style="border: 2px solid #3a7ca5; border-collapse: collapse;">
+      <thead style="background-color: #3a7ca5; color: white;">
+        <tr>
+          <th class="col-date">日付</th>
+          <th class="col-cf">区分</th>
+          <th class="hide-on-mobile col-class">区分</th>
+          <th class="col-content">内容</th>
+          <th class="col-amount">金額</th>
+          <th class="hide-on-mobile col-type">種別</th>
+          <th class="col-user">使用</th>
+          <th class="col-actions"><i class="fas fa-tools" title="操作"></i></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (let finance of finances) { %>
+          <tr data-id="<%= finance.id %>">
+            <td class="col-date"><%= finance.date.toISOString().split('T')[0] %></td>
+            <td class="col-cf text-center"><%= finance.cf %></td>
+            <td class="hide-on-mobile col-class">
+              <%= finance.income_item === 'Please Choice' ? '' : finance.income_item %>
+              <%= finance.expense_item === 'Please Choice' ? '' : finance.expense_item %>
+              <%= finance.dedu_item === 'Please Choice' ? '' : finance.dedu_item %>
+              <%= finance.saving_item === 'Please Choice' ? '' : finance.saving_item %>
+            </td>
+            <td class="limited-text4 col-content"><%= finance.content %></td>
+            <td class="text-right col-amount">¥<%= finance.amount %></td>
+            <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
+            <td class="limited-text2 col-user"><%= finance.user?.displayname || '' %></td>
+            <td class="actions-cell">
+              <div class="actions-inline">
+                <% if (
+                  (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
+                  (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
+                ) { %>
+                  <form action="/finance/<%= finance._id %>/edit" method="GET">
+                    <button type="submit" class="btn btn-primary btn-sm" title="編集"><i class="fas fa-edit"></i></button>
+                  </form>
+                <% } %>
+                <form action="/finance/<%= finance._id %>/duplicate" method="POST">
+                  <button type="submit" class="btn btn-info btn-sm text-white" title="複製"><i class="fas fa-copy"></i></button>
+                </form>
+                <% if (
+                  (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
+                  (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
+                ) { %>
+                  <form action="/finance/<%= finance._id %>?_method=DELETE" method="POST" onsubmit="return confirm('本当に削除しますか？')">
+                    <button type="submit" class="btn btn-danger btn-sm" title="削除"><i class="fas fa-trash-alt"></i></button>
+                  </form>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  </div> <!-- /.sr-body -->
+  </div> <!-- /.sr-frame -->

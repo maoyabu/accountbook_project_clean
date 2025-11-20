@@ -1,0 +1,139 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'relation' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container mt-2">
+  <div class="text-end">
+    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1B0724C9-975D-46F3-95CF-1D44AAC5CF48/My-Relation"
+      target="_blank" rel="noopener"
+      class="badge bg-success text-white text-decoration-none p-2">
+      ガイド
+    </a>
+  </div>
+  <h3><i class="fa-solid fa-people-group"></i> My Relation List</h3>
+  <div class="container mt-4">
+    <div class="mb-3">
+      <a href="/relation/search" class="btn btn-primary btn-sm">＋ 新しいリレーションを追加</a>
+    </div>
+
+  <% const pendingRequestsToMe = relations.filter(r => r.relationUserId && r.relationUserId._id.toString() === currentUser._id.toString() && r.status === 'pending'); %>
+  <% if (pendingRequestsToMe.length > 0) { %>
+    <div class="alert alert-info">
+      <h5>あなたに届いているリレーション申請</h5>
+      <table class="table table-sm table-bordered">
+        <thead>
+          <tr>
+            <th style="width: 20%;">申請者</th>
+            <th style="width: 20%;">関係性</th>
+            <th>メモ</th>
+            <th style="width: 20%;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pendingRequestsToMe.forEach(r => { %>
+            <tr>
+              <td><%= r.userId?.displayname || r.userId?.username %></td>
+              <td>
+                <%
+                  const reverseMap = {
+                    '親・先祖': '子・孫',
+                    '子・孫': '親・先祖',
+                    '配偶者': '配偶者',
+                    '親戚・兄弟・姉妹': '親戚・兄弟・姉妹',
+                    '師': '教え子',
+                    '友人': '友人',
+                    '地域社会・隣人': '地域社会・隣人',
+                    '職場・仕事関係': '職場・仕事関係',
+                    'その他': 'その他'
+                  };
+                  const reversed = reverseMap[r.relationship] || r.relationship;
+                %>
+                <%= reversed %>
+              </td>
+              <td><%= (r.relationNote && r.relationNote.length > 0) ? r.relationNote.join(', ') : '' %></td>
+              <td>
+                <form action="/relation/<%= r._id %>/approve" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-success me-2">承認</button>
+                </form>
+                <form action="/relation/<%= r._id %>/reject" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger me-2">拒否</button>
+                </form>
+                <form action="/relation/<%= r._id %>/block" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-dark">ブロック</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+  <% const visibleRelations = relations.filter(r =>
+  r.userId._id.toString() === currentUser._id.toString() || r.status === 'approved'
+); %>
+
+  <% if (visibleRelations.length === 0) { %>
+    <p class="text-muted">まだリレーションの申請や承認はありません。</p>
+  <% } else { %>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>相手</th>
+          <th>関係性</th>
+          <th>ステータス</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% visibleRelations.forEach(r => {
+             const isInitiatedByMe = r.userId._id.toString() === currentUser._id.toString();
+        %>
+          <tr>
+            <td>
+              <% if (isInitiatedByMe) { %>
+                <%= r.relationUserId?.displayname || r.relationUserId?.username %>
+              <% } else { %>
+                <%= r.userId?.displayname || r.userId?.username %>
+              <% } %>
+            </td>
+            <td>
+              <%
+                const reverseMap = {
+                  '親・先祖': '子・孫',
+                  '子・孫': '親・先祖',
+                  '配偶者': '配偶者',
+                  '親戚・兄弟・姉妹': '親戚・兄弟・姉妹',
+                  '師': '教え子',
+                  '友人': '友人',
+                  '地域社会・隣人': '地域社会・隣人',
+                  '職場・仕事関係': '職場・仕事関係',
+                  'その他': 'その他'
+                };
+                const showReversed = !isInitiatedByMe;
+                const relationshipDisplay = showReversed ? reverseMap[r.relationship] || r.relationship : r.relationship;
+              %>
+              <%= relationshipDisplay %>
+            </td>
+            <td>
+              <% if (r.status === 'pending') { %>
+                <span class="badge bg-warning text-dark">承認待ち</span>
+              <% } else if (r.status === 'approved') { %>
+                <span class="badge bg-success">承認済み</span>
+              <% } else { %>
+                <span class="badge bg-secondary">その他</span>
+              <% } %>
+            </td>
+            <td>
+              <a href="/relation/<%= r._id %>/detail" class="btn btn-outline-secondary btn-sm me-2">詳細</a>
+              <% if (isInitiatedByMe && r.status === 'pending') { %>
+                <form action="/relation/<%= r._id %>?_method=DELETE" method="POST" class="d-inline" onsubmit="return confirm('このリレーション申請を取り消しますか？');">
+                  <button type="submit" class="btn btn-outline-danger btn-sm">申請取消</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>

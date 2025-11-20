@@ -1,0 +1,56 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'relationsearch' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container mt-4">
+    <div class="text-end">
+    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1B0724C9-975D-46F3-95CF-1D44AAC5CF48/My-Relation"
+      target="_blank" rel="noopener"
+      class="badge bg-success text-white text-decoration-none p-2">
+      ガイド
+    </a>
+  </div>
+  <h3><i class="fa-solid fa-people-group"></i> New relation</h3>
+  <form action="/relation/search" method="POST" class="mb-4">
+    <div class="input-group">
+      <input type="text" name="keyword" class="form-control" placeholder="メールアドレス または ユーザー名で検索" required>
+      <button type="submit" class="btn btn-primary">検索</button>
+    </div>
+  </form>
+
+  <% if (users) { %>
+    <% if (users.length === 0) { %>
+      <p class="text-muted">該当するユーザーが見つかりませんでした。</p>
+    <% } else { %>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>ユーザー名</th>
+            <th>メールアドレス</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(user => { %>
+            <tr>
+              <td><%= user.displayname || user.username %></td>
+              <td><%= user.email %></td>
+              <td>
+                <form action="/relation/request/<%= user._id %>" method="POST" class="d-flex gap-2">
+                  <select name="relationship" class="form-select form-select-sm" required>
+                    <option value="">関係性を選択</option>
+                    <% relationshipOptions.forEach(opt => { %>
+                      <option value="<%= opt %>"><%= opt %></option>
+                    <% }) %>
+                  </select>
+                  <input type="text" name="note" class="form-control form-control-sm" placeholder="ひとことメモ">
+                  <button type="submit" class="btn btn-success btn-sm">申請</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  <% } %>
+</div>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+    <meta charset="UTF-8">
+    <title>職務履歴書</title>
+    <style>
+        body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        color: #000;
+        background-color: #fff;
+        padding: 20px;
+        }
+        .table {
+        width: 100%;
+        border-collapse: collapse;
+        }
+        .table td, .table th {
+        border: 1px solid #ccc;
+        padding: 8px;
+        vertical-align: top;
+        }
+        .table th {
+        background-color: #f5f5f5;
+        text-align: center;
+        }
+        .text-center {
+        text-align: center;
+        }
+        .text-end {
+        text-align: right;
+        }
+        .mt-4 {
+        margin-top: 1.5rem;
+        }
+        .mb-4 {
+        margin-bottom: 1.5rem;
+        }
+        .category-label-box {
+          display: inline-block;
+          min-width: 200px;
+          padding: 8px 12px;
+          border-radius: 5px;
+          color: white;
+        }
+
+        .section-title {
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    </head>
+    <body>
+    <div class="container mt-4">
+      <h2 class="text-center mb-4"> 職務履歴書</h2>
+      <div class="d-flex justify-content-end">
+        <h6 class="text-end"><%= resume?.last_name || '' %> <%= resume?.first_name || '' %>（ <%= resume?.last_name_kana || '' %> <%= resume?.first_name_kana || '' %> ）</h6>
+      </div>
+
+      <div class="mt-2">
+        <h5 class="section-title">職歴要約</h5>
+        <p><%- resume?.summary?.replace(/\n/g, '<br>') %></p>
+      </div>
+
+      <div class="mt-4">
+        <h5 class="section-title">職務経歴</h5>
+        <% historyEntries.forEach(entry => { %>
+          <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong><%= entry.company %> <%= entry.department %></strong><small><%= entry.from_date_str %>〜<%= entry.end_date_str %> (<%= entry.age_range %>)</small>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#detailModal_<%= entry._id %>">詳細</button>
+            </div>
+            <div class="card-body">
+              <p><strong>役職：</strong><%= entry.position %></p>
+              <p><strong>職務内容：</strong><%- entry.summary?.replace(/\n/g, '<br>') %></p>
+            </div>
+          </div>
+
+          <!-- モーダル -->
+          <div class="modal fade" id="detailModal_<%= entry._id %>" tabindex="-1" aria-labelledby="modalLabel_<%= entry._id %>" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="modalLabel_<%= entry._id %>">詳細情報</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="modal-body">
+                  <p><strong>会社名：</strong><%= entry.company %></p>
+                  <p><strong>部署名：</strong><%= entry.department %><br><%= entry.from_date_str %> 〜 <%= entry.end_date_str %> (<%= entry.age_range %>)</p>
+                  <p><strong>役職：</strong><%= entry.position %></p>
+                    <hr>
+                  <p><strong>職務内容：</strong></p>
+                  <p><%- entry.summary?.replace(/\n/g, '<br>') %></p>
+                  <p><strong>職務アピールポイント：</strong></p>
+                  <p><%- entry.details?.replace(/\n/g, '<br>') %></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <div class="mt-4">
+        <h5 class="section-title">【資格・特技】</h5>
+        <p><%- resume?.skills?.replace(/\n/g, '<br>') %></p>
+      </div>
+
+      <div class="mt-4">
+        <h5 class="section-title">【活かせる経験・知識・技術等】</h5>
+        <p><%- resume?.experience?.replace(/\n/g, '<br>') %></p>
+      </div>
+
+      <div class="mt-4">
+        <h5 class="section-title">【自己PR】</h5>
+        <p><%- resume?.self_promotion?.replace(/\n/g, '<br>') %></p>
+      </div>
+      <div class="mt-5 d-flex align-items-center">
+        <% if (qrCodeDataUrl) { %>
+          <img src="<%= qrCodeDataUrl %>" alt="QRコード" width="100" height="100" class="me-3">
+          <span>カメラでQRコードをスキャンすると、職務履歴書の詳細を閲覧する事ができます。</span>
+        <% } %>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    </body>
+</html>

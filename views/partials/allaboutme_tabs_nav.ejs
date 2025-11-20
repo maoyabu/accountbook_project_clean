@@ -1,0 +1,30 @@
+<ul class="nav nav-tabs mt-2 mb-3" style="border-bottom: 2px solid #3a7ca5;">
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'wantolist' ? 'active' : '' %>" href="/allaboutme/wantolist"
+       style="<%= page === 'wantolist' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>"><i class="fa-solid fa-list-check"></i> Myリスト</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'eventcal' ? 'active' : '' %>" href="/allaboutme/eventcal"
+       style="<%= page === 'eventcal' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>"><i class="fa-solid fa-calendar-days"></i> My日記</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'history' ? 'active' : '' %>" href="/history/list"
+      style="<%= page === 'history' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>">
+      <i class="fa-solid fa-clock-rotate-left"></i> My History
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'relation' ? 'active' : '' %>" href="/relation"
+       style="<%= page === 'relation' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>"><i class="fa-solid fa-people-group"></i> My Relation</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'eventcal_events' ? 'active' : '' %>" href="/allaboutme/eventcal_events"
+       style="<%= page === 'eventcal_events' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>"><i class="fas fa-cog"></i> My日記設定</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= page === 'historyCategory' ? 'active' : '' %>" href="/history/categories"
+      style="<%= page === 'historyCategory' ? 'border: 1px solid #3a7ca5; border-bottom: none; background-color: #eaf4fb; color: #3a7ca5;' : '' %>">
+      <i class="fas fa-cog"></i> My History設定
+    </a>
+  </li>
+</ul>

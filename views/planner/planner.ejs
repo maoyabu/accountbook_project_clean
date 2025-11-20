@@ -1,0 +1,262 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'planner' %>
+
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/B38889F6-6A53-4529-9300-8798C8634ECE/My-%E5%B1%A5%E6%AD%B4%E6%9B%B8"
+    target="_blank" rel="noopener"
+    class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+
+<%- include('../partials/resume_tabs_nav') %>
+
+<style>
+  table.table-bordered td, table.table-bordered th {
+    border: 1px solid #ccc !important;
+  }
+  tbody tr:nth-child(odd),
+  tbody tr:nth-child(even) {
+    background-color: transparent !important;
+  }
+</style>
+
+<div class="container mt-4">
+<% if (resume) { %>
+  <h1 class="text-center mb-4"> Planner 職務履歴書</h1>
+    <table class="table table-bordered" style="border-collapse: collapse;">
+        <tbody>
+        <tr>
+            <td style="width: 15%;"><strong>氏名</strong></td>
+            <td style="width: 35%;"><%= resume?.last_name || '' %> <%= resume?.first_name || '' %></td>
+            <td rowspan="4" colspan="2" class="text-center align-middle" style="width: 30%;">
+            <% if (resume?.photoBase64 || resume?.photo_url) { %>
+                <img src="<%= resume.photoBase64 || resume.photo_url %>" class="img-fluid" alt="写真" style="max-width: 150px; max-height: 200px;">
+            <% } else { %>
+                写真未登録
+            <% } %>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>ふりがな</strong></td>
+            <td><%= resume?.last_name_kana || '' %> <%= resume?.first_name_kana || '' %></td>
+        </tr>
+        <tr>
+            <td><strong>メール</strong></td>
+            <td><%= user?.email || '' %></td>
+        </tr>
+        <tr>
+            <td><strong>生年月日・性別</strong></td>
+            <td>
+            生年月日：<%= user?.birth_date ? user.birth_date.toISOString().substring(0, 10) : '' %><br>
+            性別：<%= user?.sex || '' %>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="mt-2">
+        <h5 class="section-title">職歴要約</h5>
+        <p><%- resume?.summary?.replace(/\n/g, '<br>') %></p>
+    </div>
+
+    <% if (careerEntries && careerEntries.length > 0) { %>
+      <div class="mt-4">
+        <h5 class="section-title">職務経歴（Planner）</h5>
+        <% careerEntries.forEach(entry => { %>
+          <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong><%= entry.company %> <%= entry.department %></strong><small><%= entry.from_date_str %>〜<%= entry.end_date_str %> (<%= entry.age_range %>)</small>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#plannerDetailModal_<%= entry._id %>">詳細</button>
+            </div>
+            <div class="card-body">
+              <p><strong>職場：</strong><%= entry.company %></p>
+              <p><strong>仕事内容：</strong><%- entry.summary?.replace(/\n/g, '<br>') %></p>
+            </div>
+          </div>
+
+          <!-- モーダル -->
+          <div class="modal fade" id="plannerDetailModal_<%= entry._id %>" tabindex="-1" aria-labelledby="modalLabel_<%= entry._id %>" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="modalLabel_<%= entry._id %>">詳細情報</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+                </div>
+                <div class="modal-body">
+                  <p><strong>職場：</strong><%= entry.company %></p>
+                  <hr>
+                  <p><strong>仕事内容：</strong></p>
+                  <p><%- entry.summary?.replace(/\n/g, '<br>') %></p>
+                  <p><strong>職務アピールポイント：</strong></p>
+                  <p><%- entry.details?.replace(/\n/g, '<br>') %></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+
+    <table>
+        <tbody>
+        <tr>
+            <td colspan="4" style="border: 1px solid #ccc;">
+            <div style="background-color: #f0f0f0; text-align: center; font-weight: bold;">自己PR</div>
+            <div style="white-space: pre-line;"><%- resume?.self_promotion || '' %></div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="4" style="border: 1px solid #ccc;">
+            <div style="background-color: #f0f0f0; text-align: center; font-weight: bold;">資格・特技</div>
+            <div style="white-space: pre-line;"><%- resume?.skills || '' %></div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="4" style="border: 1px solid #ccc;">
+            <div style="background-color: #f0f0f0; text-align: center; font-weight: bold;">活かせる経験・知識・技術等</div>
+            <div style="white-space: pre-line;"><%- resume?.experience || '' %></div>
+            </td>
+        </tr>
+        </tbody>
+</table>
+<hr>
+  <div class="text-end mt-4">
+    <form id="publishForm" action="/planner/publish/<%= resume._id %>" method="POST" class="d-inline <%= resume?.ispPublished ? 'd-none' : '' %>">
+      <button type="submit" class="btn btn-warning">
+        <i class="fa-solid fa-globe"></i> 公開ページを作成
+      </button>
+    </form>
+    <form id="unpublishForm" action="/planner/unpublish/<%= resume._id %>" method="POST" class="d-inline <%= resume?.ispPublished ? '' : 'd-none' %>">
+      <button type="submit" class="btn btn-secondary">
+        <i class="fa-solid fa-eye-slash"></i> 公開を停止する
+      </button>
+    </form>
+    <div id="shareMessage" class="alert alert-success mt-3 <%= resume?.ispPublished ? '' : 'd-none' %>" role="alert">
+      公開ページを作成しました。このURLを共有してください：<br>
+      <a id="publicUrl" href="#" target="_blank"></a>
+      <div class="mt-5 text-center">
+        <script>
+          document.addEventListener('DOMContentLoaded', () => {
+            const plannerButton = document.getElementById('plannerRequestBtn');
+            const resumeId = '<%= resume._id %>';
+            const fullUrl = location.origin + '/planner/public/plannercv/' + resumeId;
+            if (plannerButton) {
+              plannerButton.href = '/planner?url=' + encodeURIComponent(fullUrl);
+            }
+          });
+        </script>
+        <a id="plannerRequestBtn" href="#" class="btn btn-primary btn-lg">
+          Planner に申し込む
+        </a>
+      </div>
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          const publicUrl = document.getElementById('publicUrl');
+          if (publicUrl) {
+            const resumeId = '<%= resume._id %>';
+            const fullUrl = location.origin + '/planner/public/plannercv/' + resumeId;
+            console.log(fullUrl);
+            publicUrl.href = fullUrl;
+            publicUrl.textContent = fullUrl;
+          }
+        });
+      </script>
+    </div>
+  </div>
+</div>
+<% } else { %>
+  <div class="alert alert-warning text-center">
+    まだ履歴書が登録されていません。<a href="/resume/edit">設定画面</a>で登録してください。
+  </div>
+<% } %>
+
+<script>
+      document.getElementById('publishForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const form = event.target;
+        const action = form.action;
+
+        const unpublishButton = form.querySelector('button');
+        unpublishButton.disabled = true;
+
+        try {
+          const response = await fetch(action, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const url = '/planner/public/plannercv/<%= resume._id %>';
+            const fullUrl = location.origin + url;
+            const msgDiv = document.getElementById('shareMessage');
+            const link = document.getElementById('publicUrl');
+
+            link.href = fullUrl;
+            link.textContent = fullUrl;
+            msgDiv.classList.remove('d-none');
+
+            // Switch button visibility
+            form.classList.add('d-none');
+            const unpublishForm = document.getElementById('unpublishForm');
+            unpublishForm.classList.remove('d-none');
+
+            // Change button text
+            const unpublishButton = unpublishForm.querySelector('button');
+            if (unpublishButton) {
+              unpublishButton.innerHTML = '<i class="fa-solid fa-eye-slash"></i> 公開を停止する';
+            }
+          } else {
+            alert('公開処理に失敗しました');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('エラーが発生しました');
+        }
+      });
+
+      document.getElementById('unpublishForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const form = event.target;
+        const unpublishButton = form.querySelector('button');
+        const action = form.action;
+
+        try {
+          const response = await fetch(action, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            form.classList.add('d-none');
+            const publishForm = document.getElementById('publishForm');
+            publishForm.classList.remove('d-none');
+            publishForm.querySelector('button').disabled = false;
+
+            // Reset the button text for "公開ページを作成"
+            const publishButton = publishForm.querySelector('button');
+            if (publishButton) {
+              publishButton.innerHTML = '<i class="fa-solid fa-globe"></i> 公開ページを作成';
+            }
+            document.getElementById('shareMessage').classList.add('d-none');
+
+            unpublishButton.disabled = false;
+            unpublishButton.innerHTML = '<i class="fa-solid fa-eye-slash"></i> 公開を停止する';
+          } else {
+            alert('公開停止処理に失敗しました');
+            unpublishButton.disabled = false;
+          }
+        } catch (err) {
+          console.error(err);
+          alert('エラーが発生しました');
+          unpublishButton.disabled = false;
+        }
+      });
+</script>

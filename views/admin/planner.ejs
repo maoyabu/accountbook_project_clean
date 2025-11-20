@@ -1,0 +1,45 @@
+<% layout('layouts/boilerplate') -%>
+
+<div class="container mt-4">
+  <h3>Planner申込み一覧</h3>
+  <table class="table table-bordered mt-3">
+    <thead>
+      <tr>
+        <th>申込者</th>
+        <th>メッセージ</th>
+        <th>履歴書URL</th>
+        <th>申込日</th>
+        <th>ステータス</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% planners.forEach(planner => { %>
+        <tr>
+          <td><%= planner.user?.displayname || planner.user?.username || '不明' %></td>
+          <td><%= planner.message %></td>
+          <td>
+            <% if (planner.url) { %>
+              <a href="<%= planner.url %>" target="_blank" class="btn btn-sm btn-outline-secondary">開く</a>
+            <% } else { %>
+              なし
+            <% } %>
+          </td>
+          <td><%= planner.entry_date.toLocaleDateString() %></td>
+          <td><%= planner.adopt || '未対応' %></td>
+          <td>
+            <form action="/admin/planner/<%= planner._id %>/approve" method="POST" style="display:inline;">
+              <button type="submit" class="btn btn-sm ms-1 <%= planner.adopt === '採用' ? 'btn-success' : 'btn-outline-success' %>">採用</button>
+            </form>
+            <form action="/admin/planner/<%= planner._id %>/reject" method="POST" style="display:inline;">
+              <button type="submit" class="btn btn-sm ms-1 <%= planner.adopt === '不採用' ? 'btn-danger' : 'btn-outline-danger' %>">不採用</button>
+            </form>
+            <form action="/admin/planner/<%= planner._id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+              <button type="submit" class="btn btn-sm btn-outline-secondary ms-1">削除</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

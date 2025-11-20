@@ -1,0 +1,278 @@
+<% layout('layouts/boilerplate') -%>
+<% page = 'wantolist' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/441E2766-5DE7-48B8-A4DA-57644E496D7E/My%E3%83%AA%E3%82%B9%E3%83%88"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div>
+  <form method="GET" action="/allaboutme/wantolist" class="mb-3 d-flex justify-content-end">
+    <div class="input-group input-group-sm" style="max-width: 300px;">
+      <label class="input-group-text" for="userId">表示対象</label>
+      <select name="userId" id="userId" class="form-select" onchange="this.form.submit()">
+        <% groupMembers.forEach(member => { %>
+          <option value="<%= member._id %>" <%= selectedUserId?.toString() === member._id.toString() ? 'selected' : '' %>>          <%= member.displayname || member.username %><%= member._id.toString() === currentUser._id.toString() ? '（自分）' : '' %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+  </form>
+</div>
+<% wantolist_items.forEach((category, index) => {
+  const collapseId = `collapse${index}`;
+  const headingId = `heading${index}`;
+  const shouldOpen = category === '楽しみにしていること' || category === 'やってみたいこと';
+%>
+<div class="accordion-item">
+  <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-light border">
+    <h6 class="m-0"><strong><%= category %></strong></h6>
+    <div>
+      <button class="btn btn-outline-secondary btn-sm me-2"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#<%= collapseId %>"
+              aria-expanded="<%= shouldOpen ? 'true' : 'false' %>"
+              aria-controls="<%= collapseId %>">
+        ▼
+      </button>
+      <% if (selectedUserId === currentUser._id.toString()) { %>
+        <button type="button"
+                class="btn btn-sm btn-primary"
+                onclick="setCategoryAndShowModal('<%= category %>')">
+          ＋
+        </button>
+      <% } %>
+    </div>
+  </div>
+
+  <div id="<%= collapseId %>" class="accordion-collapse collapse <%= shouldOpen ? 'show' : '' %>" aria-labelledby="<%= headingId %>" data-bs-parent="#wantolistAccordion">
+    <div class="accordion-body">
+      <ul class="list-group">
+        <% items.filter(i => i.item === category && i.status === '継続中').forEach(i => { %>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>
+              <%= i.title || '(タイトルなし)' %>
+              <% if (i.share) { %>
+                <span class="badge bg-primary ms-2">共有中</span>
+              <% } else { %>
+                <span class="badge bg-secondary ms-2">非公開</span>
+              <% } %>
+            </span>
+            <% const isOwner = i.user.toString() === selectedUserId && selectedUserId === currentUser._id.toString(); %>
+            <% if (isOwner) { %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="openEditModal('<%- JSON.stringify(i).replace(/"/g, '&quot;') %>')"
+                        title="編集">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <form action="/allaboutme/wantolist/<%= i._id %>/delete" method="POST"
+                      onsubmit="return confirm('本当に削除しますか？')" style="display:inline;">
+                  <button type="submit" class="btn btn-outline-danger btn-sm" title="削除">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
+              </div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+</div>
+<% }) %>
+
+<!-- 完了したことのアコーディオン -->
+<div class="accordion-item">
+    <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-dark text-light">
+    <h6 class="m-0"><strong>完了 / 破棄したこと</strong></h6>
+        <button class="btn btn-outline-secondary btn-sm"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#completedCollapse"
+            aria-expanded="false"
+            aria-controls="completedCollapse">
+        ▼
+        </button>
+  </div>
+    <div id="completedCollapse" class="accordion-collapse collapse" aria-labelledby="completedHeading" data-bs-parent="#wantolistAccordion">
+    <div class="accordion-body">
+      <ul class="list-group">
+        <% items.filter(i => ['実現・解決', '破棄'].includes(i.status)).forEach(i => { %>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>
+              <%= i.title || '(タイトルなし)' %>
+              <% if (i.share) { %>
+                <span class="badge bg-primary ms-2">共有中</span>
+              <% } else { %>
+                <span class="badge bg-secondary ms-2">非公開</span>
+              <% } %>
+              <small>[<%= i.item %>/<%= i.status %>]</small>
+              <% if (i.update_date) { %>
+                <small class="text-muted ms-2">完了日: <%= new Date(i.update_date).toLocaleDateString('ja-JP') %></small>
+              <% } %>
+            </span>
+            <% const isOwner = i.user.toString() === selectedUserId && selectedUserId === currentUser._id.toString(); %>
+            <% if (isOwner) { %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="openEditModal('<%- JSON.stringify(i).replace(/"/g, '&quot;') %>')"
+                        title="編集">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <form action="/allaboutme/wantolist/<%= i._id %>/delete" method="POST"
+                      onsubmit="return confirm('本当に削除しますか？')" style="display:inline;">
+                  <button type="submit" class="btn btn-outline-danger btn-sm" title="削除">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
+              </div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<% if (selectedUserId === currentUser._id.toString()) { %>
+  <!-- 新規作成モーダル -->
+  <div class="modal fade" id="entryModal" tabindex="-1" aria-labelledby="entryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form action="/allaboutme/wantolist" method="POST">
+          <div class="modal-header">
+            <h5 class="modal-title" id="entryModalLabel">新しいリストを追加</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="item" id="modalItem">
+            <div class="mb-3">
+              <label for="title" class="form-label">タイトル</label>
+              <input type="text" name="title" id="title" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="content" class="form-label">内容</label>
+              <textarea name="content" id="content" class="form-control"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">状況</label><br>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="status" value="継続中" checked>
+                <label class="form-check-label">継続中</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="status" value="実現・解決">
+                <label class="form-check-label">実現・解決</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="status" value="破棄">
+                <label class="form-check-label">破棄</label>
+              </div>
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" name="share" id="share" checked>
+              <label class="form-check-label" for="share">共有する</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">登録</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編集モーダル -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="editForm" method="POST">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editModalLabel">リストを編集</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="item" id="editItem">
+            <div class="mb-3">
+              <label for="editTitle" class="form-label">タイトル</label>
+              <input type="text" name="title" id="editTitle" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="editContent" class="form-label">内容</label>
+              <textarea name="content" id="editContent" class="form-control"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">状況</label><br>
+              <% ['継続中','実現・解決','破棄'].forEach(status => { %>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="status" value="<%= status %>" id="editStatus_<%= status %>">
+                  <label class="form-check-label" for="editStatus_<%= status %>"><%= status %></label>
+                </div>
+              <% }) %>
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" name="share" id="editShare">
+              <label class="form-check-label" for="editShare">共有する</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">更新</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<script>
+    function setCategoryAndShowModal(category) {
+        document.getElementById('modalItem').value = category;
+        const modal = new bootstrap.Modal(document.getElementById('entryModal'));
+        modal.show();
+    }
+
+    function openModal(category) {
+        document.getElementById('modalItem').value = category;
+        document.getElementById('entryModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('entryModal').style.display = 'none';
+    }
+
+    function openEditModal(jsonStr) {
+        try {
+            const item = JSON.parse(jsonStr);
+            document.getElementById('editItem').value = item.item || '';
+            document.getElementById('editTitle').value = item.title || '';
+            document.getElementById('editContent').value = item.content || '';
+            document.getElementById('editShare').checked = !!item.share;
+
+            // ラジオボタンの選択
+            const radios = document.querySelectorAll('#editForm input[name="status"]');
+            radios.forEach(r => {
+            r.checked = r.value === item.status;
+            });
+
+            // フォームの送信先を設定
+            document.getElementById('editForm').action = `/allaboutme/wantolist/${item._id}/edit`;
+
+            // モーダル表示
+            const modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
+        } catch (err) {
+            console.error('編集モーダルの表示に失敗:', err);
+        }
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+</script>

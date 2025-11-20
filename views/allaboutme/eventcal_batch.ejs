@@ -1,0 +1,184 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3><i class="fa-solid fa-calendar-days"></i> まとめて日記入力</h3>
+  <hr>
+        <p class="text-muted mb-0"><%= selectedDate %> の入力</p>
+    <span class="badge bg-primary fs-5">
+      【 <%= eventObj.event %>】 / 【<%= eventObj.item %>】　（ <%= batchEventIndex + 1 %> / <%= batchEventsTotal %> ）
+    </span>
+    <hr>
+
+  <% if (existingEntry) { %>
+    <div class="alert alert-info">既に入力済み：<%= existingEntry.content %></div>
+    <form class="no-js-submit" action="/allaboutme/eventcal/batch/step" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="fromGooglePhoto" value="1">
+        <input type="hidden" name="item" value="<%= eventObj.item %>">
+        <input type="hidden" name="event" value="<%= eventObj.event %>">
+        <input type="hidden" name="date" value="<%= selectedDate %>">
+        <input type="hidden" name="action" value="skip">
+
+      <div class="mb-3">
+        <label>評価</label>
+        <select class="form-select" name="rate" required>
+          <% const rateOptions = ['最悪', '悪い', '普通', '良い', '最高']; %>
+          <% for (let i = 5; i >= 1; i--) { %>
+            <option value="<%= i %>" <%= (existingEntry ? existingEntry.rate : 3) == i ? 'selected' : '' %>><%= rateOptions[i - 1] %></option>
+          <% } %>
+        </select>      </div>
+
+      <div class="mb-3">
+        <label>タイトル</label>
+        <textarea name="title" class="form-control" rows="1"><%= existingEntry?.title || '' %></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="d-flex justify-content-between align-items-center">
+          <span>内容</span>
+          <button type="button" class="btn btn-sm btn-outline-success ai-summarize-btn">AIで要約</button>
+        </label>
+        <textarea name="content" class="form-control" rows="5"><%= existingEntry?.content || '' %></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label>サマリー</label>
+        <textarea name="summary" class="form-control" rows="2"><%= existingEntry?.summary || '' %></textarea>
+      </div>
+
+      <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" name="share" id="share" <%= existingEntry?.share !== false ? 'checked' : '' %>>
+        <label class="form-check-label" for="share">共有する</label>
+      </div>
+
+      <div class="mb-3">
+        <label>写真</label>
+        <input type="file" name="photos" multiple class="form-control">
+        <div id="googlePhotoPreview" class="d-flex flex-wrap">
+          <% if (existingEntry && existingEntry.photos && existingEntry.photos.length > 0) { %>
+            <% existingEntry.photos.forEach(photo => { %>
+              <div class="me-2 mb-2">
+                <% if (photo.source === 'google') { %>
+                  <input type="hidden" name="selectedGooglePhotos[]" value="<%= photo.url %>">
+                <% } else if (photo.source === 'cloudinary') { %>
+                  <input type="hidden" name="existingCloudinaryPhotos[]" value="<%= photo.url %>">
+                <% } %>
+                <img src="<%= photo.url %><%= photo.source === 'google' ? '=w100-h100' : '' %>" class="img-thumbnail border" style="max-width: 100px;">              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+      <input type="submit" name="action" value="save" class="btn btn-primary me-2" />
+      <input type="submit" name="action" value="skip" class="btn btn-secondary" />
+    </form>
+  <% } else { %>
+    <form class="no-js-submit" action="/allaboutme/eventcal/batch/step" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="fromGooglePhoto" value="1">
+        <input type="hidden" name="item" value="<%= eventObj.item %>">
+        <input type="hidden" name="event" value="<%= eventObj.event %>">
+        <input type="hidden" name="date" value="<%= selectedDate %>">
+
+      <div class="mb-3">
+         <label>評価</label>
+        <select class="form-select" name="rate" required>
+          <% const rateOptions = ['最悪', '悪い', '普通', '良い', '最高']; %>
+          <% for (let i = 5; i >= 1; i--) { %>
+            <option value="<%= i %>" <%= 3 == i ? 'selected' : '' %>><%= rateOptions[i - 1] %></option>
+          <% } %>
+        </select>      </div>
+
+      <div class="mb-3">
+        <label>タイトル</label>
+        <textarea name="title" class="form-control" rows="1"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="d-flex justify-content-between align-items-center">
+          <span>内容</span>
+          <button type="button" class="btn btn-sm btn-outline-success ai-summarize-btn">AIで要約</button>
+        </label>
+        <textarea name="content" class="form-control" rows="5"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label>サマリー</label>
+        <textarea name="summary" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" name="share" id="share" checked>
+        <label class="form-check-label" for="share">共有する</label>
+      </div>
+
+      <div class="mb-3">
+        <label>写真</label>
+        <input type="file" name="photos" multiple class="form-control">
+        <div id="googlePhotoPreview" class="d-flex flex-wrap">
+          <% if (existingEntry && existingEntry.photos && existingEntry.photos.length > 0) { %>
+            <% existingEntry.photos.forEach(photo => { %>
+              <div class="me-2 mb-2">
+                <% if (photo.source === 'google') { %>
+                  <input type="hidden" name="selectedGooglePhotos[]" value="<%= photo.url %>">
+                <% } else if (photo.source === 'cloudinary') { %>
+                  <input type="hidden" name="existingCloudinaryPhotos[]" value="<%= photo.url %>">
+                <% } %>
+                <img src="<%= photo.url %><%= photo.source === 'google' ? '=w100-h100' : '' %>" class="img-thumbnail border" style="max-width: 100px;">              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+      <input type="submit" name="action" value="save" class="btn btn-primary me-2" /><small>保存して次へ　　</small>
+      <input type="submit" name="action" value="skip" class="btn btn-secondary" /><small> 保存せずに次へ</small>
+    </form>
+  <% } %>
+</div>
+<script>
+// まとめて入力: 内容をAIで要約 → サマリーに反映
+// 既に /allaboutme/eventcal/summarize ルートがある前提
+(function(){
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.ai-summarize-btn');
+    if (!btn) return;
+    const form = btn.closest('form');
+    if (!form) return;
+    const contentEl = form.querySelector('textarea[name="content"]');
+    const summaryEl = form.querySelector('textarea[name="summary"]');
+    if (!contentEl || !summaryEl) return;
+
+    const text = (contentEl.value || '').trim();
+    if (!text) {
+      alert('内容にテキストを入力してください。');
+      return;
+    }
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '要約中...';
+
+    try {
+      const resp = await fetch('/allaboutme/eventcal/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text, maxChars: 180, lang: 'ja' })
+      });
+      if (!resp.ok) {
+        const msg = await resp.text().catch(()=>'');
+        throw new Error(msg || '要約に失敗しました');
+      }
+      const data = await resp.json();
+      if (data && data.summary) {
+        summaryEl.value = data.summary;
+      } else {
+        alert('要約結果を取得できませんでした。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('要約に失敗しました');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }, { passive: false });
+})();
+</script>

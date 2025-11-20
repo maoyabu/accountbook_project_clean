@@ -1,0 +1,111 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="container mt-4">
+  <h3>OCRログ一覧</h3>
+  <table class="table table-bordered table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>日時</th>
+        <th>店舗名</th>
+        <th>金額</th>
+        <th>日付</th>
+        <th>補正結果</th>
+        <th>タグ</th>
+        <th>全文</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% ocrLogs.forEach(log => { %>
+        <tr>
+          <td><%= new Date(log.createdAt).toLocaleString() %></td>
+          <td><%= log.extracted?.storeName || '-' %></td>
+          <td><%= log.extracted?.amount || '-' %></td>
+          <td><%= log.extracted?.date || '-' %></td>
+          <td>
+            <% if (typeof log.corrected === 'object' && log.corrected !== null) { %>
+              店舗名: <%= log.corrected.storeName || '-' %><br>
+              金額: <%= log.corrected.amount || '-' %><br>
+              日付: <%= log.corrected.date || '-' %>
+            <% } else { %>
+              (補正データなし)
+            <% } %>
+          </td>
+          <td>
+            <% if (log.corrected?.tags && log.corrected.tags.length > 0) { %>
+              <% log.corrected.tags.forEach(tag => { %>
+                <% const isMapped = tag.category !== tag.gptCategory && tag.category && tag.gptCategory; %>
+                <span class="badge <%= isMapped ? 'bg-secondary' : 'bg-danger' %> me-1">
+                  <%= tag.name %>
+                  <% if (tag.gptCategory) { %>
+                    (<%= tag.gptCategory %> → <%= tag.category %>)
+                  <% } else if (tag.category) { %>
+                    (<%= tag.category %>)
+                  <% } %>
+                  <% if (typeof tag.price === 'number' && tag.price > 0) { %> - ¥<%= tag.price %><% } %>
+                </span>
+              <% }); %>
+            <% } else { %>
+              <span class="text-muted">なし</span>
+            <% } %>
+          </td>
+          <td>
+            <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#ocrModal" data-log='<%- JSON.stringify(log) %>'>
+              <%= log.content.split('\n')[0] %>...
+            </button>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<div class="modal fade" id="ocrModal" tabindex="-1" aria-labelledby="ocrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ocrModalLabel">OCRログ詳細</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>日時:</strong> <span id="modalCreatedAt"></span></p>
+        <p><strong>店舗名:</strong> <span id="modalStoreName"></span></p>
+        <p><strong>金額:</strong> <span id="modalAmount"></span></p>
+        <p><strong>日付:</strong> <span id="modalDate"></span></p>
+        <hr>
+        <p><strong>元のOCR結果:</strong></p>
+        <pre id="modalContent" class="mb-3"></pre>
+        <p><strong>補正後の結果:</strong></p>
+        <pre id="modalCorrected" class="mb-0 text-success"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ocrModal = document.getElementById('ocrModal');
+  ocrModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const log = JSON.parse(button.getAttribute('data-log'));
+    document.getElementById('modalCreatedAt').textContent = new Date(log.createdAt).toLocaleString();
+    document.getElementById('modalStoreName').textContent = log.extracted?.storeName || '-';
+    document.getElementById('modalAmount').textContent = log.extracted?.amount || '-';
+    document.getElementById('modalDate').textContent = log.extracted?.date || '-';
+    document.getElementById('modalContent').textContent = log.content;
+    if (typeof log.corrected === 'object' && log.corrected !== null) {
+      const correctedText = [
+        `店舗名: ${log.corrected.storeName || '-'}`,
+        `金額: ${log.corrected.amount || '-'}`,
+        `日付: ${log.corrected.date || '-'}`,
+        `タグ:\n${(log.corrected.tags || []).map(t => {
+          let line = `・${t.name || '-'}`;
+          if (t.category) line += ` (${t.category})`;
+          if (typeof t.price === 'number') line += ` - ¥${t.price}`;
+          return line;
+        }).join('\n') || 'なし'}`
+      ].join('\n');
+      document.getElementById('modalCorrected').textContent = correctedText;
+    } else {
+      document.getElementById('modalCorrected').textContent = '(補正データなし)';
+    }
+  });
+</script>

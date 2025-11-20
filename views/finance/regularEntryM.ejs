@@ -1,0 +1,166 @@
+<% layout('layouts/boilerplate') %>
+<div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/F541BF02-F996-44F2-AC86-B27DACA13A46/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E3%81%BE%E3%81%A8%E3%82%81%E3%81%A6%E5%85%A5%E5%8A%9B"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+<div class="card shadow-sm mt-2">
+    <div class="card-header text-white" style="background-color: #3a7ca5;">
+      <h5 class="mb-0">まとめて入力の項目追加</h5>
+    </div>
+    <div class="card-body">
+      <form action="<%= entryToEdit ? '/matomete/regular-entry/update/' + entryToEdit._id : '/matomete/regular-entry/create' %>" method="POST">
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label for="cf">収支区分</label>
+            <select name="cf" id="cf" class="form-control" required>
+              <% la_cfs.forEach(item => { %>
+                <option value="<%= item %>" <%= entryToEdit && entryToEdit.cf === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="expense_group" style="display:none;">
+            <label for="expense_cf">支出項目</label>
+            <select name="expense_item" id="expense_cf" class="form-control">
+              <% ex_cfs.forEach(item => { %>
+                <option value="<%= item %>" <%= entryToEdit && entryToEdit.expense_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="income_group" style="display:none;">
+            <label for="income_cf">収入項目</label>
+            <select name="income_item" id="income_cf" class="form-control">
+              <% in_items.forEach(item => { %>
+                <option value="<%= item %>" <%= entryToEdit && entryToEdit.income_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="deduction_group" style="display:none;">
+            <label for="dedu_cf">控除項目</label>
+            <select name="dedu_item" id="dedu_cf" class="form-control">
+              <% dedu_cfs.forEach(item => { %>
+                <option value="<%= item %>" <%= entryToEdit && entryToEdit.dedu_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="saving_group" style="display:none;">
+            <label for="saving_cf">貯蓄項目</label>
+            <select name="saving_item" id="saving_cf" class="form-control">
+              <% saving_cfs.forEach(item => { %>
+                <option value="<%= item %>" <%= entryToEdit && entryToEdit.saving_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+
+        </div>
+        <div class="col-md-3">
+          <label for="day">使用日</label>
+          <input type="number" name="day" class="form-control" value="<%= entryToEdit ? entryToEdit.day : '' %>" required>
+        </div>
+  
+        <div class="row mb-3">
+          <div class="col-md-5">
+            <label for="content">内容</label>
+            <input type="text" name="content" class="form-control" value="<%= entryToEdit ? entryToEdit.content : '' %>" required>
+          </div>
+          <div class="col-md-2">
+            <label for="amount">金額</label>
+            <input type="number" name="amount" class="form-control" value="<%= entryToEdit ? entryToEdit.amount : '' %>" required>
+          </div>
+          <div class="col-md-3">
+            <label for="payment_type">支払種別</label>
+            <select name="payment_type" class="form-control" required>
+              <% if (pay_cfs && pay_cfs.length > 0) { %>
+                <% pay_cfs.forEach(pay => { %>
+                  <option value="<%= pay %>" <%= entryToEdit && entryToEdit.payment_type === pay ? 'selected' : '' %>><%= pay %></option>
+                <% }) %>
+              <% } else { %>
+                <option disabled>支払種別が未設定です</option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="text-center">
+          <button type="submit" class="btn btn-primary btn-sm" style="width: 60%;"><%= entryToEdit ? '編集内容を保存' : 'まとめて入力項目に追加' %></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<hr>
+<div class="card shadow-sm mb-4">
+    <div class="card-header text-white mb-1" style="background-color: #3a7ca5;">
+        <h5>【登録済】まとめて入力項目</h5>
+    </div>
+    <% if (regularEntries.length === 0) { %>
+        <p>登録されている項目はありません。</p>
+    <% } else { %>
+      <table class="table table-bordered table-sm w-100 mt-1 small">
+        <thead>
+            <tr>
+            <th>区分</th>
+            <th>項目</th>
+            <th style="width:30px;">内容</th>
+            <th>金額</th>
+            <th>支払種別</th>
+            <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% regularEntries.forEach(entry => { %>
+            <tr>
+                <td><%= entry.cf %></td>
+                <td><%= entry.income_item || entry.expense_item || entry.dedu_item || entry.saving_item %></td>
+                <td><%= entry.content %></td>
+                <td class="text-end">¥<%= entry.amount.toLocaleString() %></td>
+                <td><%= entry.payment_type %></td>
+                <td class="d-flex gap-1">
+                  <a href="/matomete/regular-entry/edit/<%= entry._id %>" class="btn btn-warning btn-sm me-1"><i class="fas fa-edit"></i></a>
+                  <form action="/matomete/regular-entry/<%= entry._id %>?_method=DELETE" method="POST" onsubmit="return confirm('削除してもよろしいですか？')">
+                      <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
+                  </form>
+                </td>
+            </tr>
+            <% }) %>
+        </tbody>
+        </table>
+    <% } %>
+</div>
+<div class="text-center mt-4">
+  <a href="/matomete/regular-entry/push" class="btn btn-success btn-lg mb-2" style="width: 80%;">
+    まとめて登録へ
+  </a>
+</div>
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const cfSelect = document.getElementById("cf");
+    const incomeGroup = document.getElementById("income_group");
+    const expenseGroup = document.getElementById("expense_group");
+    const deductionGroup = document.getElementById("deduction_group");
+    const savingGroup = document.getElementById("saving_group");
+
+    function toggleCategory() {
+      incomeGroup.style.display = "none";
+      expenseGroup.style.display = "none";
+      deductionGroup.style.display = "none";
+      savingGroup.style.display = "none";
+
+      if (cfSelect.value === "収入") {
+        incomeGroup.style.display = "block";
+      } else if (cfSelect.value === "支出") {
+        expenseGroup.style.display = "block";
+      } else if (cfSelect.value === "控除") {
+        deductionGroup.style.display = "block";
+      } else if (cfSelect.value === "貯蓄") {
+        savingGroup.style.display = "block";
+      }
+    }
+
+    cfSelect.addEventListener("change", toggleCategory);
+    toggleCategory();
+  });
+</script>

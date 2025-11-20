@@ -1,0 +1,206 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'history' %>
+<%- include('../partials/allaboutme_tabs_nav') %>
+
+<div class="container">
+  <div class="text-end mb-2">
+  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1BEE7958-A1BF-425A-B3C6-416596371620/My-History-My-History%E8%A8%AD%E5%AE%9A"
+     target="_blank" rel="noopener"
+     class="badge bg-success text-white text-decoration-none p-2">
+    ガイド
+  </a>
+</div>
+  <!-- 表示対象セレクタ用フォーム -->
+  <form method="GET" action="/history/list" class="mb-3">
+    <div class="d-flex justify-content-end">
+      <div class="d-flex align-items-center gap-2" style="width: 30%; white-space: nowrap;">
+        <label for="user" class="form-label mb-0 whitespace-nowrap"><i class="fas fa-user"></i> 表示対象：</label>
+        <select name="user" id="user" class="form-select form-select-sm" style="min-width: 160px;" onchange="this.form.submit()">
+          <% groupMembers.forEach(member => { %>
+            <option value="<%= member._id %>" <%= selectedUserId === String(member._id) ? 'selected' : '' %>>
+              <%= member.displayname || member.username %><%= String(member._id) === String(currentUser._id) ? '（自分）' : '' %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+  </form>
+
+  <!-- カテゴリー絞り込みとタイトル -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <h2 class="mb-0"><i class="fa-solid fa-clock-rotate-left"></i> My History 一覧</h2>
+
+      <form id="categoryFilterForm" method="GET" action="/history/list" class="d-flex align-items-center">
+        <input type="hidden" name="user" value="<%= selectedUserId %>">
+        <select name="category" class="form-select form-select-sm" onchange="document.getElementById('categoryFilterForm').submit()">
+          <option value="">全てのカテゴリー</option>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat._id %>" <%= selectedCategory === String(cat._id) ? 'selected' : '' %>><%= cat.name %></option>
+          <% }) %>
+        </select>
+      </form>
+    </div>
+    <a href="/history/entry" class="btn btn-sm btn-primary"><i class="fas fa-plus-circle"></i> 新規History作成</a>
+  </div>
+  <hr>
+  <% if (histories && histories.length > 0) { %>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+      <% histories.forEach(history => { %>
+        <div class="col">
+          <div data-bs-toggle="modal" data-bs-target="#historyModal_<%= history._id %>" style="cursor:pointer;">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header text-white" style="background-color: <%= history.category?.color || '#0d6efd' %>;">
+                <strong><%= history.category?.name || 'カテゴリー未設定' %></strong>
+              </div>
+              <div class="card-body" style="height: 300px; overflow: hidden;">
+                <% if (history.photos && history.photos.length > 0) { %>
+                  <div class="mb-3 text-center">
+                    <img src="<%= typeof history.photos[0] === 'string' ? history.photos[0] : history.photos[0].url %>" alt="履歴画像" class="img-fluid rounded" style="max-height: 200px; object-fit: cover;">
+                  </div>
+                <% } %>
+                <ul class="mb-2">
+                  <% for (const [key, value] of Object.entries(history.data || {})) { 
+                       if (value && value.trim() !== '') {
+                         const fieldDef = history.category?.fields.find(f => f.name === key);
+                         const isTextarea = fieldDef?.type === 'textarea';
+                  %>
+                    <% if (isTextarea) { %>
+                      <li class="content-preview" style="max-height: 7.5em; overflow: hidden; position: relative;">
+                        <strong><%= key %>:</strong>
+                        <%- value.replace(/\n/g, '<br>') %>
+                      </li>
+                    <% } else { %>
+                      <li><strong><%= key %>:</strong> <%= value %></li>
+                    <% } %>
+                  <% }} %>
+                </ul>
+
+                <% if (history.url) { %>
+                  <p><a href="<%= history.url %>" target="_blank" rel="noopener">🔗 関連リンク</a></p>
+                <% } %>
+
+                <% if (history.content) { %>
+                  <div>
+                    <strong>コメント</strong><br>
+                    <p class="content-preview" style="max-height: 7.5em; overflow: hidden; position: relative;">
+                      <%- history.content.replace(/\n/g, '<br>') %>
+                      <span class="read-more text-primary" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#historyModal_<%= history._id %>">...もっと見る</span>
+                    </p>
+                  </div>
+                <% } %>
+
+                <p><strong>From - To:</strong>
+                  <%= history.from_date ? new Date(history.from_date).toLocaleDateString('ja-JP') : '—' %> 〜
+                  <%= history.end_date ? new Date(history.end_date).toLocaleDateString('ja-JP') : '—' %>
+                </p>
+
+                <p>
+                  <input class="form-check-input me-1" type="checkbox" disabled <%= history.share ? 'checked' : '' %>>
+                  共有する
+                </p>
+              </div>
+              <% if (selectedUserId === String(currentUser._id)) { %>
+                <div class="card-footer text-end">
+                  <a href="/history/edit/<%= history._id %>" class="btn btn-sm btn-outline-primary me-2">
+                    <i class="fas fa-edit"></i> 編集
+                  </a>
+                  <form action="/history/delete/<%= history._id %>?_method=DELETE" method="POST" class="d-inline" onsubmit="return confirm('本当に削除しますか？');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="fas fa-trash-alt"></i> 削除
+                    </button>
+                  </form>
+                </div>
+              <% } %>
+            </div>
+          </div>
+          <!-- Modal -->
+          <div class="modal fade" id="historyModal_<%= history._id %>" tabindex="-1" aria-labelledby="modalLabel_<%= history._id %>" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header" style="background-color: <%= history.category?.color || '#0d6efd' %>;">
+                  <h5 class="modal-title text-white" id="modalLabel_<%= history._id %>"><%= history.category?.name || 'カテゴリー未設定' %></h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <% if (history.photos && history.photos.length > 0) { %>
+                    <div class="mb-3 text-center">
+                      <% history.photos.forEach(photo => { %>
+                                        <img src="<%= typeof photo === 'string' ? photo : photo.url %>" class="img-fluid rounded mb-2" style="max-height: 200px; object-fit: cover;">
+                      <% }) %>
+                    </div>
+                  <% } %>
+
+                  <ul class="mb-3">
+                    <% for (const [key, value] of Object.entries(history.data || {})) {
+                         if (value && value.trim() !== '') { %>
+                      <li><strong><%= key %>:</strong> <%- value.replace(/\n/g, '<br>') %></li>
+                    <% }} %>
+                  </ul>
+
+                  <% if (history.url) { %>
+                    <p><strong>リンク:</strong> <a href="<%= history.url %>" target="_blank" rel="noopener"><%= history.url %></a></p>
+                  <% } %>
+
+                  <% if (history.content) { %>
+                    <p><strong>コメント:</strong><br><%- history.content.replace(/\n/g, '<br>') %></p>
+                  <% } %>
+
+                  <p><strong>From - To:</strong>
+                    <%= history.from_date ? new Date(history.from_date).toLocaleDateString('ja-JP') : '—' %> 〜
+                    <%= history.end_date ? new Date(history.end_date).toLocaleDateString('ja-JP') : '—' %></p>
+
+                  <p><input class="form-check-input me-1" type="checkbox" disabled <%= history.share ? 'checked' : '' %>> 共有する</p>
+                </div>
+                <% if (selectedUserId === String(currentUser._id)) { %>
+                  <div class="modal-footer">
+                    <a href="/history/edit/<%= history._id %>" class="btn btn-outline-primary">
+                      <i class="fas fa-edit"></i> 編集
+                    </a>
+                    <form action="/history/delete/<%= history._id %>?_method=DELETE" method="POST" onsubmit="return confirm('本当に削除しますか？');">
+                      <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash-alt"></i> 削除
+                      </button>
+                    </form>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <p>登録された履歴はありません。</p>
+  <% } %>
+</div>
+<!-- 拡大画像表示用モーダル -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-body text-center">
+        <img id="enlargedImage" src="" class="img-fluid rounded">
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.read-more').forEach(button => {
+      button.addEventListener('click', function () {
+        const preview = this.closest('.content-preview');
+        preview.style.maxHeight = 'none';
+        this.style.display = 'none';
+      });
+    });
+    // 画像クリックで拡大モーダルを表示
+    document.querySelectorAll('.modal-body img').forEach(img => {
+      img.style.cursor = 'pointer';
+      img.addEventListener('click', () => {
+        const modalImg = document.getElementById('enlargedImage');
+        modalImg.src = img.src;
+        new bootstrap.Modal(document.getElementById('imageModal')).show();
+      });
+    });
+  });
+</script>

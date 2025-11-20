@@ -1,0 +1,76 @@
+<% layout('layouts/boilerplate') %>
+
+<main class="container mt-4">
+  <div class="card shadow-sm">
+    <div class="card-header text-white" style="background-color: #3a7ca5;">
+      <h4 class="mb-0">グループ名：<%= group.group_name %></h4>
+    </div>
+    <div class="card-body">
+      <div class="p-3 border rounded bg-light mb-4">
+        <h5>グループ管理者</h5>
+        <p><%= group.createdBy.displayname || group.createdBy.username %></p>
+    </div>
+
+      <div class="p-3 border rounded bg-light mb-4">
+        <h5>グループに招待</h5>
+        <form id="inviteForm" method="POST" action="/group/invite/<%= group._id %>" data-loading>
+          <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0" for="invite_email"><i class="fas fa-envelope"></i></label>
+            <input type="email" class="form-control" id="invite_email" name="invite_email" required style="max-width: 230px;" placeholder="e-mailアドレス">
+            <button type="submit" class="btn btn-primary" id="inviteBtn">招待する</button>
+            <div class="spinner-border text-primary d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+              <span class="visually-hidden">送信中...</span>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="p-3 border rounded bg-light mb-4">
+        <h5>参加メンバー</h5>
+        <ul class="list-group">
+          <% group.members.forEach(member => { %>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span>
+                <strong><%= member.displayname || member.username %></strong><br>
+                <small class="text-muted"><%= member.email %></small>
+              </span>
+              <% if (currentUser._id.equals(group.createdBy._id) && !member._id.equals(group.createdBy._id)) { %>
+                <form action="/group/group_remove_member/<%= group._id %>/<%= member._id %>?_method=DELETE" method="POST" class="mb-0">
+                  <button class="btn btn-sm btn-danger ms-3" onclick="return confirm('本当にこのメンバーを退会させますか？')">退会</button>
+                  <div class="spinner-border text-danger d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+                    <span class="visually-hidden">送信中...</span>
+                  </div>
+                </form>
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+
+      <div class="p-3 border rounded bg-light mb-2">
+          <h5 class="mt-4">招待中のユーザー</h5>
+          <ul class="list-group">
+            <% group.invitedUsers.forEach(email => { %>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span><%= email %></span>
+                <div class="d-flex">
+                  <form action="/group/group_reinvite/<%= group._id %>" method="POST" class="mb-0 me-2" data-loading>
+                    <input type="hidden" name="invite_email" value="<%= email %>">
+                    <button class="btn btn-sm btn-warning">再招待</button>
+                    <div class="spinner-border text-warning d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+                      <span class="visually-hidden">送信中...</span>
+                    </div>
+                  </form>
+                  <form action="/group/group_cancel_invite/<%= group._id %>?_method=DELETE" method="POST" class="mb-0">
+                    <input type="hidden" name="invite_email" value="<%= email %>">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('この招待を取り消しますか？')">取消</button>
+                  </form>
+                </div>
+              </li>
+            <% }) %>
+          </ul>
+      </div>
+
+    </div>
+  </div>
+</main>
