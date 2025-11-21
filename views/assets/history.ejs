@@ -1,10 +1,14 @@
 <% layout('layouts/boilerplate') %>
 
 <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-  <h5 class="mb-0">資産棚卸し履歴</h5>
+  <div>
+    <div class="small text-muted">
+      <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 資産の推移
+    </div>
+    <h5 class="mb-0">資産の推移</h5>
+  </div>
   <div class="d-flex gap-2">
     <a href="/asset/history/graph" class="btn btn-outline-primary btn-sm">グラフ表示</a>
-    <a href="/asset/inventory" class="btn btn-primary btn-sm">最新の棚卸しを入力</a>
   </div>
 </div>
 
@@ -14,7 +18,10 @@
   <% history.forEach(entry => { %>
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
-        <span><%= entry.label %> 棚卸し</span>
+        <div class="d-flex flex-column">
+          <span><%= entry.label %> 棚卸し</span>
+          <a href="/asset/inventory?month=<%= entry.label.replace('年','-').replace('月','') %>" class="text-white text-decoration-underline small">この月の棚卸しに移動</a>
+        </div>
         <small class="text-end">
           更新: <%= entry.updatedAt ? new Date(entry.updatedAt).toLocaleString('ja-JP') : '-' %><br>
           <%= entry.updatedBy?.displayname || entry.updatedBy?.username || '記録なし' %>

@@ -40,6 +40,14 @@ const assetSchema = new mongoose.Schema({
         ref: 'Group',
         required: true
     },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     entry_date:{
         type: Date,
         default: Date.now

@@ -1,14 +1,21 @@
 <% layout('layouts/boilerplate') %>
-<div class="text-end">
+<div class="d-flex justify-content-between align-items-center">
+  <div class="small text-muted">
+    <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 資産の登録・編集
+  </div>
   <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/9FEF0134-024D-41B5-8B4D-44E9E627B86F/%E8%B3%87%E7%94%A3%E7%AE%A1%E7%90%86"
      target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2">
+     class="badge bg-success text-white text-decoration-none p-2 ms-auto">
     ガイド
   </a>
 </div>
+
 <div class="card shadow-sm mt-2">
-  <div class="card-header text-white" style="background-color: #3a7ca5;">
-    <h5 class="mb-0"><%= editAsset ? "資産を編集" : "資産を登録" %></h5>
+  <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
+    <h5 class="mb-0">資産の登録・編集</h5>
+    <div class="d-flex gap-2">
+      <a href="/asset/display" class="btn btn-light btn-sm">資産状況</a>
+    </div>
   </div>
   <div class="card-body">
     <% if (typeof latestInventory !== 'undefined' && latestInventory) { %>
@@ -18,180 +25,42 @@
         <span class="ms-2"><a href="/asset/history" class="text-decoration-underline">履歴を確認</a></span>
       </div>
     <% } %>
-    <form action="<%= editAsset ? '/asset/update/' + editAsset._id : '/asset/create' %>" method="POST">
-      <div class="row mb-3">
-        <div class="col-md-4">
-          <label for="asset_cf">資産区分<span style="color: red;">（*必須）</span></label>
-          <select name="asset_cf" id="asset_cf" class="form-control" required>
-            <% asset_cfs.forEach(item => { %>
-              <option value="<%= item %>" <%= editAsset && editAsset.asset_cf === item ? 'selected' : '' %>><%= item %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="col-md-5 category-group" id="current_asset_group" style="display:none;">
-          <label>金融資産内容<span style="color: red;">（*必須）</span></label>
-          <select name="asset_item" class="form-control">
-            <% current_assets.forEach(item => { %>
-              <option value="<%= item %>" <%= editAsset && editAsset.asset_item === item ? 'selected' : '' %>><%= item %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="col-md-5 category-group" id="fixed_asset_group" style="display:none;">
-          <label>実物資産内容<span style="color: red;">（*必須）</span></label>
-          <select name="asset_item" class="form-control">
-            <% fixed_assets.forEach(item => { %>
-              <option value="<%= item %>" <%= editAsset && editAsset.asset_item === item ? 'selected' : '' %>><%= item %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="col-md-5 category-group" id="intangible_asset_group" style="display:none;">
-          <label>無形資産内容<span style="color: red;">（*必須）</span></label>
-          <select name="asset_item" class="form-control">
-            <% intangible_assets.forEach(item => { %>
-              <option value="<%= item %>" <%= editAsset && editAsset.asset_item === item ? 'selected' : '' %>><%= item %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="col-md-5 category-group" id="debt_group" style="display:none;">
-          <label>負債内容<span style="color: red;">（*必須）</span></label>
-          <select name="asset_item" class="form-control">
-            <% ['Please Choice','住宅ローン','自動車ローン','その他ローン','その他負債'].forEach(item => { %>
-              <option value="<%= item %>" <%= editAsset && editAsset.asset_item === item ? 'selected' : '' %>><%= item %></option>
-            <% }) %>
-          </select>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <label for="code">コード（株式の場合：証券コード、為替の場合＄なら$）</label>
-        <input type="text" name="code" class="form-control" value="<%= editAsset ? editAsset.code : '' %>">
-      </div>
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label for="content">資産内容<span style="color: red;">（*必須）</span></label>
-          <textarea name="content" class="form-control" required><%= editAsset ? editAsset.content : '' %></textarea>
-        </div>
-        <div class="col-md-3">
-          <label for="amount">数量<span style="color: red;">（*必須）</span></label>
-          <input type="number" name="amount" class="form-control" required value="<%= editAsset ? editAsset.amount : '' %>">
-        </div>
-        <div class="col-md-3">
-          <label for="monetary_unit">単位<span style="color: red;">（*必須）</span></label>
-          <select name="monetary_unit" class="form-control" required>
-            <% monetary_units.forEach(unit => { %>
-              <option value="<%= unit %>" <%= editAsset && editAsset.monetary_unit === unit ? 'selected' : '' %>><%= unit %></option>
-            <% }) %>
-          </select>
-        </div>
-        <small class="form-text text-muted">※ 負債の場合はマイナスの金額（例：-3000000）で入力してください</small>
-      </div>
 
-      <!-- Secure Note Authentication Button and Password Input -->
-      <div class="row mb-3">
-        <div class="col-md-12 text-end">
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="unlockSecureNoteBtn">
-            🔐 機密情報を表示・編集する
-          </button>
-        </div>
-      </div>
-      <div class="row mb-3" id="secureNoteAuthSection" style="display: none;">
-        <div class="col-md-6">
-          <input type="password" id="secureNotePassword" name="password" class="form-control" placeholder="パスワードを入力">
-        </div>
-        <div class="col-md-6">
-          <button type="button" class="btn btn-primary" id="verifySecureNoteBtn">認証</button>
-        </div>
-      </div>
-      <script>
-        document.addEventListener("DOMContentLoaded", function () {
-          const unlockBtn = document.getElementById("unlockSecureNoteBtn");
-          const authSection = document.getElementById("secureNoteAuthSection");
-          const verifyBtn = document.getElementById("verifySecureNoteBtn");
-          const passwordInput = document.getElementById("secureNotePassword");
-
-          unlockBtn.addEventListener("click", function () {
-            authSection.style.display = "flex";
-          });
-
-          verifyBtn.addEventListener("click", async function () {
-            const password = passwordInput.value.trim();
-            const secureNoteField = document.querySelector('textarea[name="secure_note"]');
-            const assetId = "<%= editAsset ? editAsset._id : '' %>";
-
-            // console.log("Password:", password);
-            // console.log("Asset ID:", assetId);
-
-            if (!password) {
-              alert("パスワードを入力してください");
-              return;
-            }
-
-            if (!assetId) {
-              alert("資産IDが見つかりません（編集モードのみ対応）");
-              return;
-            }
-
-            try {
-              const res = await fetch(`/secure-note/${assetId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password })
-              });
-
-              const result = await res.json();
-              // console.log("Response:", result);
-
-              if (res.ok) {
-                secureNoteField.value = result.secure_note;
-                secureNoteField.removeAttribute("disabled");
-                authSection.style.display = "none";
-                unlockBtn.style.display = "none";
-              } else {
-                alert(result.error || "認証に失敗しました");
-              }
-            } catch (err) {
-              console.error("Fetch error:", err);
-              alert("取得中にエラーが発生しました");
-            }
-          });
-        });
-      </script>
-      <div class="row mb-3">
-        <div class="col-md-12">
-          <label for="secure_note">機密情報（口座情報など）</label>
-          <textarea name="secure_note" class="form-control" rows="3" placeholder="※表示・編集には別途パスワード認証が必要です" <%= editAsset && editAsset.secure_note ? '' : 'disabled' %>><%= editAsset && editAsset.secure_note ? editAsset.secure_note : (editAsset ? '🔒 セキュア情報はパスワード認証で取得' : '') %></textarea>
-          <small class="form-text text-muted">※ 登録後の表示・編集はパスワード再認証が必要です</small>
-        </div>
-      </div>
-      <div class="text-center">
-        <button type="submit" class="btn btn-primary btn-ig" style="width: 60%;"><%= editAsset ? "更新する" : "資産を登録" %></button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div class="container mt-4">
-  <div class="card shadow-sm mb-4">
-    <div class="card-header text-white" style="background-color: #3a7ca5;">
-      <h5 class="mb-0">登録済み資産一覧</h5>
+    <div class="d-flex justify-content-start align-items-center mb-3">
+      <button class="btn btn-primary btn-sm" id="newAssetBtn">資産を新規追加</button>
+      <h6 class="mb-0 text-muted ms-3">登録・編集はモーダルから行います</h6>
     </div>
-    <div class="card-body">
-      <% if (assets.length === 0) { %>
-        <p>現在登録されている資産はありません。</p>
-      <% } else { %>
-        <table class="table table-bordered table-sm">
-          <thead>
+
+    <% if (assets.length === 0) { %>
+      <p class="text-muted">現在登録されている資産はありません。<button type="button" class="btn btn-link p-0 align-baseline" id="newAssetInline">こちらから登録</button></p>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm align-middle">
+          <thead style="background-color: #3a7ca5;" class="text-white">
             <tr>
-              <th>区分</th>
-              <th>項目</th>
-              <th>code</th>
-              <th>内容</th>
-              <th>数量</th>
-              <th>単位</th>
-              <th>操作</th>
+              <th class="text-center align-middle">区分</th>
+              <th class="text-center align-middle">項目</th>
+              <th class="text-center align-middle">code</th>
+              <th class="text-center align-middle">内容</th>
+              <th class="text-center align-middle">数量</th>
+              <th class="text-center align-middle">単位</th>
+              <th class="text-center align-middle">登録</th>
+              <th class="text-center align-middle">更新</th>
+              <th class="text-center align-middle" style="width: 120px;">操作</th>
             </tr>
           </thead>
           <tbody>
-            <% assets.forEach(asset => { %>
+            <% assets.forEach(asset => { 
+              const assetPayload = {
+                id: asset._id,
+                asset_cf: asset.asset_cf,
+                asset_item: asset.asset_item,
+                code: asset.code || '',
+                content: asset.content || '',
+                amount: asset.amount,
+                monetary_unit: asset.monetary_unit
+              };
+            %>
               <tr>
                 <td><%= asset.asset_cf %></td>
                 <td><%= asset.asset_item %></td>
@@ -199,8 +68,22 @@
                 <td><%= asset.content %></td>
                 <td class="text-end"><%= asset.amount.toLocaleString() %></td>
                 <td><%= asset.monetary_unit %></td>
+                <td class="small">
+                  <div><%= asset.createdBy?.displayname || asset.createdBy?.username || '記録なし' %></div>
+                  <div class="text-muted"><%= asset.entry_date ? new Date(asset.entry_date).toLocaleString('ja-JP') : '-' %></div>
+                </td>
+                <td class="small">
+                  <div><%= asset.updatedBy?.displayname || asset.updatedBy?.username || '記録なし' %></div>
+                  <div class="text-muted"><%= asset.update_date ? new Date(asset.update_date).toLocaleString('ja-JP') : '-' %></div>
+                </td>
                 <td class="d-flex gap-1">
-                  <a href="/asset/edit/<%= asset._id %>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                  <button
+                    type="button"
+                    class="btn btn-warning btn-sm edit-asset-btn"
+                    data-id="<%= asset._id %>"
+                    data-asset='<%- JSON.stringify(assetPayload).replace(/'/g, '&#39;') %>'>
+                    <i class="fas fa-edit"></i>
+                  </button>
                   <form action="/asset/<%= asset._id %>?_method=DELETE" method="POST" onsubmit="return confirm('削除してもよろしいですか？')">
                     <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
                   </form>
@@ -209,14 +92,120 @@
             <% }) %>
           </tbody>
         </table>
-      <% } %>
-    </div>
+      </div>
+    <% } %>
   </div>
-  <div class="text-center mb-5">
-    <div class="d-grid gap-2 col-lg-6 mx-auto">
-      <a href="/asset/display" class="btn btn-success btn-lg">資産状況</a>
-      <a href="/asset/inventory" class="btn btn-outline-primary">棚卸し入力</a>
-      <a href="/asset/history" class="btn btn-outline-secondary">棚卸し履歴</a>
+</div>
+
+<!-- Asset Modal -->
+<div class="modal fade" id="assetModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="assetModalLabel">資産を登録</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="assetForm" action="/asset/create" method="POST">
+        <div class="modal-body">
+          <input type="hidden" id="assetIdField">
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="asset_cf">資産区分<span style="color: red;">（*必須）</span></label>
+              <select name="asset_cf" id="asset_cf" class="form-control" required>
+                <% asset_cfs.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="current_asset_group" style="display:none;">
+              <label>金融資産内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_current" class="form-control">
+                <% current_assets.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="fixed_asset_group" style="display:none;">
+              <label>実物資産内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_fixed" class="form-control">
+                <% fixed_assets.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="intangible_asset_group" style="display:none;">
+              <label>無形資産内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_intangible" class="form-control">
+                <% intangible_assets.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="debt_group" style="display:none;">
+              <label>負債内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_debt" class="form-control">
+                <% ['Please Choice','住宅ローン','自動車ローン','その他ローン','その他負債'].forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="code">コード（株式の場合：証券コード、為替の場合＄なら$）</label>
+              <input type="text" name="code" id="code" class="form-control">
+            </div>
+            <div class="col-md-5">
+              <label for="content">資産内容<span style="color: red;">（*必須）</span></label>
+              <textarea name="content" id="content" class="form-control" required></textarea>
+            </div>
+            <div class="col-md-3">
+              <label for="amount">数量<span style="color: red;">（*必須）</span></label>
+              <input type="number" name="amount" id="amount" class="form-control" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="monetary_unit">単位<span style="color: red;">（*必須）</span></label>
+              <select name="monetary_unit" id="monetary_unit" class="form-control" required>
+                <% monetary_units.forEach(unit => { %>
+                  <option value="<%= unit %>"><%= unit %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-8 d-flex align-items-end">
+              <small class="form-text text-muted">※ 負債の場合はマイナスの金額（例：-3000000）で入力してください</small>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-12 text-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="unlockSecureNoteBtn">
+                🔐 機密情報を表示・編集する
+              </button>
+            </div>
+          </div>
+          <div class="row mb-3" id="secureNoteAuthSection" style="display: none;">
+            <div class="col-md-6">
+              <input type="password" id="secureNotePassword" name="password" class="form-control" placeholder="パスワードを入力">
+            </div>
+            <div class="col-md-6">
+              <button type="button" class="btn btn-primary" id="verifySecureNoteBtn">認証</button>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label for="secure_note">機密情報（口座情報など）</label>
+              <textarea name="secure_note" id="secure_note" class="form-control" rows="3" placeholder="※編集時はパスワード認証が必要です" disabled></textarea>
+              <small class="form-text text-muted">※ 登録後の表示・編集はパスワード再認証が必要です</small>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+          <button type="submit" class="btn btn-primary">保存する</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -228,7 +217,18 @@
     const fixedAssetGroup = document.getElementById("fixed_asset_group");
     const intangibleAssetGroup = document.getElementById("intangible_asset_group");
     const debtGroup = document.getElementById("debt_group");
-    const debts = ['Please Choice','住宅ローン','自動車ローン','その他ローン','その他負債']; // ←ビューでも定義
+    const assetModal = new bootstrap.Modal(document.getElementById('assetModal'));
+    const modalTitle = document.getElementById('assetModalLabel');
+    const assetForm = document.getElementById('assetForm');
+    const newAssetBtn = document.getElementById('newAssetBtn');
+    const newAssetInline = document.getElementById('newAssetInline');
+    const unlockBtn = document.getElementById("unlockSecureNoteBtn");
+    const authSection = document.getElementById("secureNoteAuthSection");
+    const verifyBtn = document.getElementById("verifySecureNoteBtn");
+    const passwordInput = document.getElementById("secureNotePassword");
+    const secureNoteField = document.getElementById("secure_note");
+    const assetIdField = document.getElementById("assetIdField");
+    let editingAssetId = null;
 
     const selects = currentAssetGroup.querySelectorAll('select, input');
     const fixedSelects = fixedAssetGroup.querySelectorAll('select, input');
@@ -260,7 +260,121 @@
       }
     }
 
+    function fillForm(asset) {
+      assetForm.reset();
+      authSection.style.display = "none";
+      passwordInput.value = '';
+      secureNoteField.value = '';
+      secureNoteField.setAttribute("disabled", "disabled");
+      unlockBtn.style.display = "inline-block";
+      editingAssetId = asset?.id || null;
+
+      if (!asset) {
+        modalTitle.textContent = "資産を登録";
+        assetForm.action = "/asset/create";
+        cfSelect.value = cfSelect.options[0]?.value || '';
+        toggleCategory();
+        // 新規はセキュア情報なし
+        unlockBtn.style.display = "none";
+        return;
+      }
+
+      modalTitle.textContent = "資産を編集";
+      assetForm.action = `/asset/update/${asset.id}`;
+      assetIdField.value = asset.id;
+      document.getElementById('code').value = asset.code || '';
+      document.getElementById('content').value = asset.content || '';
+      document.getElementById('amount').value = asset.amount || 0;
+      document.getElementById('monetary_unit').value = asset.monetary_unit || '';
+      cfSelect.value = asset.asset_cf || '';
+
+      toggleCategory();
+      if (asset.asset_cf === "金融資産") {
+        document.getElementById('asset_item_current').value = asset.asset_item || '';
+      } else if (asset.asset_cf === "実物資産") {
+        document.getElementById('asset_item_fixed').value = asset.asset_item || '';
+      } else if (asset.asset_cf === "無形資産") {
+        document.getElementById('asset_item_intangible').value = asset.asset_item || '';
+      } else if (asset.asset_cf === "負債") {
+        document.getElementById('asset_item_debt').value = asset.asset_item || '';
+      }
+
+      secureNoteField.value = "🔒 セキュア情報はパスワード認証で取得";
+    }
+
     cfSelect.addEventListener("change", toggleCategory);
     toggleCategory();
+
+    newAssetBtn.addEventListener("click", () => {
+      fillForm(null);
+      assetModal.show();
+    });
+    if (newAssetInline) {
+      newAssetInline.addEventListener("click", (e) => {
+        e.preventDefault();
+        fillForm(null);
+        assetModal.show();
+      });
+    }
+
+    document.querySelectorAll('.edit-asset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const asset = JSON.parse(btn.dataset.asset);
+        fillForm(asset);
+        assetModal.show();
+      });
+    });
+
+    unlockBtn.addEventListener("click", function () {
+      authSection.style.display = "flex";
+    });
+
+    verifyBtn.addEventListener("click", async function () {
+      const password = passwordInput.value.trim();
+
+      if (!password) {
+        alert("パスワードを入力してください");
+        return;
+      }
+
+      if (!editingAssetId) {
+        alert("資産IDが見つかりません（編集モードのみ対応）");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/secure-note/${editingAssetId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          secureNoteField.value = result.secure_note;
+          secureNoteField.removeAttribute("disabled");
+          authSection.style.display = "none";
+          unlockBtn.style.display = "none";
+        } else {
+          alert(result.error || "認証に失敗しました");
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        alert("取得中にエラーが発生しました");
+      }
+    });
+
+    // クエリパラメータでモーダルを開く（displayからの導線用）
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('open') === 'create') {
+      fillForm(null);
+      assetModal.show();
+    } else if (params.get('assetId')) {
+      const btn = document.querySelector(`.edit-asset-btn[data-id="${params.get('assetId')}"]`);
+      if (btn) {
+        btn.click();
+      }
+    }
   });
 </script>

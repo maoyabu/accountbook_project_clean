@@ -9,9 +9,20 @@ const inventoryItemSchema = new mongoose.Schema({
   asset_item: String,
   code: String,
   content: String,
+  amount: {
+    type: Number,
+    default: 0
+  },
   amountYen: {
     type: Number,
     default: 0
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updatedAt: {
+    type: Date
   }
 });
 

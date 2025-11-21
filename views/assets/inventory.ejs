@@ -1,14 +1,22 @@
 <% layout('layouts/boilerplate') %>
 
-<div class="card shadow-sm mt-3">
+<div class="mt-3 mb-2">
+  <div class="small text-muted">
+    <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 棚卸し
+  </div>
+</div>
+
+<div class="card shadow-sm">
   <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
     <h5 class="mb-0"><%= inventoryTitle %></h5>
     <div class="d-flex gap-2">
-      <a href="/asset/history" class="btn btn-warning btn-sm">履歴一覧</a>
-      <a href="/asset" class="btn btn-light btn-sm">資産入力へ戻る</a>
+      <a href="/asset/history" class="btn btn-warning btn-sm">資産の推移</a>
     </div>
   </div>
   <div class="card-body">
+    <div class="alert alert-primary">
+      棚卸しは3月・6月・9月・12月のみ登録できます。<%= latestAllowedMonth ? `${latestAllowedMonth.getFullYear()}年${String(latestAllowedMonth.getMonth() + 1).padStart(2, '0')}月` : '' %>までが登録対象です。
+    </div>
     <% if (targetInventory) { %>
       <div class="alert alert-success">
         この棚卸しは <%= new Date(targetInventory.updatedAt || targetInventory.createdAt).toLocaleString('ja-JP') %> に
@@ -28,7 +36,7 @@
     <% if (inventoryRows.length === 0) { %>
       <p class="text-muted">登録されている資産がありません。まず資産を登録してください。</p>
     <% } else { %>
-      <form action="/asset/inventory" method="POST">
+      <form action="/asset/inventory" method="POST" id="inventoryForm">
         <input type="hidden" name="inventoryMonth" value="<%= targetMonthValue %>">
         <div class="table-responsive">
           <table class="table table-bordered table-sm align-middle">
@@ -37,36 +45,164 @@
                 <th style="width: 120px;">区分</th>
                 <th style="width: 150px;">項目</th>
                 <th>内容</th>
-                <th style="width: 90px;">コード</th>
-                <th style="width: 180px;" class="text-end">棚卸し金額(円)</th>
+                <th style="width: 120px;">コード</th>
+                <th style="width: 180px;" class="text-end">棚卸し入力</th>
+                <th style="width: 160px;">操作 / 更新情報</th>
               </tr>
             </thead>
             <tbody>
               <% inventoryRows.forEach((row, idx) => { %>
+                <% const inputId = `inv-${idx}`; %>
                 <tr>
                   <td><%= row.asset.asset_cf %></td>
                   <td><%= row.asset.asset_item %></td>
                   <td><%= row.asset.content %></td>
-                  <td><%= row.asset.code %></td>
-                  <td>
+                  <td><%= row.asset.code || '-' %></td>
+                  <td class="text-end fw-bold" data-inventory-display="<%= inputId %>">
+                    <% if (row.isStockQuantity) { %>
+                      <span class="badge bg-light text-dark border me-1">株数</span>
+                      <span data-inventory-display-value="<%= inputId %>"><%= row.amount.toLocaleString() %></span>
+                      <div class="text-muted small">前回換算額: ¥<%= row.amountYen.toLocaleString() %></div>
+                    <% } else if (row.isFxQuantity) { %>
+                      <span class="badge bg-light text-dark border me-1">外貨</span>
+                      <span data-inventory-display-value="<%= inputId %>"><%= row.amount.toLocaleString() %></span>
+                      <div class="text-muted small">前回換算額: ¥<%= row.amountYen.toLocaleString() %></div>
+                    <% } else { %>
+                      ¥<span data-inventory-display-value="<%= inputId %>"><%= row.amountYen.toLocaleString() %></span>
+                    <% } %>
+                  </td>
+                  <td class="text-center">
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm inventory-edit-btn"
+                      data-asset='<%- JSON.stringify({
+                        inputId,
+                        assetId: row.asset._id,
+                        label: `${row.asset.asset_cf} / ${row.asset.asset_item}`,
+                        content: row.asset.content,
+                        amountYen: row.amountYen,
+                        amount: row.amount,
+                        isStockQuantity: row.isStockQuantity,
+                        isFxQuantity: row.isFxQuantity,
+                        updatedBy: row.itemUpdatedBy,
+                        updatedAt: row.itemUpdatedAt
+                      }).replace(/'/g, '&#39;') %>'>
+                      棚卸し
+                    </button>
                     <input type="hidden" name="items[<%= idx %>][asset]" value="<%= row.asset._id %>">
-                    <input type="number"
-                           name="items[<%= idx %>][amountYen]"
-                           class="form-control form-control-sm text-end"
-                           value="<%= row.amountYen %>"
-                           step="1">
+                    <% if (row.isStockQuantity || row.isFxQuantity) { %>
+                      <input type="hidden" name="items[<%= idx %>][amount]" data-inventory-quantity="<%= inputId %>" value="<%= row.amount %>">
+                      <input type="hidden" name="items[<%= idx %>][amountYen]" value="<%= row.amountYen %>">
+                    <% } else { %>
+                      <input type="hidden" name="items[<%= idx %>][amount]" value="<%= row.amountYen %>">
+                      <input type="hidden" name="items[<%= idx %>][amountYen]" data-inventory-input="<%= inputId %>" value="<%= row.amountYen %>">
+                    <% } %>
+                    <div class="mt-2 text-start small text-muted">
+                      <div>更新者：<span data-updated-by="<%= inputId %>"><%= row.itemUpdatedBy?.displayname || row.itemUpdatedBy?.username || '未記録' %></span></div>
+                      <div>更新日時：<span data-updated-at="<%= inputId %>"><%= row.itemUpdatedAt ? new Date(row.itemUpdatedAt).toLocaleString('ja-JP') : '-' %></span></div>
+                    </div>
                   </td>
                 </tr>
               <% }) %>
             </tbody>
           </table>
         </div>
-        <p class="text-muted small">前回棚卸しの数値を初期表示しています。必要に応じて修正し、保存してください。</p>
-        <div class="d-flex justify-content-between">
-          <a href="/asset/history" class="btn btn-outline-secondary">履歴を見る</a>
+        <p class="text-muted small mb-3">
+          株式と為替は数量（株数・外貨額）を入力し、棚卸し月のレート／株価で自動換算します。その他の資産は金額（円）を入力してください。
+        </p>
+        <div class="text-end">
           <button type="submit" class="btn btn-primary">棚卸しを保存</button>
         </div>
       </form>
     <% } %>
   </div>
 </div>
+
+<!-- Inventory modal -->
+<div class="modal fade" id="inventoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="inventoryModalLabel">棚卸しを編集</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2 text-muted small" id="inventoryModalDesc"></div>
+        <label for="inventoryAmountInput" class="form-label" id="inventoryModalLabelInput">棚卸し金額（円）</label>
+        <input type="number" class="form-control" id="inventoryAmountInput" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+        <button type="button" class="btn btn-primary" id="inventorySaveBtn">更新する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const inventoryModal = new bootstrap.Modal(document.getElementById('inventoryModal'));
+    const modalLabel = document.getElementById('inventoryModalLabel');
+    const modalDesc = document.getElementById('inventoryModalDesc');
+    const modalLabelInput = document.getElementById('inventoryModalLabelInput');
+    const amountInput = document.getElementById('inventoryAmountInput');
+    const currentUserDisplay = "<%= currentUserDisplay %>";
+    let currentRow = null;
+    let currentRowButton = null;
+
+    document.querySelectorAll('.inventory-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const payload = JSON.parse(btn.dataset.asset);
+        currentRow = payload;
+        currentRowButton = btn;
+        modalLabel.textContent = payload.label;
+        modalDesc.textContent = payload.content || '';
+        if (payload.isStockQuantity) {
+          modalLabelInput.textContent = '棚卸し株数（数量）';
+          amountInput.value = payload.amount || 0;
+        } else if (payload.isFxQuantity) {
+          modalLabelInput.textContent = '棚卸し数量（外貨額）';
+          amountInput.value = payload.amount || 0;
+        } else {
+          modalLabelInput.textContent = '棚卸し金額（円）';
+          amountInput.value = payload.amountYen || 0;
+        }
+        amountInput.focus();
+        inventoryModal.show();
+      });
+    });
+
+    document.getElementById('inventorySaveBtn').addEventListener('click', () => {
+      if (!currentRow) return;
+      const newValue = Number(amountInput.value) || 0;
+      const displayValue = document.querySelector(`[data-inventory-display-value="${currentRow.inputId}"]`);
+
+      if (currentRow.isStockQuantity || currentRow.isFxQuantity) {
+        const hiddenQty = document.querySelector(`[data-inventory-quantity="${currentRow.inputId}"]`);
+        if (hiddenQty) hiddenQty.value = newValue;
+        if (displayValue) displayValue.textContent = newValue.toLocaleString();
+        currentRow.amount = newValue;
+      } else {
+        const hiddenInput = document.querySelector(`[data-inventory-input="${currentRow.inputId}"]`);
+        if (hiddenInput) hiddenInput.value = newValue;
+        if (displayValue) displayValue.textContent = newValue.toLocaleString();
+        currentRow.amountYen = newValue;
+        currentRow.amount = newValue;
+      }
+
+      // 更新者/日時を即時表示（保存後にサーバ側でも記録）
+      const updatedByText = document.querySelector(`[data-updated-by="${currentRow.inputId}"]`);
+      const updatedAtText = document.querySelector(`[data-updated-at="${currentRow.inputId}"]`);
+      const now = new Date();
+      if (updatedByText) updatedByText.textContent = currentUserDisplay || '編集中のユーザー';
+      if (updatedAtText) updatedAtText.textContent = now.toLocaleString('ja-JP');
+      currentRow.updatedBy = currentUserDisplay;
+      currentRow.updatedAt = now;
+
+      if (currentRowButton) {
+        currentRowButton.dataset.asset = JSON.stringify(currentRow);
+      }
+      inventoryModal.hide();
+    });
+  });
+</script>

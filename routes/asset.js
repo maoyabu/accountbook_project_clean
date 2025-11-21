@@ -16,12 +16,18 @@ const fixed_assets = ['Please Choice','土地・建物','株式','債権','生�
 const intangible_assets = ['Please Choice','著作権','商標権','特許','その他無形資産'];
 const debt = ['Please Choice','住宅ローン','自動車ローン','その他ローン','その他負債'];
 const monetary_units = ['Please Choice','円','$','数量',];
-const iv = crypto.randomBytes(16);
 
+const QUARTER_MONTHS = [2, 5, 8, 11]; // 3, 6, 9, 12
+
+// 棚卸しを行える直近（かつ過ぎていない）四半期の開始月を返す。3/6/9/12基準。
 const getQuarterStart = (date) => {
   const month = date.getMonth();
-  const quarterStartMonth = Math.floor(month / 3) * 3;
-  return new Date(date.getFullYear(), quarterStartMonth, 1);
+  const passed = QUARTER_MONTHS.filter((m) => m <= month);
+  if (passed.length) {
+    return new Date(date.getFullYear(), passed[passed.length - 1], 1);
+  }
+  // まだ3月に到達していない場合は前年12月を返す
+  return new Date(date.getFullYear() - 1, QUARTER_MONTHS[QUARTER_MONTHS.length - 1], 1);
 };
 
 const formatYearMonth = (date) => {
@@ -48,7 +54,10 @@ router.get('/', ensureAuthenticated, async (req, res) => {
         }
       }
 
-      const assets = await Asset.find({ group: groupId }).sort({ entry_date: -1 });
+      const assets = await Asset.find({ group: groupId })
+        .sort({ entry_date: -1 })
+        .populate('createdBy', 'username displayname')
+        .populate('updatedBy', 'username displayname');
       res.render('assets/edit', {
         assets,
         editAsset: null,
@@ -84,7 +93,11 @@ router.post('/create', ensureAuthenticated, async (req, res) => {
         amount,
         monetary_unit,
         user: req.user._id,
+        createdBy: req.user._id,
+        updatedBy: req.user._id,
         group: activeGroupId,
+        entry_date: new Date(),
+        update_date: new Date(),
         secure_note: req.body.secure_note // will be encrypted via schema pre-save
       });
   
@@ -117,18 +130,7 @@ router.get('/edit/:id', ensureAuthenticated, async (req, res) => {
       req.flash('error', '資産が見つかりません');
       return res.redirect('/asset');
     }
-
-    const assets = await Asset.find({ group: req.session.activeGroupId }).sort({ entry_date: -1 });
-
-    res.render('assets/edit', {
-      assets,
-      editAsset: asset,
-      asset_cfs,
-      current_assets,
-      fixed_assets,
-      intangible_assets,
-      monetary_units
-    });
+    return res.redirect(`/asset?assetId=${asset._id}`);
   } catch (err) {
     console.error(err);
     res.status(500).send('編集画面の表示中にエラーが発生しました。');
@@ -150,7 +152,8 @@ router.post('/update/:id', ensureAuthenticated, async (req, res) => {
         amount,
         monetary_unit,
         secure_note, // 平文のまま渡し、モデル側で暗号化
-        update_date: new Date()
+        update_date: new Date(),
+        updatedBy: req.user._id
       }
     );
 
@@ -245,6 +248,111 @@ async function calculateAssetYen(asset, rateCache = {}, stockCache = {}) {
   return Math.round(asset.amount);
 }
 
+// 棚卸し日を基準に株価を取得（なければ最新）
+async function getStockPriceAtDate(stockCode, targetDate) {
+  if (!stockCode) return 1;
+  const year = targetDate.getFullYear();
+  const url = `https://kabuoji3.com/stock/${stockCode}/${year}/`;
+  try {
+    const response = await axios.get(url);
+    const $ = getCheerio().load(response.data);
+    let chosen = null;
+    const targetTime = targetDate.getTime();
+
+    $('table.stock_table tbody tr').each((_, tr) => {
+      const tds = $(tr).find('td');
+      if (tds.length < 5) return;
+      const dateStr = $(tds[0]).text().trim();
+      const priceStr = $(tds[4]).text().replace(/,/g, '').trim() || $(tds[1]).text().replace(/,/g, '').trim();
+      const parsed = new Date(dateStr);
+      const price = parseFloat(priceStr);
+      if (isNaN(parsed) || isNaN(price)) return;
+      const time = parsed.getTime();
+      if (time <= targetTime && chosen === null) {
+        chosen = price;
+      }
+    });
+
+    if (chosen !== null && !isNaN(chosen)) {
+      return chosen;
+    }
+  } catch (err) {
+    console.error(`株価履歴取得エラー（${stockCode}）:`, err.message);
+  }
+  // fallback to latest
+  return getStockPriceFromNIkkei(stockCode);
+}
+
+async function calculateStockYenOnDate(asset, quantity, targetDate, stockCache = {}) {
+  const code = asset.code;
+  if (!code) return Math.round(quantity || 0);
+  const cacheKey = `${code}-${formatYearMonth(targetDate)}`;
+  if (!stockCache[cacheKey]) {
+    stockCache[cacheKey] = await getStockPriceAtDate(code, targetDate);
+  }
+  return Math.round(quantity * stockCache[cacheKey]);
+}
+
+// 棚卸し履歴をグラフ用の配列に整形
+function buildInventoryChartData(inventories = []) {
+  const labels = [];
+  const series = {
+    financial: [],
+    physical: [],
+    intangible: [],
+    debt: [],
+    total: []
+  };
+
+  inventories.forEach((inv) => {
+    const totals =
+      inv.totalByCf instanceof Map ? Object.fromEntries(inv.totalByCf) : inv.totalByCf || {};
+    const financial = totals['金融資産'] || 0;
+    const physical = totals['実物資産'] || 0;
+    const intangible = totals['無形資産'] || 0;
+    const debt = totals['負債'] || 0;
+    const total = financial + physical + intangible + debt;
+
+    labels.push(
+      `${inv.inventoryMonth.getFullYear()}年${String(inv.inventoryMonth.getMonth() + 1).padStart(2, '0')}月`
+    );
+    series.financial.push(financial);
+    series.physical.push(physical);
+    series.intangible.push(intangible);
+    series.debt.push(debt);
+    series.total.push(total);
+  });
+
+  return { labels, series };
+}
+
+// 棚卸し告知（棚卸し翌月の1ヶ月間表示）
+function getInventoryCallout(now = new Date()) {
+  const year = now.getFullYear();
+  const candidates = [
+    new Date(year - 1, 11, 1), // 前年12月
+    new Date(year, 2, 1), // 3月
+    new Date(year, 5, 1), // 6月
+    new Date(year, 8, 1), // 9月
+    new Date(year, 11, 1) // 12月
+  ];
+
+  for (const invMonth of candidates) {
+    const displayMonth = new Date(invMonth.getFullYear(), invMonth.getMonth() + 1, 1);
+    if (
+      displayMonth.getFullYear() === now.getFullYear() &&
+      displayMonth.getMonth() === now.getMonth()
+    ) {
+      return {
+        monthValue: formatYearMonth(invMonth),
+        label: `${invMonth.getFullYear()}年${String(invMonth.getMonth() + 1).padStart(2, '0')}月`,
+        displayMonth
+      };
+    }
+  }
+  return null;
+}
+
 // 棚卸し画面の表示
 router.get('/inventory', ensureAuthenticated, async (req, res) => {
   try {
@@ -256,34 +364,65 @@ router.get('/inventory', ensureAuthenticated, async (req, res) => {
     const monthParam = req.query.month;
     const now = new Date();
     const parsedMonth = monthParam ? new Date(`${monthParam}-01`) : null;
-    const targetBase = parsedMonth && !isNaN(parsedMonth) ? parsedMonth : getQuarterStart(now);
-    const targetMonth = new Date(targetBase.getFullYear(), targetBase.getMonth(), 1);
+    const latestAllowedMonth = getQuarterStart(now);
+    const targetMonth = parsedMonth && !isNaN(parsedMonth) ? getQuarterStart(parsedMonth) : latestAllowedMonth;
+
+    if (targetMonth.getTime() > latestAllowedMonth.getTime()) {
+      req.flash('error', '棚卸しは3・6・9・12月に到達してから登録できます。対象月を切り替えました。');
+      return res.redirect(`/asset/inventory?month=${formatYearMonth(latestAllowedMonth)}`);
+    }
 
     const assets = await Asset.find({ group: groupId }).sort({ asset_cf: 1, asset_item: 1, entry_date: -1 });
-    const latestInventory = await AssetInventory.findOne({ group: groupId }).sort({ inventoryMonth: -1 }).populate('updatedBy', 'username displayname');
-    const targetInventory = await AssetInventory.findOne({ group: groupId, inventoryMonth: targetMonth }).populate('updatedBy', 'username displayname');
+    const latestInventory = await AssetInventory.findOne({ group: groupId }).sort({ inventoryMonth: -1 }).populate('updatedBy', 'username displayname').populate('items.updatedBy', 'username displayname');
+    const targetInventory = await AssetInventory.findOne({ group: groupId, inventoryMonth: targetMonth }).populate('updatedBy', 'username displayname').populate('items.updatedBy', 'username displayname');
     const prefillInventory = targetInventory || latestInventory;
     const rateCache = {};
     const stockCache = {};
+    const stockDateCache = {};
     const inventoryRows = [];
 
     for (const asset of assets) {
       const fromInventory = prefillInventory?.items?.find((item) => item.asset?.toString() === asset._id.toString());
+      const isStockQuantity = asset.asset_item === '株式' && asset.monetary_unit === '数量';
+      const isFxQuantity = asset.asset_item === '為替';
+      const amountFallback = isStockQuantity
+        ? (typeof fromInventory?.amount === 'number' && !isNaN(fromInventory.amount) ? fromInventory.amount : asset.amount ?? 0)
+        : isFxQuantity
+        ? (typeof fromInventory?.amount === 'number' && !isNaN(fromInventory.amount) ? fromInventory.amount : asset.amount ?? 0)
+        : (typeof fromInventory?.amountYen === 'number' && !isNaN(fromInventory.amountYen) ? fromInventory.amountYen : asset.amount ?? 0);
       let amountYen = 0;
 
       if (fromInventory) {
         amountYen = fromInventory.amountYen;
       } else {
-        amountYen = await calculateAssetYen(asset, rateCache, stockCache);
+        if (isStockQuantity) {
+          amountYen = await calculateStockYenOnDate(asset, amountFallback, targetMonth, stockDateCache);
+        } else if (isFxQuantity) {
+          // 為替は数量（外貨）から換算
+          const rateCode = asset.code || '$';
+          if (!rateCache[rateCode]) {
+            rateCache[rateCode] = await getExchangeRate(rateCode);
+          }
+          amountYen = Math.round(amountFallback * rateCache[rateCode]);
+        } else {
+          amountYen = await calculateAssetYen(asset, rateCache, stockCache);
+        }
       }
 
       inventoryRows.push({
         asset,
-        amountYen
+        amountYen,
+        amount: amountFallback,
+        isStockQuantity,
+        isFxQuantity,
+        itemUpdatedBy: fromInventory?.updatedBy,
+        itemUpdatedAt: fromInventory?.updatedAt
       });
     }
 
     const inventoryTitle = `${targetMonth.getFullYear()}年${String(targetMonth.getMonth() + 1).padStart(2, '0')}月の棚卸し`;
+
+    const currentUserDisplay = req.user?.displayname || req.user?.username || '';
 
     res.render('assets/inventory', {
       inventoryRows,
@@ -291,7 +430,9 @@ router.get('/inventory', ensureAuthenticated, async (req, res) => {
       targetMonthValue: formatYearMonth(targetMonth),
       targetInventory,
       latestInventory,
-      inventoryTitle
+      inventoryTitle,
+      latestAllowedMonth,
+      currentUserDisplay
     });
   } catch (err) {
     console.error(err);
@@ -314,7 +455,13 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
     }
 
     const monthDate = new Date(`${inventoryMonth}-01`);
-    const targetMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const targetMonth = getQuarterStart(monthDate);
+    const latestAllowedMonth = getQuarterStart(new Date());
+
+    if (isNaN(monthDate) || targetMonth.getTime() > latestAllowedMonth.getTime()) {
+      req.flash('error', '棚卸しは3・6・9・12月に到達後に登録してください。');
+      return res.redirect(`/asset/inventory?month=${formatYearMonth(latestAllowedMonth)}`);
+    }
     const rawItems = Array.isArray(items) ? items : Object.values(items || {});
     const assetIds = rawItems.map((i) => i.asset).filter(Boolean);
     const assetDocs = await Asset.find({ group: groupId, _id: { $in: assetIds } });
@@ -323,11 +470,17 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
     const snapshotItems = [];
     const totalByCf = { '金融資産': 0, '実物資産': 0, '無形資産': 0, '負債': 0 };
     let totalYen = 0;
+    const stockDateCache = {};
+    const rateCache = {};
 
     rawItems.forEach((input) => {
       const asset = assetMap.get(String(input.asset));
       if (!asset) return;
-      const amountYen = Number(input.amountYen) || 0;
+      const isStockQuantity = asset.asset_item === '株式' && asset.monetary_unit === '数量';
+      const isFxQuantity = asset.asset_item === '為替';
+      const quantity = Number(input.amount);
+      const amountYenInput = Number(input.amountYen);
+      const amountValue = isStockQuantity || isFxQuantity ? (isNaN(quantity) ? 0 : quantity) : (isNaN(amountYenInput) ? 0 : amountYenInput);
 
       snapshotItems.push({
         asset: asset._id,
@@ -335,14 +488,37 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
         asset_item: asset.asset_item,
         code: asset.code,
         content: asset.content,
-        amountYen
+        amount: amountValue,
+        amountYen: 0, // 後でセット
+        updatedBy: req.user._id,
+        updatedAt: new Date()
       });
-
-      totalYen += amountYen;
-      if (totalByCf[asset.asset_cf] !== undefined) {
-        totalByCf[asset.asset_cf] += amountYen;
-      }
     });
+
+    // 株式（数量入力）は換算を計算しつつ合計へ集計
+    for (const item of snapshotItems) {
+      const asset = assetMap.get(String(item.asset));
+      if (!asset) continue;
+      const isStockQuantity = asset.asset_item === '株式' && asset.monetary_unit === '数量';
+      const isFxQuantity = asset.asset_item === '為替';
+      if (isStockQuantity) {
+        const yenValue = await calculateStockYenOnDate(asset, item.amount, targetMonth, stockDateCache);
+        item.amountYen = yenValue;
+      } else if (isFxQuantity) {
+        const code = asset.code || '$';
+        if (!rateCache[code]) {
+          rateCache[code] = await getExchangeRate(code);
+        }
+        item.amountYen = Math.round(item.amount * rateCache[code]);
+      } else {
+        item.amountYen = item.amount;
+      }
+
+      totalYen += item.amountYen;
+      if (totalByCf[asset.asset_cf] !== undefined) {
+        totalByCf[asset.asset_cf] += item.amountYen;
+      }
+    }
 
     const existing = await AssetInventory.findOne({ group: groupId, inventoryMonth: targetMonth });
 
@@ -383,7 +559,8 @@ router.get('/history', ensureAuthenticated, async (req, res) => {
     }
     const inventories = await AssetInventory.find({ group: groupId })
       .sort({ inventoryMonth: -1 })
-      .populate('updatedBy', 'username displayname');
+      .populate('updatedBy', 'username displayname')
+      .populate('items.updatedBy', 'username displayname');
 
     const history = inventories.map((inv) => {
       const totalByCf = inv.totalByCf instanceof Map ? Object.fromEntries(inv.totalByCf) : inv.totalByCf || {};
@@ -421,21 +598,10 @@ router.get('/history/graph', ensureAuthenticated, async (req, res) => {
     }
     const inventories = await AssetInventory.find({ group: groupId }).sort({ inventoryMonth: 1 });
 
-    const labels = [];
-    const financialData = [];
-    const physicalData = [];
-
-    inventories.forEach((inv) => {
-      const totalByCf = inv.totalByCf instanceof Map ? Object.fromEntries(inv.totalByCf) : inv.totalByCf || {};
-      labels.push(`${inv.inventoryMonth.getFullYear()}年${String(inv.inventoryMonth.getMonth() + 1).padStart(2, '0')}月`);
-      financialData.push(totalByCf['金融資産'] || 0);
-      physicalData.push(totalByCf['実物資産'] || 0);
-    });
+    const chartData = buildInventoryChartData(inventories);
 
     res.render('assets/historyGraph', {
-      labels: JSON.stringify(labels),
-      financialData: JSON.stringify(financialData),
-      physicalData: JSON.stringify(physicalData)
+      chartData: JSON.stringify(chartData)
     });
   } catch (err) {
     console.error(err);
@@ -446,7 +612,12 @@ router.get('/history/graph', ensureAuthenticated, async (req, res) => {
 router.get('/display', ensureAuthenticated, async (req, res) => {
     try {
         const groupId = req.session.activeGroupId;
+        if (!groupId) {
+          req.flash('error', 'アクティブなグループが選択されていません');
+          return res.redirect('/group_list');
+        }
         const assets = await Asset.find({ group: groupId }).sort({ entry_date: -1 });
+        const inventories = await AssetInventory.find({ group: groupId }).sort({ inventoryMonth: 1 });
         let exchangeRate = 1;
         let stockPrices = {};
     
@@ -484,17 +655,20 @@ router.get('/display', ensureAuthenticated, async (req, res) => {
           });
     }
 
-    res.render('assets/display', {
-        assets: assetDisplayList,
-        totalYen,
-        totalByCf,
-        exchangeRate,
-        stockPrices
-      });
+        res.render('assets/display', {
+            assets: assetDisplayList,
+            totalYen,
+            totalByCf,
+            exchangeRate,
+            stockPrices,
+            chartData: buildInventoryChartData(inventories),
+            latestInventory: inventories[inventories.length - 1] || null,
+            inventoryCallout: getInventoryCallout(new Date())
+          });
   
-    } catch (err) {
-      console.error(err);
-      res.status(500).send('エラーが発生しました。');
+        } catch (err) {
+          console.error(err);
+          res.status(500).send('エラーが発生しました。');
     }
 });
 
