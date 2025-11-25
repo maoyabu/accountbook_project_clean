@@ -80,6 +80,26 @@ label {
     font-weight: bold;
     font-size: 16px;
 }
+
+.finance-form-container {
+    /* max-width: 600px; */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.finance-form-container .date-input {
+    width: 160px !important; /* override Bootstrap/form-group defaults */
+    max-width: none;
+    display: inline-block;
+    flex: 0 0 auto !important;
+}
+
+.finance-form-container .short-input {
+    width: 160px !important;
+    max-width: none;
+    display: inline-block;
+    flex: 0 0 auto !important;
+}
 h2.profile-heading {
     font-size: 24px;
     font-weight: 700;

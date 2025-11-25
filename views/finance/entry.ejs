@@ -8,7 +8,7 @@
     ガイド
   </a>
 </div>
-  <div class="container">
+  <div class="container finance-form-container">
     <div class="card shadow-sm">
       <div class="card-header text-white" style="background-color: #3a7ca5;">
         <h5 class="mb-0">収支の新規入力</h5>
@@ -27,7 +27,7 @@
                 <div class="form-group">
                     <label for="date">年月日</label>
                     <!-- <input type="date" id="date" name="date"> -->
-                    <input type="date" id="date" name="finance[date]" value="<%= formData?.corrected_date || formData?.date || '' %>" class="form-control <%= errors?.date ? 'error-field' : '' %>"><br>
+                    <input type="date" id="date" name="finance[date]" value="<%= formData?.corrected_date || formData?.date || '' %>" class="form-control date-input <%= errors?.date ? 'error-field' : '' %>"><br>
                     <div class="error-message">
                         <%= errors?.date ? errors.date : '' %>
                     </div>
@@ -35,7 +35,7 @@
 
                 <div class="form-group">
                     <label for="large_cf">収支区分</label>
-                    <select name="finance[cf]" id="cf" class="form-control <%= errors?.cf ? 'error-field' : '' %>">
+                    <select name="finance[cf]" id="cf" class="form-control short-input <%= errors?.cf ? 'error-field' : '' %>">
                         <% for (let la_cf of la_cfs) { %>
                             <option value="<%= la_cf %>" <%= formData?.cf === la_cf ? 'selected' : '' %>><%= la_cf %></option>
                         <% } %>
@@ -49,7 +49,7 @@
                 <div class="form-group category-group mb-2" id="expense_group" style="display: none;">
                   <div class="d-flex align-items-center">
                     <label for="expense_cf" class="me-2 mb-0" style="min-width: 90px;">支出区分</label>
-                    <select name="finance[expense_item]" id="expense_cf" class="form-control">
+                    <select name="finance[expense_item]" id="expense_cf" class="form-control short-input">
                       <% for (let ex_cf of ex_cfs) {%>
                         <option value="<%= ex_cf %>"><%= ex_cf %></option>
                       <% } %>
@@ -61,7 +61,7 @@
                 <div class="form-group category-group mb-2" id="income_group" style="display: none;">
                   <div class="d-flex align-items-center">
                     <label for="income_cf" class="me-2 mb-0" style="min-width: 90px;">収入区分</label>
-                    <select name="finance[income_item]" id="income_cf" class="form-control">
+                    <select name="finance[income_item]" id="income_cf" class="form-control short-input">
                       <% for (let in_item of in_items) {%>
                         <option value="<%= in_item %>"><%= in_item %></option>
                       <% } %>
@@ -73,7 +73,7 @@
                 <div class="form-group category-group mb-2" id="deduction_group" style="display: none;">
                   <div class="d-flex align-items-center">
                     <label for="dedu_cf" class="me-2 mb-0" style="min-width: 90px;">控除区分</label>
-                    <select name="finance[dedu_item]" id="dedu_cf" class="form-control">
+                    <select name="finance[dedu_item]" id="dedu_cf" class="form-control short-input">
                       <% for (let dedu_cf of dedu_cfs) {%>
                         <option value="<%= dedu_cf %>"><%= dedu_cf %></option>
                       <% } %>
@@ -85,7 +85,7 @@
                 <div class="form-group category-group mb-2" id="saving_group" style="display: none;">
                   <div class="d-flex align-items-center">
                     <label for="saving_cf" class="me-2 mb-0" style="min-width: 90px;">貯蓄区分</label>
-                    <select name="finance[saving_item]" id="saving_cf" class="form-control">
+                    <select name="finance[saving_item]" id="saving_cf" class="form-control short-input">
                       <% for (let saving_cf of saving_cfs) {%>
                         <option value="<%= saving_cf %>"><%= saving_cf %></option>
                       <% } %>
@@ -104,14 +104,14 @@
                 </div>
                 <div class="form-group">
                     <label for="amount">金額</label>
-                    <input type="number" name="finance[amount]" inputmode="numeric" style="ime-mode: inactive;" class="form-control" id="amount" value="<%= formData?.corrected_amount || formData?.amount || '' %>" class="<%= errors?.amount ? 'error-field' : '' %>">
+                    <input type="number" name="finance[amount]" inputmode="numeric" style="ime-mode: inactive;" class="form-control short-input" id="amount" value="<%= formData?.corrected_amount || formData?.amount || '' %>" class="<%= errors?.amount ? 'error-field' : '' %>">
                     <div class="error-message">
                         <%= errors?.amount ? errors.amount : '' %>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="payment_cf">支払種別</label>
-                      <select name="finance[payment_type]" id="payment_type" class="form-control <%= errors?.payment_type ? 'error-field' : '' %>">
+                      <select name="finance[payment_type]" id="payment_type" class="form-control short-input <%= errors?.payment_type ? 'error-field' : '' %>">
                         <% pay_cfs.forEach(pay_cf => { %>
                           <option value="<%= pay_cf %>" <%= formData?.payment_type === pay_cf ? 'selected' : '' %>><%= pay_cf %></option>
                         <% }) %>
@@ -126,7 +126,7 @@
                 </div>
                 <div class="form-group">
                     <label for="who">使用者</label>
-                    <select name="finance[user]" id="who" class="form-control <%= errors.user ? 'error-field' : '' %>">
+                    <select name="finance[user]" id="who" class="form-control short-input <%= errors.user ? 'error-field' : '' %>">
                       <% for (let u of allUsers || []) { 
                            const name = u.displayname || u.username;
                       %>
