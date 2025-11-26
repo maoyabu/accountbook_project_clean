@@ -78,6 +78,32 @@ async function loadCfItems(req) {
   global.pay_cfs = ['Please Choice', ...payItems.map(p => p.paymentItem)];
 }
 
+function formatDuplicateMessage(entry) {
+  const formatDate = (d) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    return dt.toISOString().split('T')[0];
+  };
+  const cf = entry?.cf || '';
+  const category = cf === '支出'
+    ? entry?.expense_item || ''
+    : cf === '収入'
+      ? entry?.income_item || ''
+      : cf === '控除'
+        ? entry?.dedu_item || ''
+        : cf === '貯蓄'
+          ? entry?.saving_item || ''
+          : '';
+  const content = entry?.content || '';
+  const asNumber = Number(entry?.amount);
+  const amountStr = Number.isFinite(asNumber)
+    ? asNumber.toLocaleString('ja-JP')
+    : (entry?.amount || '');
+  const payment = entry?.payment_type || '';
+
+  return `年月日: ${formatDate(entry?.date)}、収支区分: ${cf || '未指定'}、区分: ${category || '未指定'}、内容: ${content || '未入力'}、金額: ${amountStr}円、支払種別: ${payment || '未指定'}の登録が完了して、複製しました。次のレシートを入力してください！`;
+}
+
 
 //ミドルウェア部分はschema定義を切り出したので、、、
 const validatefinance = (req, res, next) => {
@@ -152,10 +178,22 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
 
     if (!date) errors.date = "日付は必須です";
-    if (!cf || cf === 'Please Choice') errors.cf = "収支区分は必須です";
+    if (!cf || cf === 'Please Choice') errors.cf = "収支区分は必須です。まだ登録は完了していません。";
+    if (cf === '支出' && (!finance.expense_item || finance.expense_item === 'Please Choice')) {
+        errors.expense_item = "支出区分は必須です。まだ登録は完了していません。";
+    }
+    if (cf === '収入' && (!finance.income_item || finance.income_item === 'Please Choice')) {
+        errors.income_item = "収入区分は必須です。まだ登録は完了していません。";
+    }
+    if (cf === '控除' && (!finance.dedu_item || finance.dedu_item === 'Please Choice')) {
+        errors.dedu_item = "控除区分は必須です。まだ登録は完了していません。";
+    }
+    if (cf === '貯蓄' && (!finance.saving_item || finance.saving_item === 'Please Choice')) {
+        errors.saving_item = "貯蓄区分は必須です。まだ登録は完了していません。";
+    }
     // 金額未入力の場合、OCRで抽出した金額があればそちらを利用
     if ((!amount || amount === '') && !extractedAmount) errors.amount = "金額は必須です";
-    if (!payment_type || payment_type === 'Please Choice') errors.payment_type = "支払種別は必須です";
+    if (!payment_type || payment_type === 'Please Choice') errors.payment_type = "支払種別は必須です、まだ登録は完了してません。";
     if (!user || user === 'Please Choice') errors.user = "対象者は必須です";
 
     if (Object.keys(errors).length > 0) {
@@ -261,6 +299,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
 
     //続けて入力
     if (nextAction === 'duplicate') {
+        const duplicateMessage = formatDuplicateMessage(newFinance);
         const cloneData = newFinance.toObject();
         delete cloneData._id;
         delete cloneData.entry_date;
@@ -287,6 +326,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             formattedDate,
             formattedEntryDate,
             formattedUpdateDate,
+            duplicateMessage,
             la_cfs,
             ex_cfs,
             in_items,
@@ -764,9 +804,21 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
     // 各項目のバリデーションをチェック
     if (!date) errors.date = "日付は必須です";
-    if (!cf || cf === 'Please Choice') errors.cf = "収支区分は必須です";  // cf のチェック
+    if (!cf || cf === 'Please Choice') errors.cf = "収支区分は必須です。まだ登録は完了していません。";  // cf のチェック
+    if (cf === '支出' && (!finance.expense_item || finance.expense_item === 'Please Choice')) {
+        errors.expense_item = "支出区分は必須です。まだ登録は完了していません。";
+    }
+    if (cf === '収入' && (!finance.income_item || finance.income_item === 'Please Choice')) {
+        errors.income_item = "収入区分は必須です。まだ登録は完了していません。";
+    }
+    if (cf === '控除' && (!finance.dedu_item || finance.dedu_item === 'Please Choice')) {
+        errors.dedu_item = "控除区分は必須です。まだ登録は完了していません。";
+    }
+    if (cf === '貯蓄' && (!finance.saving_item || finance.saving_item === 'Please Choice')) {
+        errors.saving_item = "貯蓄区分は必須です。まだ登録は完了していません。";
+    }
     if (!amount || amount === '') errors.amount = "金額は必須です";  // amount の空チェック
-    if (!payment_type || payment_type === 'Please Choice') errors.payment_type = "支払種別は必須です";
+    if (!payment_type || payment_type === 'Please Choice') errors.payment_type = "支払種別は必須です、まだ登録は完了してません。";
     if (!user || user === 'Please Choice') errors.user = "対象者は必須です";
 
     //エラーがあればそのままビューに戻す
@@ -848,6 +900,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
     //続けて入力するときは収支控除貯蓄の区分をは引きつがない
     if (nextAction === 'duplicate') {
+        const duplicateMessage = formatDuplicateMessage(updatedFinance);
         const clone = updatedFinance.toObject();
         delete clone._id;
         delete clone.tags;
@@ -869,6 +922,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             formattedDate,
             formattedEntryDate: newFinance.entry_date.toLocaleString('ja-JP'),
             formattedUpdateDate: newFinance.update_date.toLocaleString('ja-JP'),
+            duplicateMessage,
             la_cfs,
             ex_cfs,
             in_items,

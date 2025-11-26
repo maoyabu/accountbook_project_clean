@@ -7,6 +7,9 @@
         <h5 class="mb-0">収支の編集</h5>
       </div>
       <div class="card-body">
+        <% if (typeof duplicateMessage !== 'undefined' && duplicateMessage) { %>
+          <div class="alert alert-success text-center" role="alert"><%= duplicateMessage %></div>
+        <% } %>
         <form action="/finance/<%= finance._id %>?_method=PUT" method="POST">
           <input type="hidden" name="nextAction" id="nextActionInput" value="update">
           <div class="form-group">
@@ -26,33 +29,42 @@
           <div class="form-group category-group mb-2" id="expense_group" style="display: none;">
             <div class="d-flex align-items-center">
               <label for="expense_cf" class="me-2 mb-0" style="min-width: 90px;">支出区分</label>
-              <select name="finance[expense_item]" id="expense_cf" class="form-control short-input">
+              <select name="finance[expense_item]" id="expense_cf" class="form-control short-input <%= errors.expense_item ? 'error-field' : '' %>">
                 <% for (let ex_cf of ex_cfs) {%>
                   <option value="<%= ex_cf %>" <%= finance.expense_item === ex_cf ? 'selected' : '' %> ><%= ex_cf %></option>
                 <% } %>
               </select>
+              <div class="error-message">
+                <%= errors?.expense_item ? errors.expense_item : '' %>
+              </div>
             </div>
           </div>
 
           <div class="form-group category-group mb-2" id="income_group" style="display: none;">
             <div class="d-flex align-items-center">
               <label for="income_cf" class="me-2 mb-0" style="min-width: 90px;">収入区分</label>
-              <select name="finance[income_item]" id="income_cf" class="form-control short-input">
+              <select name="finance[income_item]" id="income_cf" class="form-control short-input <%= errors.income_item ? 'error-field' : '' %>">
                 <% for (let in_item of in_items) {%>
                   <option value="<%= in_item %>" <%= finance.income_item === in_item ? 'selected' : '' %>><%= in_item %></option>
                 <% } %>
               </select>
+              <div class="error-message">
+                <%= errors?.income_item ? errors.income_item : '' %>
+              </div>
             </div>
           </div>
 
           <div class="form-group category-group mb-2" id="deduction_group" style="display: none;">
             <div class="d-flex align-items-center">
               <label for="dedu_cf" class="me-2 mb-0" style="min-width: 90px;">控除区分</label>
-              <select name="finance[dedu_item]" id="dedu_cf" class="form-control short-input">
+              <select name="finance[dedu_item]" id="dedu_cf" class="form-control short-input <%= errors.dedu_item ? 'error-field' : '' %>">
                 <% for (let dedu_cf of dedu_cfs) {%>
                   <option value="<%= dedu_cf %>" <%= finance.dedu_item === dedu_cf ? 'selected' : '' %> ><%= dedu_cf %></option>
                 <% } %>
               </select>
+              <div class="error-message">
+                <%= errors?.dedu_item ? errors.dedu_item : '' %>
+              </div>
             </div>
           </div>
 
@@ -60,11 +72,14 @@
           <div class="form-group category-group mb-2" id="saving_group" style="display: none;">
             <div class="d-flex align-items-center">
               <label for="saving_cf" class="me-2 mb-0" style="min-width: 90px;">貯蓄区分</label>
-              <select name="finance[saving_item]" id="saving_cf" class="form-control short-input">
+              <select name="finance[saving_item]" id="saving_cf" class="form-control short-input <%= errors.saving_item ? 'error-field' : '' %>">
               <% for (let saving_cf of saving_cfs) {%>
                 <option value="<%= saving_cf %>" <%= finance.saving_item === saving_cf ? 'selected' : '' %> ><%= saving_cf %></option>
               <% } %>
               </select>
+              <div class="error-message">
+                <%= errors?.saving_item ? errors.saving_item : '' %>
+              </div>
             </div>
           </div>
 
@@ -179,9 +194,126 @@
       </div>
     </div>
   </div>
+<div id="validationModal" class="alert alert-warning alert-dismissible fade show d-none" role="alert" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; max-width: 420px; background-color: rgb(255, 0, 0); color: white;">
+  <span id="validationModalMessage">未入力項目があります、必須項目を入力してから更新か続けて入力してください</span>
+  <button type="button" class="btn-close" aria-label="Close" onclick="hideValidationModal()"></button>
+</div>
 <script>
   const categories = <%- JSON.stringify(ex_cfs) %>;
   let tagItemCount = <%= finance.tags?.length || 1 %>;
+  const cfSelect = document.getElementById('cf');
+  const expenseGroup = document.getElementById('expense_group');
+  const incomeGroup = document.getElementById('income_group');
+  const deductionGroup = document.getElementById('deduction_group');
+  const savingGroup = document.getElementById('saving_group');
+  const expenseSelect = document.getElementById('expense_cf');
+  const incomeSelect = document.getElementById('income_cf');
+  const deductionSelect = document.getElementById('dedu_cf');
+  const savingSelect = document.getElementById('saving_cf');
+  const paymentSelect = document.getElementById('payment_type');
+  const dateInput = document.getElementById('date');
+  const amountInput = document.getElementById('amount');
+
+  function updateCategoryVisibility() {
+    expenseGroup.style.display = 'none';
+    incomeGroup.style.display = 'none';
+    deductionGroup.style.display = 'none';
+    savingGroup.style.display = 'none';
+
+    switch (cfSelect.value) {
+      case '支出':
+        expenseGroup.style.display = 'block';
+        break;
+      case '収入':
+        incomeGroup.style.display = 'block';
+        break;
+      case '控除':
+        deductionGroup.style.display = 'block';
+        break;
+      case '貯蓄':
+        savingGroup.style.display = 'block';
+        break;
+      default:
+        break;
+    }
+  }
+
+  function showValidationModal(message) {
+    const modal = document.getElementById('validationModal');
+    document.getElementById('validationModalMessage').textContent = message;
+    modal.classList.remove('d-none');
+  }
+
+  function hideValidationModal() {
+    document.getElementById('validationModal').classList.add('d-none');
+    resetSpinners();
+  }
+
+  function getErrorBox(el) {
+    return el?.closest('.form-group')?.querySelector('.error-message');
+  }
+
+  function setFieldError(el, message) {
+    if (!el) return;
+    el.classList.add('error-field');
+    const box = getErrorBox(el);
+    if (box) box.textContent = message;
+  }
+
+  function clearFieldErrors() {
+    document.querySelectorAll('.error-field').forEach(el => el.classList.remove('error-field'));
+    document.querySelectorAll('.error-message').forEach(box => { box.textContent = ''; });
+  }
+
+  function resetSpinners() {
+    document.querySelectorAll('.spinner-border').forEach(s => s.classList.add('d-none'));
+    document.querySelectorAll('button[type="submit"]').forEach(b => {
+      b.disabled = false;
+      if (b.dataset.originalLabel) b.textContent = b.dataset.originalLabel;
+    });
+  }
+
+  function validateRequiredFields(event) {
+    const cfValue = cfSelect.value;
+    clearFieldErrors();
+    const missing = [];
+    if (!dateInput.value) missing.push('date');
+    if (!cfValue || cfValue === 'Please Choice') missing.push('cf');
+    if (cfValue === '支出' && (!expenseSelect.value || expenseSelect.value === 'Please Choice')) missing.push('expense');
+    if (cfValue === '収入' && (!incomeSelect.value || incomeSelect.value === 'Please Choice')) missing.push('income');
+    if (cfValue === '控除' && (!deductionSelect.value || deductionSelect.value === 'Please Choice')) missing.push('deduction');
+    if (cfValue === '貯蓄' && (!savingSelect.value || savingSelect.value === 'Please Choice')) missing.push('saving');
+    if (!amountInput.value) missing.push('amount');
+    if (!paymentSelect.value || paymentSelect.value === 'Please Choice') missing.push('payment');
+
+    if (missing.length > 0) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showValidationModal('未入力項目があります、必須項目を入力してから更新か続けて入力してください');
+      if (missing.includes('date')) setFieldError(dateInput, '日付は必須です');
+      if (missing.includes('cf')) setFieldError(cfSelect, '収支区分は必須です。まだ登録は完了していません。');
+      if (missing.includes('expense')) setFieldError(expenseSelect, '支出区分は必須です。まだ登録は完了していません。');
+      if (missing.includes('income')) setFieldError(incomeSelect, '収入区分は必須です。まだ登録は完了していません。');
+      if (missing.includes('deduction')) setFieldError(deductionSelect, '控除区分は必須です。まだ登録は完了していません。');
+      if (missing.includes('saving')) setFieldError(savingSelect, '貯蓄区分は必須です。まだ登録は完了していません。');
+      if (missing.includes('amount')) setFieldError(amountInput, '金額は必須です');
+      if (missing.includes('payment')) setFieldError(paymentSelect, '支払種別は必須です、まだ登録は完了してません。');
+      resetSpinners();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateCategoryVisibility();
+    cfSelect.addEventListener('change', updateCategoryVisibility);
+    document.querySelectorAll('button[type=\"submit\"]').forEach(b => {
+      if (!b.dataset.originalLabel) b.dataset.originalLabel = b.textContent;
+    });
+    const editForm = document.querySelector('form[action=\"/finance/<%= finance._id %>?_method=PUT\"]');
+    if (editForm) {
+      editForm.addEventListener('submit', validateRequiredFields, true);
+    }
+    recalculateSubtotal();
+  });
 
   function addTagItem() {
     const area = document.getElementById('tagItemsArea');

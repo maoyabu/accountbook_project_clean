@@ -311,6 +311,7 @@ router.post('/regular-entry/update', isLoggedIn, async (req, res) => {
         income_item: source.income_item || '',
         expense_item: source.expense_item || '',
         dedu_item: source.dedu_item || '',
+        saving_item: source.saving_item || '',
         content: source.content,
         amount: Number(e.amount),
         payment_type: source.payment_type,
@@ -326,7 +327,7 @@ router.post('/regular-entry/update', isLoggedIn, async (req, res) => {
   
     await Finance.insertMany(newEntries);
     await logAction({ req, action: 'まとめて入力実行', target: '家計簿' });
-    req.flash('success', 'まとめて入力を登録しました');
+    req.flash('success', 'まとめて入力を完了しました');
     res.redirect('/finance/list');
 });
 
@@ -341,6 +342,11 @@ router.post('/regular-entry/update/confirm', isLoggedIn, async (req, res) => {
       return res.redirect('/matomete/regular-entry/push');
     }
 
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    const startOfMonth = new Date(yearNum, monthNum - 1, 1);
+    const endOfMonth = new Date(yearNum, monthNum, 0);
+
     const parsedEntries = Array.isArray(entries) ? entries : Object.values(entries);
     const regularEntriesMap = {};
     const allRegulars = await RegularEntry.find({ group: groupId, user: userId });
@@ -348,31 +354,89 @@ router.post('/regular-entry/update/confirm', isLoggedIn, async (req, res) => {
       regularEntriesMap[entry._id.toString()] = entry;
     });
 
-    const newEntries = parsedEntries
-  .filter(e => !e.skip)
-  .map(e => {
-    const source = regularEntriesMap[e.id];
-    return {
-      cf: source?.cf || undefined,
-      income_item: source?.income_item || '',
-      expense_item: source?.expense_item || '',
-      dedu_item: source?.dedu_item || '',
-      content: source?.content || '',
-      amount: Number(e.amount), // ← フォーム入力の amount を使用
-      payment_type: source?.payment_type || undefined,
-      user: userId,
+    const existingEntries = await Finance.find({
       group: groupId,
-      date: new Date(Date.UTC(parseInt(year), parseInt(month) - 1, 1)),
-      month: parseInt(month),
-      day: source.day || 1,
-      entry_date: new Date(),
-      update_date: new Date()
-    };
-  });
+      user: userId,
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    });
 
-    await Finance.insertMany(newEntries);
+    const makeKey = (entry) => `${entry.cf}_${entry.content}_${entry.amount}`;
+    const existingByKey = existingEntries.reduce((acc, entry) => {
+      const key = makeKey(entry);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(entry);
+      return acc;
+    }, {});
+
+    const buildPayload = (source, amountNum) => {
+      const day = source?.day || 1;
+      return {
+        cf: source?.cf || undefined,
+        income_item: source?.income_item || '',
+        expense_item: source?.expense_item || '',
+        dedu_item: source?.dedu_item || '',
+        saving_item: source?.saving_item || '',
+        content: source?.content || '',
+        amount: amountNum,
+        payment_type: source?.payment_type || undefined,
+        user: userId,
+        group: groupId,
+        date: new Date(Date.UTC(yearNum, monthNum - 1, day)),
+        month: monthNum,
+        day
+      };
+    };
+
+    const normalizedEntries = parsedEntries
+      .map(e => {
+        const source = regularEntriesMap[e.id];
+        if (!source) return null;
+        const amountNum = Number(e.amount);
+        const payload = buildPayload(source, amountNum);
+        return {
+          key: makeKey(payload),
+          payload,
+          skip: e.skip === '1' || e.skip === 'true'
+        };
+      })
+      .filter(e => e !== null);
+
+    const updates = [];
+    const inserts = [];
+    const updatedKeys = new Set();
+
+    normalizedEntries.forEach(entry => {
+      if (entry.skip) return;
+      const existingList = existingByKey[entry.key];
+      if (existingList && !updatedKeys.has(entry.key)) {
+        updatedKeys.add(entry.key);
+        existingList.forEach(doc => {
+          updates.push({
+            id: doc._id,
+            payload: { ...entry.payload }
+          });
+        });
+      } else if (!existingList) {
+        inserts.push({
+          ...entry.payload,
+          entry_date: new Date(),
+          update_date: new Date()
+        });
+      }
+    });
+
+    if (updates.length > 0) {
+      await Promise.all(
+        updates.map(u => Finance.findByIdAndUpdate(u.id, { ...u.payload, update_date: new Date() }, { new: true }))
+      );
+    }
+
+    if (inserts.length > 0) {
+      await Finance.insertMany(inserts);
+    }
+
     await logAction({ req, action: 'まとめて入力を実行', target: '家計簿' });
-    req.flash('success', 'まとめて入力を登録しました');
+    req.flash('success', 'まとめて入力を完了しました');
     res.redirect('/finance/list');
   });
 

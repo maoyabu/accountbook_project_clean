@@ -3,7 +3,7 @@
 <div class="card shadow mt-4">
   <div class="card-header bg-warning text-dark">
     <h4>重複確認</h4>
-    <p>以下の項目はすでに同じ月に登録されています。本当に登録しますか？</p>
+    <p>以下の項目はすでに同じ月に登録されています。内容を上書きして進めます。</p>
   </div>
   <div class="card-body">
     <form action="/matomete/regular-entry/update/confirm" method="POST">
@@ -35,12 +35,13 @@
           <input type="hidden" name="entries[<%= idx %>][content]" value="<%= entry.content %>">
           <input type="hidden" name="entries[<%= idx %>][amount]" value="<%= entry.amount %>">
           <input type="hidden" name="entries[<%= idx %>][payment_type]" value="<%= entry.payment_type %>">
+          <input type="hidden" name="entries[<%= idx %>][skip]" value="<%= entry.skip ? 1 : '' %>">
       <% }) %>
       <input type="hidden" name="force" value="1">
 
       <div class="d-flex justify-content-between mt-4">
         <a href="/matomete/regular-entry/push" class="btn btn-secondary">戻って修正</a>
-        <button type="submit" class="btn btn-danger">重複を無視して登録</button>
+        <button type="submit" class="btn btn-danger">重複分は上書きして登録</button>
       </div>
     </form>
   </div>
