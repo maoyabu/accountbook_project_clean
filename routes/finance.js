@@ -41,6 +41,7 @@ const pathLib = require('path');
 
 
 const { isLoggedIn, logAction } = require('../middleware');
+const getListRedirect = (req) => req.session?.financeListReturn || '/finance/list';
 
 //selectedの選択肢をここで定義
 const la_cfs = ['Please Choice','支出','収入','控除','貯蓄'];
@@ -339,7 +340,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     }
 
     await logAction({ req, action: '登録', target: '家計簿' });
-    res.redirect('/finance/list');
+    res.redirect(getListRedirect(req));
 }));
 
 // 検索画面の表示
@@ -646,20 +647,45 @@ router.get('/list', isLoggedIn, async (req, res) => {
       ? new mongoose.Types.ObjectId(activeGroupId)
       : activeGroupId;
 
-    // 並び順指定
+    // 並び順・件数
     const sortOrder = req.query.sortOrder || 'date';
+    const limitParam = parseInt(req.query.limit, 10);
+    const displayLimit = [20, 50, 100].includes(limitParam) ? limitParam : 20;
+    // フィルタ（単一選択）
+    const selectedCf = req.query.cf || '';
+    const selectedCategory = req.query.category || '';
+    const selectedPayment = req.query.payment_type || '';
     const sortCriteria = sortOrder === 'update_date'
       ? { update_date: -1 }
       : { date: -1 };
 
+    const baseCondition = { group: objectId, user: req.user._id };
+    const andConditions = [baseCondition];
+
+    if (selectedCf) {
+      andConditions.push({ cf: selectedCf });
+    }
+    if (selectedCategory) {
+      andConditions.push({
+        $or: [
+          { expense_item: selectedCategory },
+          { income_item: selectedCategory },
+          { dedu_item: selectedCategory },
+          { saving_item: selectedCategory }
+        ]
+      });
+    }
+    if (selectedPayment) {
+      andConditions.push({ payment_type: selectedPayment });
+    }
+
+    const query = andConditions.length > 1 ? { $and: andConditions } : baseCondition;
+
     // 新しい検索条件: groupとuserで絞り込み
-    const finances = await Finance.find({
-      group: objectId,
-      user: req.user._id
-    })
+    const finances = await Finance.find(query)
       .populate('user')
       .sort(sortCriteria)
-      .limit(20);
+      .limit(displayLimit);
 
     // Fallback: JSでソート（もしMongooseで正しくソートされない場合に備えて）
     // ただし、sortCriteriaで十分なため通常は不要
@@ -670,7 +696,7 @@ router.get('/list', isLoggedIn, async (req, res) => {
     // });
 
     const currentUser = await FinanceUser.findById(req.user._id).populate('groups');
-    const count = (await Finance.find({ group: objectId })).length;
+    const count = (await Finance.find(query)).length;
 
     // ✅ 月間集計のための期間を取得
     const now = new Date();
@@ -694,6 +720,19 @@ router.get('/list', isLoggedIn, async (req, res) => {
     }
 
     const balance = totalIncome - totalExpense - totalSaving;
+    // リダイレクト復元用にクエリ付きURLを保存
+    req.session.financeListReturn = req.originalUrl || '/finance/list';
+
+    // フィルタ用オプション抽出
+    const cfOptions = (await Finance.distinct('cf', baseCondition)).filter(v => v && v !== 'Please Choice');
+    const categoryOptionsRaw = [
+      ...(await Finance.distinct('income_item', baseCondition)),
+      ...(await Finance.distinct('expense_item', baseCondition)),
+      ...(await Finance.distinct('dedu_item', baseCondition)),
+      ...(await Finance.distinct('saving_item', baseCondition))
+    ];
+    const categoryOptions = [...new Set(categoryOptionsRaw.filter(v => v && v !== 'Please Choice'))];
+    const paymentOptions = (await Finance.distinct('payment_type', baseCondition)).filter(v => v && v !== 'Please Choice');
 
     res.render('finance/list', {
       finances,
@@ -704,7 +743,18 @@ router.get('/list', isLoggedIn, async (req, res) => {
       totalExpense,
       totalSaving,
       balance,
-      sortOrder
+      sortOrder,
+      displayLimit,
+      selectedFilters: {
+        cf: selectedCf,
+        category: selectedCategory,
+        payment: selectedPayment
+      },
+      filterOptions: {
+        cfs: cfOptions,
+        categories: categoryOptions,
+        payments: paymentOptions
+      }
     });
 
   } catch (error) {
@@ -937,7 +987,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
     req.flash('success', '更新に成功しました');
     await logAction({ req, action: '更新', target: '家計簿' });
-    res.redirect('/finance/list'); // 更新後に一覧ページへリダイレクト
+    res.redirect(getListRedirect(req)); // 更新後に一覧ページへリダイレクト
 }));
 
 //◎複製
@@ -990,7 +1040,7 @@ router.delete('/:id', isLoggedIn, catchAsync(async (req, res) => {
     }
     req.flash('success', '削除に成功しました');
     await logAction({ req, action: '削除', target: '家計簿' });
-    res.redirect('/finance/list');
+    res.redirect(getListRedirect(req));
 }));
 
 //その他のルート

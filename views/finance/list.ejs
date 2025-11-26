@@ -6,33 +6,71 @@
     ガイド
   </a>
 </div>
-<form method="GET" action="/finance/list" class="d-flex align-items-center justify-content-end mt-2 mb-2">
-  <label for="sortOrder" class="me-2 mb-0 fw-bold">並び順：</label>
-  <select name="sortOrder" id="sortOrder" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-    <option value="date" <%= sortOrder === 'date' ? 'selected' : '' %>>使用日順</option>
-    <option value="update_date" <%= sortOrder === 'update_date' ? 'selected' : '' %>>更新日順</option>
-  </select>
-</form>
 <div class="list-frame">
   <div class="list-header">
-    <h5 class="mb-0">直近の入力 - <%= count <= 20 ? count : '20' %> 件 / <%= count %>件</h5>
+    <h5 class="mb-0">直近の入力 - <%= Math.min(count, displayLimit) %> 件 / <%= count %>件</h5>
+  </div>
+  <div class="filter-bar bg-light p-3 rounded mb-2" style="background-color: #e8f2fb !important;">
+    <form method="GET" action="/finance/list" class="d-flex flex-wrap align-items-end gap-3 mb-0">
+      <div class="d-flex flex-column">
+        <label for="sortOrder" class="form-label mb-1">並び順</label>
+        <select name="sortOrder" id="sortOrder" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="date" <%= sortOrder === 'date' ? 'selected' : '' %>>使用日順</option>
+          <option value="update_date" <%= sortOrder === 'update_date' ? 'selected' : '' %>>更新日順</option>
+        </select>
+      </div>
+      <div class="d-flex flex-column">
+        <label for="limitSelect" class="form-label mb-1">表示件数</label>
+        <select name="limit" id="limitSelect" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="20" <%= displayLimit === 20 ? 'selected' : '' %>>20件</option>
+          <option value="50" <%= displayLimit === 50 ? 'selected' : '' %>>50件</option>
+          <option value="100" <%= displayLimit === 100 ? 'selected' : '' %>>100件</option>
+        </select>
+      </div>
+      <div class="d-flex flex-column">
+        <label for="cfFilter" class="form-label mb-1">区分</label>
+        <select name="cf" id="cfFilter" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">全て</option>
+          <% (filterOptions?.cfs || []).forEach(cf => { %>
+            <option value="<%= cf %>" <%= selectedFilters?.cf === cf ? 'selected' : '' %>><%= cf %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="d-flex flex-column">
+        <label for="categoryFilter" class="form-label mb-1">小区分</label>
+        <select name="category" id="categoryFilter" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">全て</option>
+          <% (filterOptions?.categories || []).forEach(cat => { %>
+            <option value="<%= cat %>" <%= selectedFilters?.category === cat ? 'selected' : '' %>><%= cat %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="d-flex flex-column">
+        <label for="paymentFilter" class="form-label mb-1">種別</label>
+        <select name="payment_type" id="paymentFilter" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">全て</option>
+          <% (filterOptions?.payments || []).forEach(pay => { %>
+            <option value="<%= pay %>" <%= selectedFilters?.payment === pay ? 'selected' : '' %>><%= pay %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="ms-auto d-flex gap-2 align-items-end">
+        <a class="btn btn-sm btn-outline-secondary" href="/finance/list">リセット</a>
+      </div>
+    </form>
   </div>
 <style>
   /* ヘッダと一覧を同じ左右幅にそろえる */
-  .list-frame { margin-left: -12px; margin-right: -12px; }
-  @media (max-width: 768px) { .list-frame { margin-left: -16px; margin-right: -16px; } }
+  .list-frame { margin: 0; }
   .list-header {
     background-color: #3a7ca5; color: #fff;
-    padding: 10px 0; /* 横幅は margin で統一 */
-    padding-left: 10px; /* 左端に余白を確保して文字が枠に接しないように */
+    padding: 10px;
     border-top-left-radius: 4px; border-top-right-radius: 4px;
-    margin-top: 8px; margin-bottom: 8px;
-    margin-left: 14px; margin-right: 14px;
+    margin-top: 8px; margin-bottom: 0;
   }
-  /* テーブル側の左右マージンはフレームで管理するため0に */
   .list-body { padding: 0; }
-  /* ヘッダと同じ左右マージンでテーブルも揃える */
-  .list-frame .table-responsive { margin-left: 14px !important; margin-right: 14px !important; }
+  .list-frame .table-responsive { margin: 0; }
+  .filter-select { min-width: 120px; }
   :root { --action-gap: 4px; --edge-gap: 8px; }
   /* 横並びの操作ボタン */
   .actions-cell { white-space: nowrap; padding-right: var(--edge-gap); overflow: visible; text-overflow: clip; }
@@ -60,12 +98,6 @@
   /* 操作列 */
   .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 110px; }
 
-  /* すべての幅で左右マージンを狭める（検索結果のスタイル互換）
-     ただし list ではヘッダ幅と揃えるため直後で上書き */
-  .table-responsive { margin-left: -12px !important; margin-right: -12px !important; }
-  /* list コンテナではヘッダと同じ内側余白で揃える */
-  .list-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
-
   /* <=992px: 種別・使用者を非表示 */
   @media (max-width: 992px) {
     .table-fixed th.col-type, .table-fixed td.col-type,
@@ -74,8 +106,6 @@
   }
   /* <=768px: 大区分・小区分も非表示 → 日付/内容/金額/操作のみ */
   @media (max-width: 768px) {
-    .list-header { margin-left: 16px; margin-right: 16px; }
-    .list-frame .table-responsive { margin-left: 16px !important; margin-right: 16px !important; }
     .table-fixed th.col-cf, .table-fixed td.col-cf,
     .table-fixed th.col-class, .table-fixed td.col-class { display: none !important; }
     .table-fixed th.col-date, .table-fixed td.col-date { width: 7.8rem; max-width: 7.8rem; }
@@ -86,10 +116,6 @@
 
   /* <=570px: 最低限の左右マージンを確保（約4px）し、内容を優先的に縮める */
   @media (max-width: 570px) {
-    /* ヘッダとテーブルの左右に最小余白(8px)を確保 */
-    .list-frame { margin-left: -8px; margin-right: -8px; }
-    .list-header { margin-left: 8px; margin-right: 8px; }
-    .list-frame .table-responsive { margin-left: 8px !important; margin-right: 8px !important; }
     .table-fixed th.col-date, .table-fixed td.col-date { width: 7.6rem; max-width: 7.6rem; }
     .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.6rem; max-width: 6.6rem; }
     .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.6rem; max-width: 6.6rem; }

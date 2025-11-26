@@ -6,13 +6,13 @@
       ガイド
     </a>
   </div>
-  <div class="sr-frame">
+  <div class="sr-frame w-100">
   <div class="card-header text-white mb-0 mt-2 sr-header" style="background-color: #3a7ca5;">
     <h5 class="mb-0">検索結果: <%= count %> 件</h5>
   </div>
   <div class="sr-body">
   <% if ((typeof enableFilterBar !== 'undefined' && enableFilterBar) || page === 'search') { %>
-  <form method="GET" action="<%= page === 'search' ? '/finance/search/results' : '/export/dashboard/yearly-detail' %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2">
+  <form method="GET" action="<%= page === 'search' ? '/finance/search/results' : '/export/dashboard/yearly-detail' %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2 w-100">
     <!-- 基本条件を維持する隠しフィールド -->
     <% if (page !== 'search') { %>
       <!-- finance/search 用: 元の検索条件を維持 -->
@@ -86,7 +86,6 @@
         </select>
       </div>
     </div>
-    <div id="block-hint" class="text-muted small">収支区分を選択すると項目で絞り込めます。</div>
     <% } %>
     <!-- 並び順は不要のため削除 -->
     <div>
@@ -141,22 +140,22 @@
   <% } %>
 
   <style>
-    /* フレーム: ヘッダとテーブルの左右幅を統一 */
-    .sr-frame { margin-left: -12px; margin-right: -12px; }
-    .sr-header { margin-left: 14px; margin-right: 14px; border-top-left-radius: 4px; border-top-right-radius: 4px; padding-left: 10px; }
-    .sr-body { padding: 0 14px; }
+    /* フレーム: ヘッダとテーブルの左右幅を統一（マージンずれ解消） */
+    .sr-frame { margin-left: 0; margin-right: 0; }
+    .sr-header { margin-left: 0; margin-right: 0; border-top-left-radius: 4px; border-top-right-radius: 4px; padding-left: 10px; }
+    .sr-body { padding: 0; }
     .sr-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
 
     @media (max-width: 768px) {
-      .sr-frame { margin-left: -16px; margin-right: -16px; }
-      .sr-header { margin-left: 16px; margin-right: 16px; }
-      .sr-body { padding: 0 16px; }
+      .sr-frame { margin-left: 0; margin-right: 0; }
+      .sr-header { margin-left: 0; margin-right: 0; }
+      .sr-body { padding: 0; }
       .sr-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
     }
     @media (max-width: 570px) {
-      .sr-frame { margin-left: -8px; margin-right: -8px; }
-      .sr-header { margin-left: 8px; margin-right: 8px; }
-      .sr-body { padding: 0 8px; }
+      .sr-frame { margin-left: 0; margin-right: 0; }
+      .sr-header { margin-left: 0; margin-right: 0; }
+      .sr-body { padding: 0; }
       .sr-frame .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
     }
 
@@ -208,10 +207,7 @@
     .table-fixed th.col-actions,.table-fixed td.actions-cell { width: 110px; }
 
     /* すべての幅で左右マージンを狭めてフル活用 */
-    .table-responsive { margin-left: -12px !important; margin-right: -12px !important; }
-
-    /* すべての幅で左右マージンを狭めてフル活用 */
-    .table-responsive { margin-left: -12px !important; margin-right: -12px !important; }
+    .table-responsive { margin-left: 0 !important; margin-right: 0 !important; }
 
     /* 992px以下: 種別・使用者は非表示（優先度低） */
     @media (max-width: 992px) {
