@@ -861,11 +861,12 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
       return res.redirect('/group_list');
     }
 
-    const { year, month, item, scope } = req.query;
+    const { year, month, item, scope, cf } = req.query;
     const { from, to, payment_type, user } = req.query;
 
     const y = parseInt(year) || new Date().getFullYear();
     const m = month ? parseInt(month) : undefined;
+    const cfValue = cf || '支出';
 
     // 日付範囲設定
     let dateFilter = {};
@@ -889,15 +890,24 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
       }
     }
 
-    // 明細クエリ（支出の指定項目）
+    // 明細クエリ
     const query = {
       group: new mongoose.Types.ObjectId(groupId),
       date: dateFilter,
-      cf: '支出'
+      cf: cfValue
     };
 
     if (item) {
-      query.expense_item = item;
+      const itemFieldByCf = {
+        '支出': 'expense_item',
+        '収入': 'income_item',
+        '控除': 'dedu_item',
+        '貯蓄': 'saving_item'
+      };
+      const itemField = itemFieldByCf[cfValue];
+      if (itemField) {
+        query[itemField] = item;
+      }
     }
 
     // 個人スコープの場合はユーザーで絞る
@@ -936,7 +946,7 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
       currentUser,
       enableFilterBar: true,
       filters: {
-        scope, year: y, month: m, item,
+        scope, year: y, month: m, item, cf: cfValue,
         from: from || '', to: to || '',
         payment_type: payment_type || 'Please Choice',
         user: user || ''

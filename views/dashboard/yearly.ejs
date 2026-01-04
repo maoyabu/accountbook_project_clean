@@ -47,7 +47,13 @@
                 <td class="sticky-col fw-bold text-center"><%= cf %></td>
                 <td class="sticky-col2"><%= totalBudgets[cf]?.toLocaleString() || '0' %></td>
                 <% for (let m = 1; m <= 12; m++) { %>
-                  <td><%= (monthlySummary[m]?.[cf] || 0).toLocaleString() %></td>
+                  <td>
+                    <a
+                      href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&cf=<%= encodeURIComponent(cf) %>"
+                      class="text-decoration-none">
+                      <%= (monthlySummary[m]?.[cf] || 0).toLocaleString() %>
+                    </a>
+                  </td>
                 <% } %>
                 <td class="fw-bold"><%= Array.from({ length: 12 }, (_, i) => monthlySummary[i+1]?.[cf] || 0).reduce((a, b) => a + b, 0).toLocaleString() %></td>
                 <%

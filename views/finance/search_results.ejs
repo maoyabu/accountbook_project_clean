@@ -21,6 +21,7 @@
       <% if (filters?.month) { %>
         <input type="hidden" name="month" value="<%= filters.month %>">
       <% } %>
+      <input type="hidden" name="cf" value="<%= filters?.cf || '' %>">
       <input type="hidden" name="item" value="<%= filters?.item || '' %>">
     <% } %>
 
@@ -111,7 +112,7 @@
       <% if (page === 'search') { %>
         <a class="btn btn-sm btn-outline-secondary" href="/finance/search/results">リセット</a>
       <% } else { %>
-        <a class="btn btn-sm btn-outline-secondary" href="/export/dashboard/yearly-detail?scope=<%= filters?.scope %>&year=<%= filters?.year %><%= filters?.month ? ('&month=' + filters.month) : '' %>&item=<%= encodeURIComponent(filters?.item || '') %>">リセット</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/export/dashboard/yearly-detail?scope=<%= filters?.scope %>&year=<%= filters?.year %><%= filters?.month ? ('&month=' + filters.month) : '' %><%= filters?.cf ? ('&cf=' + encodeURIComponent(filters.cf)) : '' %>&item=<%= encodeURIComponent(filters?.item || '') %>">リセット</a>
       <% } %>
     </div>
   </form>
