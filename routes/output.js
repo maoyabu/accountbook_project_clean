@@ -497,7 +497,8 @@ router.get('/dashboard/yearly-m', async (req, res) => {
       formAction: '/export/dashboard/yearly-m',
       titlePrefix: `${req.user.displayname}さん`,
       viewType: 'user',
-      totalBudgets
+      totalBudgets,
+      mainClass: 'container-fluid dashboard-yearly-main'
     });
 
   } catch (err) {
@@ -641,7 +642,8 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       formAction: '/export/dashboard/yearly-g',
       titlePrefix: `${groupName}`,
       viewType: 'group',
-      totalBudgets
+      totalBudgets,
+      mainClass: 'container-fluid dashboard-yearly-main'
     });
 
   } catch (err) {

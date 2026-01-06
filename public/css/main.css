@@ -766,6 +766,33 @@ th.sticky-col2 {
 table td, table th {
     border: none !important;
 }
+.dashboard-yearly-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.dashboard-yearly-main {
+    max-width: none;
+    width: 100%;
+    margin: 120px 0;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+.dashboard-yearly {
+    width: max-content;
+    min-width: 100%;
+}
+.dashboard-yearly th,
+.dashboard-yearly td {
+    min-width: 70px;
+}
+.dashboard-yearly th.sticky-col,
+.dashboard-yearly td.sticky-col {
+    min-width: 110px;
+}
+.dashboard-yearly th.sticky-col2,
+.dashboard-yearly td.sticky-col2 {
+    min-width: 100px;
+}
 
 li{
     list-style:none;

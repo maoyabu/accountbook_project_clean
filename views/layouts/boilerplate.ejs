@@ -18,7 +18,7 @@
 </head>
 <body class="d-flex flex-column vh-100">
     <%- include('../partials/header_login_nav') %>
-    <main class ="container">
+    <main class ="<%= typeof mainClass !== 'undefined' ? mainClass : 'container' %>">
         <%- include('../partials/flash') %>
         <%- body -%>
     </main>
