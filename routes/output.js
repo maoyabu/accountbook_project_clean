@@ -624,8 +624,8 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     if (!req.session.groupName) {
       const group = await Group.findById(groupId);
       if (group) {
-        groupName = group.name;
-        req.session.groupName = group.name; // 次回以降の表示を高速化
+        groupName = group.group_name;
+        req.session.groupName = group.group_name; // 次回以降の表示を高速化
       }
     } else {
       groupName = req.session.groupName;

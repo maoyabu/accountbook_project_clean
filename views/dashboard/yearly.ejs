@@ -121,7 +121,7 @@
                   </a>
                 </td>
                 <%
-                  const diff = (budgetMap?.[item] || 0) * month -
+                  const diff = (budgetMap?.[item] || 0) * 12 -
                                Array.from({ length: 12 }, (_, i) => monthlyExpensesDetail[i+1]?.[item] || 0).reduce((a, b) => a + b, 0);
                 %>
                 <td class="fw-bold <%= diff < 0 ? 'text-danger' : '' %>" style="<%= diff < 0 ? 'background-color: #f8d7da;' : '' %>">
