@@ -103,7 +103,7 @@ router.post('/create', ensureAuthenticated, async (req, res) => {
   
       await newAsset.save();
       await logAction({ req, action: '登録', target: '資産管理' });
-      res.redirect('/asset');
+      res.redirect('/asset?skipInventory=true');
     } catch (err) {
       console.error(err);
       res.status(500).send('登録中にエラーが発生しました。');
@@ -115,7 +115,7 @@ router.delete('/:id', ensureAuthenticated, async (req, res) => {
     try {
       await Asset.deleteOne({ _id: req.params.id, group: req.session.activeGroupId });
       await logAction({ req, action: '削除', target: '資産管理' });
-      res.redirect('/asset');
+      res.redirect('/asset?skipInventory=true');
     } catch (err) {
       console.error(err);
       res.status(500).send('削除中にエラーが発生しました。');
@@ -130,7 +130,7 @@ router.get('/edit/:id', ensureAuthenticated, async (req, res) => {
       req.flash('error', '資産が見つかりません');
       return res.redirect('/asset');
     }
-    return res.redirect(`/asset?assetId=${asset._id}`);
+    return res.redirect(`/asset?skipInventory=true&assetId=${asset._id}`);
   } catch (err) {
     console.error(err);
     res.status(500).send('編集画面の表示中にエラーが発生しました。');
@@ -163,7 +163,7 @@ router.post('/update/:id', ensureAuthenticated, async (req, res) => {
     }
 
     await logAction({ req, action: '更新', target: '資産管理' });
-    res.redirect('/asset');
+    res.redirect('/asset?skipInventory=true');
   } catch (err) {
     console.error('更新エラー内容:', err);
     res.status(500).send('更新中にエラーが発生しました。');
@@ -618,42 +618,74 @@ router.get('/display', ensureAuthenticated, async (req, res) => {
         }
         const assets = await Asset.find({ group: groupId }).sort({ entry_date: -1 });
         const inventories = await AssetInventory.find({ group: groupId }).sort({ inventoryMonth: 1 });
+        const latestInventory = inventories[inventories.length - 1] || null;
         let exchangeRate = 1;
         let stockPrices = {};
-    
+
         let totalYen = 0;
         let totalByCf = { '金融資産': 0, '実物資産': 0, '無形資産': 0, '負債': 0 };
-        const assetDisplayList = [];
-    
-        for (const asset of assets) {
+        let assetDisplayList = [];
+        let showRateInfo = true;
+
+        if (latestInventory && latestInventory.items?.length) {
+          const inventoryTotals =
+            latestInventory.totalByCf instanceof Map
+              ? Object.fromEntries(latestInventory.totalByCf)
+              : latestInventory.totalByCf || {};
+
+          totalYen = latestInventory.totalYen || 0;
+          totalByCf = {
+            ...totalByCf,
+            ...inventoryTotals
+          };
+
+          assetDisplayList = [...latestInventory.items]
+            .sort((a, b) => {
+              if (a.asset_cf === b.asset_cf) {
+                return (a.asset_item || '').localeCompare(b.asset_item || '');
+              }
+              return (a.asset_cf || '').localeCompare(b.asset_cf || '');
+            })
+            .map((item) => ({
+              asset_cf: item.asset_cf,
+              asset_item: item.asset_item,
+              code: item.code,
+              content: item.content,
+              amount: item.amountYen || 0
+            }));
+
+          showRateInfo = false;
+        } else {
+          for (const asset of assets) {
             let yenValue;
-    
-          if (asset.asset_item === '為替') {
-            exchangeRate = await getExchangeRate(asset.code);
-            yenValue = Math.round(asset.amount * exchangeRate);
-          } else if (asset.asset_item === '株式' && asset.monetary_unit === '数量') {
-            const code = asset.code;
-            if (!stockPrices[code]) {
-              stockPrices[code] = await getStockPriceFromNIkkei(code);
+
+            if (asset.asset_item === '為替') {
+              exchangeRate = await getExchangeRate(asset.code);
+              yenValue = Math.round(asset.amount * exchangeRate);
+            } else if (asset.asset_item === '株式' && asset.monetary_unit === '数量') {
+              const code = asset.code;
+              if (!stockPrices[code]) {
+                stockPrices[code] = await getStockPriceFromNIkkei(code);
+              }
+              yenValue = Math.round(asset.amount * stockPrices[code]);
+            } else {
+              yenValue = Math.round(asset.amount);
             }
-            yenValue = Math.round(asset.amount * stockPrices[code]);
-          } else {
-            yenValue = Math.round(asset.amount);
+
+            totalYen += yenValue;
+            if (totalByCf[asset.asset_cf] !== undefined) {
+              totalByCf[asset.asset_cf] += yenValue;
+            }
+
+            assetDisplayList.push({
+              asset_cf: asset.asset_cf,
+              asset_item: asset.asset_item,
+              code: asset.code,
+              content: asset.content,
+              amount: yenValue
+            });
           }
-    
-          totalYen += yenValue;
-          if (totalByCf[asset.asset_cf] !== undefined) {
-            totalByCf[asset.asset_cf] += yenValue;
-          }
-    
-          assetDisplayList.push({
-            asset_cf: asset.asset_cf,
-            asset_item: asset.asset_item,
-            code: asset.code,
-            content: asset.content,
-            amount: yenValue
-          });
-    }
+        }
 
         res.render('assets/display', {
             assets: assetDisplayList,
@@ -662,8 +694,9 @@ router.get('/display', ensureAuthenticated, async (req, res) => {
             exchangeRate,
             stockPrices,
             chartData: buildInventoryChartData(inventories),
-            latestInventory: inventories[inventories.length - 1] || null,
-            inventoryCallout: getInventoryCallout(new Date())
+            latestInventory,
+            inventoryCallout: getInventoryCallout(new Date()),
+            showRateInfo
           });
   
         } catch (err) {

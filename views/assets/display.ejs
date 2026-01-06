@@ -92,17 +92,19 @@
     </div>
   </div>
 
-  <!-- レート情報 -->
-  <div class="card mb-4">
-    <div class="card-body text-muted small">
-      <p>※ 円/＄レート（取得時点）: <%= exchangeRate %> 円</p>
-      <% if (stockPrices) { %>
-        <% Object.entries(stockPrices).forEach(([code, price]) => { %>
-          <p>※ 株式 <%= code %>: 1株（前日終値） = <%= price.toLocaleString() %> 円</p>
-        <% }) %>
-      <% } %>
+  <% if (showRateInfo) { %>
+    <!-- レート情報 -->
+    <div class="card mb-4">
+      <div class="card-body text-muted small">
+        <p>※ 円/＄レート（取得時点）: <%= exchangeRate %> 円</p>
+        <% if (stockPrices) { %>
+          <% Object.entries(stockPrices).forEach(([code, price]) => { %>
+            <p>※ 株式 <%= code %>: 1株（前日終値） = <%= price.toLocaleString() %> 円</p>
+          <% }) %>
+        <% } %>
+      </div>
     </div>
-  </div>
+  <% } %>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

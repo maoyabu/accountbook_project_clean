@@ -92,8 +92,8 @@ router.get('/top', isLoggedIn, async (req,res)=> {
         }
       }
 
-      // 資産情報の取得
-      const assets = await Asset.find({ group: objectId });
+      const AssetInventory = require('../models/assetInventory');
+      const latestInventory = await AssetInventory.findOne({ group: objectId }).sort({ inventoryMonth: -1 });
 
       let totalYen = 0;
       const totalByCf = {
@@ -103,26 +103,40 @@ router.get('/top', isLoggedIn, async (req,res)=> {
         '負債': 0
       };
 
-      for (let asset of assets) {
-        let amount = Number(asset.amount) || 0;
-        const cf = asset.asset_cf?.trim();
-        const unit = asset.monetary_unit?.trim();
-        const code = asset.code?.trim();
+      if (latestInventory) {
+        totalYen = latestInventory.totalYen || 0;
+        const invTotals =
+          latestInventory.totalByCf instanceof Map
+            ? Object.fromEntries(latestInventory.totalByCf)
+            : latestInventory.totalByCf || {};
+        Object.keys(totalByCf).forEach((key) => {
+          totalByCf[key] = invTotals[key] || 0;
+        });
+      } else {
+        // 資産情報の取得（棚卸し未実施の場合は初期登録の資産を使う）
+        const assets = await Asset.find({ group: objectId });
 
-        if (unit === '$') {
-          const rate = await getExchangeRate('$');
-          amount *= rate;
-        } else if (unit === '数量' && code) {
-          const price = await getStockPriceFromNikkei(code);
-          amount *= price;
-        }
+        for (let asset of assets) {
+          let amount = Number(asset.amount) || 0;
+          const cf = asset.asset_cf?.trim();
+          const unit = asset.monetary_unit?.trim();
+          const code = asset.code?.trim();
 
-        if (totalByCf.hasOwnProperty(cf)) {
-            totalByCf[cf] += Math.round(amount);
-        }
+          if (unit === '$') {
+            const rate = await getExchangeRate('$');
+            amount *= rate;
+          } else if (unit === '数量' && code) {
+            const price = await getStockPriceFromNikkei(code);
+            amount *= price;
+          }
 
-        totalYen += Math.round(amount);
+          if (totalByCf.hasOwnProperty(cf)) {
+              totalByCf[cf] += Math.round(amount);
+          }
+
+          totalYen += Math.round(amount);
         }
+      }
   
     // Wantolist（最大5件）
         const Wantolist = require('../models/wantolist');
