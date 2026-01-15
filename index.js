@@ -17,16 +17,32 @@ console.log('[boot] 3: after core requires (path/fs)');
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 && process.env.NODE_ENV === 'production') {
   const configDir = path.join(__dirname, 'config');
   const credentialsPath = path.join(configDir, 'accountbook.json');
+  const raw = String(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 || '').trim();
 
-  
   // configディレクトリが存在しなければ作成
-    if (!fs.existsSync(configDir)) {
+  if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  let jsonText = raw;
+  if (!raw.startsWith('{')) {
+    try {
+      jsonText = Buffer.from(raw, 'base64').toString('utf-8');
+    } catch (err) {
+      console.error('❌ Google 認証情報のBase64デコードに失敗:', err);
+      jsonText = '';
     }
-  const decoded = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64').toString('utf-8');
-  fs.writeFileSync(credentialsPath, decoded);
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
-  console.log('✅ Google 認証情報ファイルを書き出しました');
+  }
+
+  try {
+    JSON.parse(jsonText);
+    fs.writeFileSync(credentialsPath, jsonText);
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+    console.log('✅ Google 認証情報ファイルを書き出しました');
+  } catch (err) {
+    console.error('❌ Google 認証情報がJSONとして不正です。BASE64はサービスアカウントJSON全体を設定してください。');
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  }
 }
 console.log('[boot] 4: before express require');
 const express = require('express');
