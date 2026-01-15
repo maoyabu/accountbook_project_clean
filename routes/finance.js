@@ -407,8 +407,10 @@ router.get('/search', isLoggedIn, async (req, res) => {
 });
 
 // 検索結果の表示
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 router.post('/search', catchAsync(async (req, res) => {
-    const { date, date2, cf, expense_item, income_item, dedu_item, saving_item, payment_type, user } = req.body;
+    const { date, date2, cf, expense_item, income_item, dedu_item, saving_item, payment_type, user, keyword } = req.body;
 
     // 検索クエリ用のオブジェクト
     let query = {};
@@ -473,6 +475,9 @@ router.post('/search', catchAsync(async (req, res) => {
     if (user && user !== 'Please Choice' && mongoose.Types.ObjectId.isValid(user)) {
         query.user = new mongoose.Types.ObjectId(user);
     }
+    if (keyword && keyword.trim()) {
+        query.content = { $regex: escapeRegExp(keyword.trim()), $options: 'i' };
+    }
     // 条件に一致するデータを取得
     const finances = await Finance.find(query).sort({ update_date: -1 })
         .populate('user')  // ← displayname を使うために追加！
@@ -517,7 +522,8 @@ router.post('/search', catchAsync(async (req, res) => {
           from: date || '', to: date2 || '',
           payment_type: (payment_type && payment_type !== 'Please Choice') ? payment_type : 'Please Choice',
           user: (user && mongoose.Types.ObjectId.isValid(user)) ? user : '',
-          cf, expense_item, income_item, dedu_item, saving_item
+          cf, expense_item, income_item, dedu_item, saving_item,
+          keyword: keyword || ''
         },
         pay_cfs: mergedPayCfs,
         whos: group.members,
@@ -542,6 +548,7 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
   const income_item = pick(req.query.income_item);
   const dedu_item = pick(req.query.dedu_item);
   const saving_item = pick(req.query.saving_item);
+  const keyword = pick(req.query.keyword);
   const activeGroupId = req.session.activeGroupId;
   if (!activeGroupId) {
     req.flash('error', 'アクティブなグループが選択されていません');
@@ -580,6 +587,9 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
   }
   if (payment_type && payment_type !== 'Please Choice') query.payment_type = payment_type;
   if (user && mongoose.Types.ObjectId.isValid(user)) query.user = new mongoose.Types.ObjectId(user);
+  if (keyword && keyword.trim()) {
+    query.content = { $regex: escapeRegExp(keyword.trim()), $options: 'i' };
+  }
 
   const finances = await Finance.find(query).sort({ update_date: -1 })
     .populate('user')
@@ -622,7 +632,8 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
       cf: cf || '', expense_item: expense_item || '',
       income_item: income_item || '',
       dedu_item: dedu_item || '',
-      saving_item: saving_item || ''
+      saving_item: saving_item || '',
+      keyword: keyword || ''
     },
     pay_cfs: mergedPayCfs,
     whos: group.members,
@@ -655,6 +666,7 @@ router.get('/list', isLoggedIn, async (req, res) => {
     const selectedCf = req.query.cf || '';
     const selectedCategory = req.query.category || '';
     const selectedPayment = req.query.payment_type || '';
+    const selectedKeyword = req.query.keyword || '';
     const sortCriteria = sortOrder === 'update_date'
       ? { update_date: -1 }
       : { date: -1 };
@@ -677,6 +689,9 @@ router.get('/list', isLoggedIn, async (req, res) => {
     }
     if (selectedPayment) {
       andConditions.push({ payment_type: selectedPayment });
+    }
+    if (selectedKeyword && selectedKeyword.trim()) {
+      andConditions.push({ content: { $regex: escapeRegExp(selectedKeyword.trim()), $options: 'i' } });
     }
 
     const query = andConditions.length > 1 ? { $and: andConditions } : baseCondition;
@@ -748,7 +763,8 @@ router.get('/list', isLoggedIn, async (req, res) => {
       selectedFilters: {
         cf: selectedCf,
         category: selectedCategory,
-        payment: selectedPayment
+        payment: selectedPayment,
+        keyword: selectedKeyword
       },
       filterOptions: {
         cfs: cfOptions,

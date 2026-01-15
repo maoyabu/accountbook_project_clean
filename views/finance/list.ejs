@@ -54,7 +54,12 @@
           <% }) %>
         </select>
       </div>
+      <div class="d-flex flex-column">
+        <label for="keywordFilter" class="form-label mb-1">内容</label>
+        <input type="text" name="keyword" id="keywordFilter" class="form-control form-control-sm w-auto" value="<%= selectedFilters?.keyword || '' %>" placeholder="フリーワード">
+      </div>
       <div class="ms-auto d-flex gap-2 align-items-end">
+        <button type="submit" class="btn btn-sm btn-primary">適用</button>
         <a class="btn btn-sm btn-outline-secondary" href="/finance/list">リセット</a>
       </div>
     </form>

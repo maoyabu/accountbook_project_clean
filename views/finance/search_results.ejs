@@ -35,6 +35,10 @@
     </div>
     <% if (page === 'search') { %>
     <div>
+      <label class="form-label mb-1">内容</label>
+      <input type="text" name="keyword" class="form-control form-control-sm" value="<%= filters?.keyword || '' %>" placeholder="フリーワード">
+    </div>
+    <div>
       <label class="form-label mb-1">収支区分</label>
       <select name="cf" class="form-select form-select-sm">
         <option value="">すべて</option>

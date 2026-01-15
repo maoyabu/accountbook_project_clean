@@ -1,24 +1,38 @@
+console.log('index.js start');
+// 起動デバッグ用（どこで止まっているかを特定）
+process.on('uncaughtException', (err) => {
+  console.error('❌ uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ unhandledRejection:', reason);
+});
+console.log('[boot] 1: before dotenv');
 require('dotenv').config();
+console.log('[boot] 2: after dotenv');
 const path = require('path');
 const fs = require('fs');
+console.log('[boot] 3: after core requires (path/fs)');
 
 // 🔐 Google Cloud 認証情報 (Base64文字列 → .jsonファイルに復元)
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 && process.env.NODE_ENV === 'production') {
   const configDir = path.join(__dirname, 'config');
   const credentialsPath = path.join(configDir, 'accountbook.json');
+
   
   // configディレクトリが存在しなければ作成
     if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
     }
-
   const decoded = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64').toString('utf-8');
   fs.writeFileSync(credentialsPath, decoded);
   process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
   console.log('✅ Google 認証情報ファイルを書き出しました');
 }
+console.log('[boot] 4: before express require');
 const express = require('express');
+console.log('[boot] 5: after express require');
 const app = express();
+console.log('[boot] 6: after app init');
 
 // Basic security hardening
 app.disable('x-powered-by');
@@ -32,48 +46,73 @@ app.use((req, res, next) => {
   next();
 });
 }
-
+console.log('[boot] 7: before mongoose require');
 const mongoose = require('mongoose');
+console.log('[boot] 8: after mongoose require');
 const methodOverride = require('method-override');
 const ejsMate = require('ejs-mate');
 const ExpressError = require('./Utils/ExpressError');
 const session = require('express-session');
 
-const financeRoutes = require('./routes/finance');
-const userRoutes = require('./routes/users');
-const outputRoutes = require('./routes/output');
-const groupRoutes = require('./routes/groups');
-const manageRoutes = require('./routes/manage');
-const matometeRoutes = require('./routes/matomete');
-const assetRoutes = require('./routes/asset');
-const allaboutmeRoutes = require('./routes/allaboutme');
-const myTopRoutes = require('./routes/myTop');
-const adminRoutes = require('./routes/admin');
-const supportRoutes = require('./routes/support');
-const historyRoutes = require('./routes/history');
-const gchatRoutes = require('./routes/gchat');
-const relationRoutes = require('./routes/relation');
-const secureNoteRoutes = require('./routes/secureNote');
-const resumeRoutes = require('./routes/resume');
-const plannerRoutes = require('./routes/planner');
-
+// ✅ ここから下は後半で参照しているので必ず require する
 const flash = require('express-flash');
-const { error } = require('console');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const FinanceUser = require('./models/users');
-const { setActiveGroup } = require('./middleware');
-const { logPageAccess } = require('./middleware'); // ← すでにsetActiveGroupを使っているのでその隣に追記
 
 const googlePhotosRouter = require('./routes/googlePhotos');
 const ocrRoutes = require('./routes/ocr');
 
-//MongoStoreとしてrequireする
+console.log('[boot] 9: before loading local routes');
+const financeRoutes = require('./routes/finance');
+console.log('[boot] 9.1: loaded routes/finance');
+const userRoutes = require('./routes/users');
+console.log('[boot] 9.2: loaded routes/users');
+const outputRoutes = require('./routes/output');
+console.log('[boot] 9.3: loaded routes/output');
+const groupRoutes = require('./routes/groups');
+console.log('[boot] 9.4: loaded routes/groups');
+const manageRoutes = require('./routes/manage');
+console.log('[boot] 9.5: loaded routes/manage');
+const matometeRoutes = require('./routes/matomete');
+console.log('[boot] 9.6: loaded routes/matomete');
+const assetRoutes = require('./routes/asset');
+console.log('[boot] 9.7: loaded routes/asset');
+const allaboutmeRoutes = require('./routes/allaboutme');
+console.log('[boot] 9.8: loaded routes/allaboutme');
+const myTopRoutes = require('./routes/myTop');
+console.log('[boot] 9.9: loaded routes/myTop');
+const adminRoutes = require('./routes/admin');
+console.log('[boot] 9.10: loaded routes/admin');
+const supportRoutes = require('./routes/support');
+console.log('[boot] 9.11: loaded routes/support');
+const historyRoutes = require('./routes/history');
+console.log('[boot] 9.12: loaded routes/history');
+const gchatRoutes = require('./routes/gchat');
+console.log('[boot] 9.13: loaded routes/gchat');
+const relationRoutes = require('./routes/relation');
+console.log('[boot] 9.14: loaded routes/relation');
+const secureNoteRoutes = require('./routes/secureNote');
+console.log('[boot] 9.15: loaded routes/secureNote');
+const resumeRoutes = require('./routes/resume');
+console.log('[boot] 9.16: loaded routes/resume');
+const plannerRoutes = require('./routes/planner');
+console.log('[boot] 9.17: loaded routes/planner');
+
+console.log('[boot] 10: before loading middleware');
+const { setActiveGroup } = require('./middleware');
+console.log('[boot] 10.1: loaded middleware.setActiveGroup');
+const { logPageAccess } = require('./middleware');
+console.log('[boot] 10.2: loaded middleware.logPageAccess');
+
+console.log('[boot] 11: before connect-mongo require');
 const MongoStore = require('connect-mongo');
+console.log('[boot] 12: after connect-mongo require');
 
 // MongoDB接続設定
 const dburl = process.env.DB_URL || 'mongodb://localhost:27017/finance';
 // const dburl = process.env.DB_URL;
+console.log('[boot] 13: before mongoose.connect', dburl);
 mongoose.connect(dburl)
     .then(() => {
         console.log('MongoDBコネクションOK！！');
@@ -94,15 +133,14 @@ app.set('views', path.join(__dirname,'views'));
 //publicディレクトリを静的ファイルとして使える様にする
 app.use(express.static(path.join(__dirname,'public')));
 
-const secret = process.env.SECRET || 'mysecret';
+// SECRET が空文字や未設定でも落ちないようにガード
+const secret = (process.env.SECRET && String(process.env.SECRET).trim()) ? String(process.env.SECRET).trim() : 'mysecret';
 
 //ストアを作成。最新のversionではストアを作成するにはMongoStore.create()を使用する
 const store = MongoStore.create({
-    mongoUrl: dburl,
-    touchAfter: 24 * 60 * 60,  // セッションに変更がなければ無駄に保存しないための期間
-    crypto: {
-        secret
-    }
+  mongoUrl: dburl,
+  touchAfter: 24 * 60 * 60, // セッションに変更がなければ無駄に保存しないための期間
+  // crypto は必須ではないため、まずは外して起動安定化（必要なら後で戻せる）
 });
 
 //セッションのエラー管理
@@ -111,7 +149,7 @@ store.on('error',e => {
 });
 
 //セッションの設定　作成したstoreをsessionConfigに設定する
-sessionConfig = {
+const sessionConfig = {
     store, //セッションのオプションにconnect-mongoを設定する
     secret,
     resave: false,
@@ -195,7 +233,7 @@ app.use((req, res, next) => {
 
 //topページへのアクセス
 app.get('/', (req, res) => {
-    res.render('common/top'); // views/common/top.ejsにアクセス
+  return res.render('common/top'); // views/common/top.ejsにアクセス
 });
 
 //RESTfulなルーティング設定
@@ -269,14 +307,20 @@ app.all('*',(req,res,next) => {
 
 //ミドルウェアにカスタムのエラーハンドラーを追加する
 //エラーハンドラーにエラーが渡ってくることを想定して
-app.use((err,req,res,next) => {
-    const { statusCode = 500, message = '問題が起きました' } = err;
-    res.status(statusCode).render('error', { err, showStack: process.env.NODE_ENV !== 'production' });
+app.use((err, req, res, next) => {
+  // すでにレスポンスが返っている場合、ここでヘッダ操作すると ERR_HTTP_HEADERS_SENT になる
+  if (res.headersSent) return next(err);
+
+  const { statusCode = 500 } = err;
+  res.status(statusCode).render('error', { err, showStack: process.env.NODE_ENV !== 'production' });
 });
 
 //ポートの設定
 const port = process.env.PORT || 3000;
 
+console.log('[boot] 99: about to listen');
 app.listen(port, () => {
     console.log(`ポート${port}でリクエスト待受中....`);
   });
+
+console.log('index.js end');
