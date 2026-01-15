@@ -4,6 +4,7 @@ const catchAsync = require('../Utils/catchAsync');
 const Finance = require('../models/finance');
 const mongoose = require('mongoose');
 const path = require('path');
+const fs = require('fs');
 const methodOverride = require('method-override');
 const FinanceUser = require('../models/users');
 const FinanceExBudget = require('../models/finance_ex_budget');
@@ -701,6 +702,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     console.error('❌ 年次集計ルートエラー:', err);
     res.status(500).send('年次集計エラー');
   }
+});
 
 //年次集計結果をEXCELで出力（ビューと同じ構成）
 router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
@@ -776,6 +778,30 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const orderMap_x = Object.fromEntries(budgets.map(b => [b.expense_item, (b.display_order ?? 9999)]));
     ex_cfs.sort((a, b) => (orderMap_x[a] ?? 9999) - (orderMap_x[b] ?? 9999));
 
+    const cfMap = {
+      '収入項目': '収入',
+      '貯蓄項目': '貯蓄',
+      '控除項目': '控除',
+      '支出項目': '支出'
+    };
+    const totalBudgets = {
+      収入: 0,
+      貯蓄: 0,
+      控除: 0,
+      支出: 0
+    };
+    const budgetItems = await Items.find({ group: groupId });
+    for (const i of budgetItems) {
+      const cfKey = cfMap[i.la_cf];
+      if (cfKey && cfKey !== '支出') {
+        totalBudgets[cfKey] += i.budget || 0;
+      }
+    }
+    const exBudgets = await FinanceExBudget.find({ group: groupId, year });
+    for (const ex of exBudgets) {
+      totalBudgets['支出'] += ex.budget || 0;
+    }
+
     const data = [];
 
     // ヘッダー
@@ -786,7 +812,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
 
     const cfList = ['収入', '貯蓄', '控除', '支出'];
     cfList.forEach(cf => {
-      const row = [cf, ''];
+      const row = [cf, totalBudgets[cf] || 0];
       let yearTotal = 0;
       for (let m = 1; m <= 12; m++) {
         const val = monthlySummary[m]?.[cf] || 0;
@@ -828,26 +854,125 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
       data.push(row);
     });
 
-    const xlsx = require('xlsx');
     const os = require('os');
     const path = require('path');
     const now = new Date();
-    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const formattedTime = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
     const outputDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(os.homedir(), 'Downloads');
-    const outputPath = path.join(outputDir, `yearly_summary_${formattedDate}_${formattedTime}.xlsx`);
+    const outputPath = path.join(outputDir, `${year}サマリー.xlsx`);
 
-    const ws = xlsx.utils.aoa_to_sheet(data);
-    const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, 'Yearly Summary');
-    xlsx.writeFile(wb, outputPath);
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Yearly Summary', {
+      views: [{ state: 'frozen', ySplit: 1, showGridLines: false }]
+    });
 
-    res.download(outputPath, `yearly_summary_${formattedDate}_${formattedTime}.xlsx`);
+    const columns = data[0].map((header, idx) => ({
+      header,
+      key: `c${idx}`,
+      width: 12
+    }));
+    sheet.columns = columns;
+    data.slice(1).forEach(row => {
+      const rowObj = {};
+      row.forEach((val, idx) => {
+        rowObj[`c${idx}`] = val;
+      });
+      sheet.addRow(rowObj);
+    });
+
+    const headerRow = sheet.getRow(1);
+    headerRow.height = 20;
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '006400' } };
+      cell.font = { name: 'Meiryo UI', size: 14, color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell) => {
+        if (!cell.font) {
+          cell.font = { name: 'Meiryo UI', size: 14 };
+        }
+      });
+    });
+
+    let itemRowIndex = 0;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const itemCell = row.getCell(1);
+      const hasItem = itemCell.value !== null && itemCell.value !== undefined && String(itemCell.value).trim() !== '';
+      if (!hasItem) return;
+      itemRowIndex += 1;
+      if (itemRowIndex % 2 === 1) {
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6F4EA' } };
+        });
+      }
+    });
+
+    sheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell) => {
+        if (rowNumber > 1 && typeof cell.value === 'number') {
+          cell.numFmt = '#,##0';
+        }
+      });
+    });
+
+    sheet.columns.forEach((col) => {
+      let maxLen = String(col.header || '').length;
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        if (cell.value == null) return;
+        const text = cell.value instanceof Date ? cell.value.toISOString().slice(0, 10) : String(cell.value);
+        maxLen = Math.max(maxLen, text.length);
+      });
+      col.width = Math.min(Math.max(maxLen + 4, 12), 40);
+    });
+
+    const thick = { style: 'thick', color: { argb: 'FF2E2E2E' } };
+    const lastCol = sheet.columnCount;
+    const summaryRows = cfList.length + 1; // 収入〜収支
+    const summaryEndRow = 1 + summaryRows;
+    const detailStartRow = summaryEndRow + 2; // 空行を1行挟む
+    const detailEndRow = detailStartRow + ex_cfs.length - 1;
+
+    const applyThickBorder = (startRow, endRow) => {
+      if (!endRow || endRow < startRow) return;
+      for (let r = startRow; r <= endRow; r++) {
+        for (let c = 1; c <= lastCol; c++) {
+          const cell = sheet.getCell(r, c);
+          const border = {};
+          if (r === startRow) border.top = thick;
+          if (r === endRow) border.bottom = thick;
+          if (c === 1) border.left = thick;
+          if (c === lastCol) border.right = thick;
+          if (Object.keys(border).length > 0) cell.border = border;
+        }
+      }
+    };
+
+    applyThickBorder(1, summaryEndRow);
+    applyThickBorder(detailStartRow, detailEndRow);
+
+    sheet.pageSetup = {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 1
+    };
+
+    await workbook.xlsx.writeFile(outputPath);
+
+    res.download(outputPath, `${year}サマリー.xlsx`, (err) => {
+      fs.unlink(outputPath, () => {});
+      if (err) {
+        console.error('❌ 年次Excelダウンロードエラー:', err);
+      }
+    });
   } catch (err) {
     console.error('❌ 年次Excel出力エラー:', err);
     res.status(500).send('年次Excel出力エラー');
   }
-  });
 });
 
 //支出計
