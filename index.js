@@ -337,6 +337,7 @@ app.use((err, req, res, next) => {
   // すでにレスポンスが返っている場合、ここでヘッダ操作すると ERR_HTTP_HEADERS_SENT になる
   if (res.headersSent) return next(err);
 
+  console.error('❌ Error handler:', err);
   const { statusCode = 500 } = err;
   res.status(statusCode).render('error', { err, showStack: process.env.NODE_ENV !== 'production' });
 });
