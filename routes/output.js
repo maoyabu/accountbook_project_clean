@@ -13,6 +13,7 @@ const Items = require('../models/finance_items');
 const PaymentItem = require('../models/paymentItems');
 
 const xlsx = require('xlsx');
+const ExcelJS = require('exceljs');
 const { isLoggedIn, logAction } = require('../middleware');
 
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
@@ -110,26 +111,76 @@ router.get('/', isLoggedIn, catchAsync(async (req, res) => {
       .populate('user')
       .sort({ date: 1 });
 
-    // データをExcelに変換
-    const data = finances.map(item => ({
-        日付: item.date,
-        月: item.month,
-        日: item.day,
-        区分: item.cf,
-        収入項目: item.income_item,
-        支出項目: item.expense_item,
-        控除項目: item.dedu_item,
-        貯蓄項目: item.saving_item,
-        内容: item.content,
-        金額: item.amount,
-        支払種別: item.payment_type,
-        使用者: item.user?.displayname || '',
-        no: item._id.toString()
+    const columns = [
+      { header: '日付', key: 'date' },
+      { header: '月', key: 'month' },
+      { header: '日', key: 'day' },
+      { header: '区分', key: 'cf' },
+      { header: '収入項目', key: 'income_item' },
+      { header: '支出項目', key: 'expense_item' },
+      { header: '控除項目', key: 'dedu_item' },
+      { header: '貯蓄項目', key: 'saving_item' },
+      { header: '内容', key: 'content' },
+      { header: '金額', key: 'amount' },
+      { header: '支払種別', key: 'payment_type' },
+      { header: '使用者', key: 'user' },
+      { header: 'no', key: 'id' }
+    ];
+
+    const rows = finances.map(item => ({
+      date: item.date,
+      month: item.month,
+      day: item.day,
+      cf: item.cf,
+      income_item: item.income_item,
+      expense_item: item.expense_item,
+      dedu_item: item.dedu_item,
+      saving_item: item.saving_item,
+      content: item.content,
+      amount: item.amount,
+      payment_type: item.payment_type,
+      user: item.user?.displayname || '',
+      id: item._id.toString()
     }));
 
-    const ws = xlsx.utils.json_to_sheet(data);
-    const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, 'Finance Data');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Finance Data', {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+    sheet.columns = columns;
+    sheet.addRows(rows);
+    sheet.getColumn(1).numFmt = 'yyyy-mm-dd';
+
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '006400' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+    });
+
+    const lastCol = (() => {
+      let n = columns.length;
+      let s = '';
+      while (n > 0) {
+        const m = (n - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    })();
+    sheet.autoFilter = { from: 'A1', to: `${lastCol}1` };
+
+    sheet.columns.forEach((col) => {
+      let maxLen = String(col.header || '').length;
+      col.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber === 1) return;
+        let text = cell.value;
+        if (text == null) return;
+        if (text instanceof Date) text = text.toISOString().slice(0, 10);
+        if (typeof text === 'object' && text.text) text = text.text;
+        maxLen = Math.max(maxLen, String(text).length);
+      });
+      col.width = Math.min(Math.max(maxLen + 2, 10), 60);
+    });
 
     // ファイル名と保存場所の指定
     const now = new Date();
@@ -141,7 +192,7 @@ router.get('/', isLoggedIn, catchAsync(async (req, res) => {
     const outputPath = path.join(outputDir, `exported_data_${formattedDate}_${formattedTime}.xlsx`);
 
     // Excelファイルとして保存
-    xlsx.writeFile(wb, outputPath);
+    await workbook.xlsx.writeFile(outputPath);
 
     // エクスポート完了後にダウンロードリンクを送信
     res.download(outputPath, `exported_data_${formattedDate}_${formattedTime}.xlsx`, (err) => {
