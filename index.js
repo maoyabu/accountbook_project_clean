@@ -171,6 +171,19 @@ app.use(session(sessionConfig));
 app.use(passport.initialize());
 app.use(passport.session());
 
+// ✅ EJS 側で ReferenceError を起こさないため、最低限の locals を先に定義しておく
+app.use((req, res, next) => {
+  res.locals.currentUser = null;
+  res.locals.userGroups = [];
+  res.locals.activeGroupId = req.session?.activeGroupId || null;
+  res.locals.services = {
+    allaboutme: true,
+    finance: true,
+    assets: true,
+  };
+  next();
+});
+
 //passport-local-mongooseのメソッドを使える様にする
 passport.use(new LocalStrategy(FinanceUser.authenticate()));
 passport.serializeUser(FinanceUser.serializeUser());
@@ -188,14 +201,9 @@ app.use((req, res, next) => {
     res.locals.error = req.flash('error');
     res.locals.activeGroupId = req.session.activeGroupId || null;
 
-    // currentUser.groups が populate されていない場合は処理しない
-    if (req.user && req.user.groups) {
-        res.locals.currentUser = req.user;
-        res.locals.userGroups = req.user.groups;
-    } else {
-        res.locals.currentUser = null;
-        res.locals.userGroups = [];
-    }
+    // currentUser は常に定義（EJS で ReferenceError を防ぐ）
+    res.locals.currentUser = req.user || null;
+    res.locals.userGroups = (req.user && Array.isArray(req.user.groups)) ? req.user.groups : [];
 
     // 🔽 利用可能サービス（ナビメニュー出し分け用）
     if (req.user && req.user.services) {
