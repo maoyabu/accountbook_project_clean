@@ -190,7 +190,9 @@ passport.serializeUser(FinanceUser.serializeUser());
 passport.deserializeUser(FinanceUser.deserializeUser());
 
 //flashの設定
+//flashの設定
 app.use(flash());
+
 
 // ✅ setActiveGroup を先に適用（req.user を populate する）
 app.use(setActiveGroup);
