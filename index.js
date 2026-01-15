@@ -159,13 +159,13 @@ const store = MongoStore.create({
   // crypto は必須ではないため、まずは外して起動安定化（必要なら後で戻せる）
   serialize: (session) => JSON.stringify(session),
   unserialize: (data) => {
-    if (!data) return null;
+    if (!data) return {};
     if (typeof data !== 'string') return data;
     try {
       return JSON.parse(data);
     } catch (err) {
       console.warn('⚠️ Invalid session data detected, dropping session:', err.message);
-      return null;
+      return {};
     }
   }
 });
