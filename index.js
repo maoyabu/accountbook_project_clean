@@ -157,6 +157,17 @@ const store = MongoStore.create({
   mongoUrl: dburl,
   touchAfter: 24 * 60 * 60, // セッションに変更がなければ無駄に保存しないための期間
   // crypto は必須ではないため、まずは外して起動安定化（必要なら後で戻せる）
+  serialize: (session) => JSON.stringify(session),
+  unserialize: (data) => {
+    if (!data) return null;
+    if (typeof data !== 'string') return data;
+    try {
+      return JSON.parse(data);
+    } catch (err) {
+      console.warn('⚠️ Invalid session data detected, dropping session:', err.message);
+      return null;
+    }
+  }
 });
 
 //セッションのエラー管理
