@@ -45,9 +45,12 @@ const getListRedirect = (req) => req.session?.financeListReturn || '/finance/lis
 
 //selectedの選択肢をここで定義
 const la_cfs = ['Please Choice','支出','収入','控除','貯蓄'];
-let in_items = ['Please Choice','給与','賞与','その他'];
-let dedu_cfs = ['Please Choice','所得税','住民税','健康保険料','厚生年金保険料','介護保険','雇用保険','その他控除'];
-let saving_cfs = ['Please Choice', '貯金', '生命保険', 'その他貯金'];
+const defaultInItems = ['Please Choice','給与','賞与','その他'];
+const defaultDeduCfs = ['Please Choice','所得税','住民税','健康保険料','厚生年金保険料','介護保険','雇用保険','その他控除'];
+const defaultSavingCfs = ['Please Choice', '貯金', '生命保険', 'その他貯金'];
+let in_items = [...defaultInItems];
+let dedu_cfs = [...defaultDeduCfs];
+let saving_cfs = [...defaultSavingCfs];
 const ex_cfs = [
       '副食物費','主食費1','主食費2','調味料','光熱費','住宅・家具費',
       '衣服費','教育費','交際費','教養費','娯楽費','保険・衛生費',
@@ -57,19 +60,52 @@ const ex_cfs = [
 const whos = []; //activeGrouopIdから読み込む
 
 const currentYear = new Date().getFullYear();
-async function loadCfItems(req) {
+
+function extractYearFromDate(dateValue) {
+  if (!dateValue) return null;
+  const dt = new Date(dateValue);
+  if (Number.isNaN(dt.getTime())) return null;
+  return String(dt.getFullYear());
+}
+
+async function fetchItemsByYear(groupId, laCf, year) {
+  const yearStr = year ? String(year) : null;
+  let items = [];
+  if (yearStr) {
+    items = await Items.find({ group: groupId, la_cf: laCf, year: yearStr }).sort({ display_order: 1 });
+  }
+  if (items.length === 0) {
+    items = await Items.find({ group: groupId, la_cf: laCf, year: { $exists: false } }).sort({ display_order: 1 });
+  }
+  return items;
+}
+
+async function fetchExpenseItemsByYear(groupId, year) {
+  const yearStr = year ? String(year) : String(new Date().getFullYear());
+  const budgetItems = await Budget.find({ group: groupId, year: yearStr }).sort({ display_order: 1 });
+  if (budgetItems.length === 0) {
+    return ['Please Choice', ...ex_cfs];
+  }
+  return ['Please Choice', ...budgetItems.map(item => item.expense_item)];
+}
+
+async function loadCfItems(req, year) {
   const groupId = req.session.activeGroupId;
-  const incomeItems = await Items.find({ group: groupId, la_cf: '収入項目' });
+  const targetYear = year ? String(year) : String(new Date().getFullYear());
+  in_items = [...defaultInItems];
+  dedu_cfs = [...defaultDeduCfs];
+  saving_cfs = [...defaultSavingCfs];
+  const incomeItems = await fetchItemsByYear(groupId, '収入項目', targetYear);
   if (incomeItems.length > 0) {
     in_items = ['Please Choice', ...incomeItems.map(i => i.item)];
   }
 
-  const deductionItems = await Items.find({ group: groupId, la_cf: '控除項目' });
+  const deductionItems = await fetchItemsByYear(groupId, '控除項目', targetYear);
   if (deductionItems.length > 0) {
     dedu_cfs = ['Please Choice', ...deductionItems.map(i => i.item)];
   }
 
-  const savingItems = await Items.find({ group: groupId, la_cf: '貯蓄項目' });
+  const savingItems = await fetchItemsByYear(groupId, '貯蓄項目', targetYear);
   if (savingItems.length > 0) {
     saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
   }
@@ -77,6 +113,7 @@ async function loadCfItems(req) {
   // 支払方法(pay_cfs)をDB(PaymentItem)から取得（ログインユーザーのみに絞る）
   const payItems = await PaymentItem.find({ group: groupId, user: req.user._id }).sort({ display_order: 1 });
   global.pay_cfs = ['Please Choice', ...payItems.map(p => p.paymentItem)];
+  return { in_items, dedu_cfs, saving_cfs };
 }
 
 function formatDuplicateMessage(entry) {
@@ -129,13 +166,11 @@ router.get('/entry', isLoggedIn, async(req, res) => {
         req.flash('error', 'アクティブなグループが選択されていません');
         return res.redirect('/group_list');
     }
-    await loadCfItems(req);
+    const yearForItems = extractYearFromDate(req.query?.date) || currentYear;
+    await loadCfItems(req, yearForItems);
     // MongoDBからデータを取得（activeGroupIDで絞り込み）
     const allUsers = await FinanceUser.find({ groups: activeGroupId });
-    // ex_cfsをfinance_ex_budgetから取得
-    const currentYear = new Date().getFullYear();
-    const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear }).sort({ display_order: 1 });
-    const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
+    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
 
     res.render('finance/entry', {
         page: 'entry',
@@ -159,7 +194,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
       // console.log('アップロードされたレシート画像パス:', req.file.path);
     }
     const activeGroupId = req.session.activeGroupId;
-    await loadCfItems(req);
+    const yearForItems = extractYearFromDate(req.body?.finance?.date) || currentYear;
+    await loadCfItems(req, yearForItems);
     const { finance } = req.body;
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
     const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
@@ -173,10 +209,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     }
 
     const { date, cf, amount, payment_type, user } = finance;
-    // ex_cfsをfinance_ex_budgetから取得
-    const currentYear = new Date().getFullYear();
-    const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear }).sort({ display_order: 1 });
-    const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
+    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
 
     if (!date) errors.date = "日付は必須です";
     if (!cf || cf === 'Please Choice') errors.cf = "収支区分は必須です。まだ登録は完了していません。";
@@ -789,19 +822,18 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         req.flash('error', '無効なIDです');
         return res.redirect('/finance/list');
     }
-    await loadCfItems(req);
-    // グループごとの貯蓄項目を取得
-    const savingItems = await Items.find({ group: activeGroupId, la_cf: '貯蓄項目' });
-    let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
     const finance = await Finance.findById(id).populate('user');
+    const yearForItems = extractYearFromDate(finance?.date) || currentYear;
+    await loadCfItems(req, yearForItems);
+    // グループごとの貯蓄項目を取得
+    const savingItems = await fetchItemsByYear(activeGroupId, '貯蓄項目', yearForItems);
+    let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
     // 追加: 編集対象の項目が存在しない場合も反映できるようにする
     if (!saving_cfs.includes(finance.saving_item) && finance.saving_item) {
         saving_cfs.push(finance.saving_item);
     }
     // ex_cfsをfinance_ex_budgetから取得
-    const currentYear = new Date().getFullYear();
-    const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear }).sort({ display_order: 1 });
-    const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
+    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
     
     if (!finance) {
         req.flash('error', 'データが存在しません');
@@ -861,10 +893,14 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
     const { date, cf, amount, payment_type, user } = finance;
     const allUsers = await FinanceUser.find(); // もしくは必要なユーザー情報取得
 
-    // ex_cfsをfinance_ex_budgetから取得
-    const currentYear = new Date().getFullYear();
-    const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear }).sort({ display_order: 1 });
-    const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
+    const yearForItems = extractYearFromDate(date) || currentYear;
+    await loadCfItems(req, yearForItems);
+    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
+    const savingItems = await fetchItemsByYear(activeGroupId, '貯蓄項目', yearForItems);
+    let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
+    if (!saving_cfs.includes(finance.saving_item) && finance.saving_item) {
+        saving_cfs.push(finance.saving_item);
+    }
 
     let errors = {};
 
@@ -1075,6 +1111,45 @@ router.get('/budget', isLoggedIn, (req, res) => {
   });
 });
 
+// 年度別の区分候補を取得（新規登録/編集のプルダウン更新用）
+router.get('/budget/items', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    const year = req.query.year;
+    if (!groupId) {
+      return res.status(400).json({ error: 'groupId が不足しています' });
+    }
+    if (!year) {
+      return res.status(400).json({ error: 'year が不足しています' });
+    }
+
+    const ex_cfs = await fetchExpenseItemsByYear(groupId, year);
+    const incomeItems = await fetchItemsByYear(groupId, '収入項目', year);
+    const deduItems = await fetchItemsByYear(groupId, '控除項目', year);
+    const savingItems = await fetchItemsByYear(groupId, '貯蓄項目', year);
+
+    const in_items = incomeItems.length > 0
+      ? ['Please Choice', ...incomeItems.map(i => i.item)]
+      : [...defaultInItems];
+    const dedu_cfs = deduItems.length > 0
+      ? ['Please Choice', ...deduItems.map(i => i.item)]
+      : [...defaultDeduCfs];
+    const saving_cfs = savingItems.length > 0
+      ? ['Please Choice', ...savingItems.map(i => i.item)]
+      : [...defaultSavingCfs];
+
+    res.json({
+      ex_cfs,
+      in_items,
+      dedu_cfs,
+      saving_cfs
+    });
+  } catch (err) {
+    console.error('❌ 年度別区分取得エラー:', err);
+    res.status(500).json({ error: '内部エラーが発生しました' });
+  }
+});
+
 // 年度予算登録画面の表示
 router.post('/budget/setup', isLoggedIn, async (req, res) => {
   try {
@@ -1093,9 +1168,18 @@ router.post('/budget/setup', isLoggedIn, async (req, res) => {
           budget: 0
         }));
 
-    const incomeItems = await Items.find({ group: groupId, la_cf: '収入項目' }).sort({ display_order: 1 });
-    const deduItems = await Items.find({ group: groupId, la_cf: '控除項目' }).sort({ display_order: 1 });
-    const savingItems = await Items.find({ group: groupId, la_cf: '貯蓄項目' }).sort({ display_order: 1 });
+    let incomeItems = await Items.find({ group: groupId, la_cf: '収入項目', year }).sort({ display_order: 1 });
+    if (incomeItems.length === 0) {
+      incomeItems = await Items.find({ group: groupId, la_cf: '収入項目', year: { $exists: false } }).sort({ display_order: 1 });
+    }
+    let deduItems = await Items.find({ group: groupId, la_cf: '控除項目', year }).sort({ display_order: 1 });
+    if (deduItems.length === 0) {
+      deduItems = await Items.find({ group: groupId, la_cf: '控除項目', year: { $exists: false } }).sort({ display_order: 1 });
+    }
+    let savingItems = await Items.find({ group: groupId, la_cf: '貯蓄項目', year }).sort({ display_order: 1 });
+    if (savingItems.length === 0) {
+      savingItems = await Items.find({ group: groupId, la_cf: '貯蓄項目', year: { $exists: false } }).sort({ display_order: 1 });
+    }
 
     // res.render() に渡しているか確認
     res.render('finance/budget', {
@@ -1119,7 +1203,7 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
 
   // 既存削除（上書き保存）
   await Budget.deleteMany({ group: groupId, year });
-  await Items.deleteMany({ group: groupId });
+  await Items.deleteMany({ group: groupId, year });
 
   // 支出項目
   const entries = Array.isArray(items) ? items : Object.values(items);
@@ -1143,6 +1227,7 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
       allItems.push({
         display_order: item.display_order || idx + 1,
         group: groupId,
+        year,
         la_cf: '収入項目',
         item: item.item.trim(),
         budget: Number(item.budget),
@@ -1158,6 +1243,7 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
       allItems.push({
         display_order: item.display_order || idx + 1,
         group: groupId,
+        year,
         la_cf: '控除項目',
         item: item.item.trim(),
         budget: Number(item.budget),
@@ -1173,6 +1259,7 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
         allItems.push({
             display_order: item.display_order || idx + 1,
             group: groupId,
+            year,
             la_cf: '貯蓄項目',
             item: item.item.trim(),
             budget: Number(item.budget),

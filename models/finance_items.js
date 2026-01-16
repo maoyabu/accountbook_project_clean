@@ -13,6 +13,9 @@ const itemsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    year: {
+        type: String
+    },
     budget: {
         type: Number,
         required: true

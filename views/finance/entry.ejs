@@ -213,7 +213,7 @@
 </div>
 
 <script>
-  const categories = <%- JSON.stringify(ex_cfs) %>;
+  let categories = <%- JSON.stringify(ex_cfs) %>;
   let tagItemCount = 1;
   const cfSelect = document.getElementById('cf');
   const expenseGroup = document.getElementById('expense_group');
@@ -228,7 +228,75 @@
   const dateInput = document.getElementById('date');
   const amountInput = document.getElementById('amount');
 
+  function setSelectOptions(select, items, selectedValue) {
+    if (!select) return;
+    select.innerHTML = '';
+    items.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item;
+      option.textContent = item;
+      select.appendChild(option);
+    });
+    if (selectedValue && items.includes(selectedValue)) {
+      select.value = selectedValue;
+    } else {
+      select.value = 'Please Choice';
+    }
+  }
+
+  function updateTagCategoryOptions(items) {
+    categories = items;
+    const selects = document.querySelectorAll('#tagItemsArea select');
+    selects.forEach(select => {
+      const current = select.value;
+      setSelectOptions(select, items, current);
+    });
+  }
+
+  function applyDateLockState() {
+    const hasDate = Boolean(dateInput.value);
+    cfSelect.disabled = !hasDate;
+    if (!hasDate) {
+      cfSelect.value = 'Please Choice';
+    }
+    updateCategoryVisibility();
+    expenseSelect.disabled = !hasDate || cfSelect.value !== '支出';
+    incomeSelect.disabled = !hasDate || cfSelect.value !== '収入';
+    deductionSelect.disabled = !hasDate || cfSelect.value !== '控除';
+    savingSelect.disabled = !hasDate || cfSelect.value !== '貯蓄';
+  }
+
+  async function refreshItemsByDate() {
+    const dateValue = dateInput.value;
+    if (!dateValue) {
+      applyDateLockState();
+      return;
+    }
+    const year = new Date(dateValue).getFullYear();
+    try {
+      const res = await fetch(`/finance/budget/items?year=${year}`, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const data = await res.json();
+      setSelectOptions(expenseSelect, data.ex_cfs || [], expenseSelect.value);
+      setSelectOptions(incomeSelect, data.in_items || [], incomeSelect.value);
+      setSelectOptions(deductionSelect, data.dedu_cfs || [], deductionSelect.value);
+      setSelectOptions(savingSelect, data.saving_cfs || [], savingSelect.value);
+      updateTagCategoryOptions(data.ex_cfs || []);
+    } catch (err) {
+      console.error('❌ 区分の取得に失敗:', err);
+    } finally {
+      applyDateLockState();
+    }
+  }
+
   function updateCategoryVisibility() {
+    if (!dateInput.value) {
+      expenseGroup.style.display = 'none';
+      incomeGroup.style.display = 'none';
+      deductionGroup.style.display = 'none';
+      savingGroup.style.display = 'none';
+      return;
+    }
     expenseGroup.style.display = 'none';
     incomeGroup.style.display = 'none';
     deductionGroup.style.display = 'none';
@@ -319,7 +387,12 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     updateCategoryVisibility();
-    cfSelect.addEventListener('change', updateCategoryVisibility);
+    cfSelect.addEventListener('change', applyDateLockState);
+    dateInput.addEventListener('change', refreshItemsByDate);
+    applyDateLockState();
+    if (dateInput.value) {
+      refreshItemsByDate();
+    }
     // store original button labels for reset
     document.querySelectorAll('button[type=\"submit\"]').forEach(b => {
       if (!b.dataset.originalLabel) b.dataset.originalLabel = b.textContent;

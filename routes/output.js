@@ -17,6 +17,15 @@ const xlsx = require('xlsx');
 const ExcelJS = require('exceljs');
 const { isLoggedIn, logAction } = require('../middleware');
 
+async function fetchItemsByYear(groupId, year) {
+    const yearStr = String(year);
+    let items = await Items.find({ group: groupId, year: yearStr });
+    if (items.length === 0) {
+        items = await Items.find({ group: groupId, year: { $exists: false } });
+    }
+    return items;
+}
+
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
 router.use(express.urlencoded({ extended: true }));
 router.use(methodOverride('_method'));
@@ -527,7 +536,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
       '控除項目': '控除',
       '支出項目': '支出'
     };
-    const items = await Items.find({ group: groupId });
+    const items = await fetchItemsByYear(groupId, year);
     for (const i of items) {
       const cfKey = cfMap[i.la_cf];
       if (cfKey && cfKey !== '支出' && totalBudgets[cfKey] !== undefined) {
@@ -646,7 +655,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     }
 
     // 追加: Itemsモデルからgroup一致のデータを取得し、各カテゴリ合計を算出
-    const items = await Items.find({ group: groupId });
+    const items = await fetchItemsByYear(groupId, year);
     const totalBudgets = {
       収入: 0,
       貯蓄: 0,
@@ -790,7 +799,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
       控除: 0,
       支出: 0
     };
-    const budgetItems = await Items.find({ group: groupId });
+    const budgetItems = await fetchItemsByYear(groupId, year);
     for (const i of budgetItems) {
       const cfKey = cfMap[i.la_cf];
       if (cfKey && cfKey !== '支出') {
