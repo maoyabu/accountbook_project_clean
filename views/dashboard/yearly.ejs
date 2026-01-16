@@ -16,7 +16,7 @@
       </form>
 
       <!-- Excel出力ボタン -->
-      <form method="GET" action="/export/dashboard/yearly-g-exls" class="mb-0" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '出力中...'; setTimeout(() => { this.querySelector('button').disabled = false; this.querySelector('button').textContent = 'Excel出力'; }, 3000);">
+      <form method="GET" action="<%= viewType === 'user' ? '/export/dashboard/yearly-m-exls' : '/export/dashboard/yearly-g-exls' %>" class="mb-0" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '出力中...'; setTimeout(() => { this.querySelector('button').disabled = false; this.querySelector('button').textContent = 'Excel出力'; }, 3000);">
         <input type="hidden" name="year" value="<%= year %>">
         <button type="submit" class="btn btn-sm btn-light">Excel出力</button>
       </form>

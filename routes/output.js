@@ -26,6 +26,17 @@ async function fetchItemsByYear(groupId, year) {
     return items;
 }
 
+function getBudgetMonthCount(targetYear) {
+    const now = new Date();
+    if (targetYear === now.getFullYear()) {
+        return now.getMonth() + 1;
+    }
+    if (targetYear < now.getFullYear()) {
+        return 12;
+    }
+    return 12;
+}
+
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
 router.use(express.urlencoded({ extended: true }));
 router.use(methodOverride('_method'));
@@ -714,6 +725,320 @@ router.get('/dashboard/yearly-g', async (req, res) => {
 });
 
 //年次集計結果をEXCELで出力（ビューと同じ構成）
+router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    const userId = req.user._id;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+
+    const result = await Finance.aggregate([
+      {
+        $match: {
+          group: new mongoose.Types.ObjectId(groupId),
+          user: new mongoose.Types.ObjectId(userId),
+          date: {
+            $gte: new Date(`${year}-01-01`),
+            $lte: new Date(`${year}-12-31`)
+          }
+        }
+      },
+      {
+        $project: {
+          month: { $month: '$date' },
+          cf: 1,
+          amount: 1,
+          expense_item: 1
+        }
+      },
+      {
+        $group: {
+          _id: {
+            month: '$month',
+            cf: '$cf',
+            expense_item: '$expense_item'
+          },
+          total: { $sum: '$amount' }
+        }
+      },
+      {
+        $sort: { '_id.month': 1 }
+      }
+    ]);
+
+    // 集計
+    const monthlySummary = {};
+    const monthlyExpensesDetail = {};
+
+    for (let m = 1; m <= 12; m++) {
+      monthlySummary[m] = { 支出: 0, 控除: 0, 収入: 0, 貯蓄: 0 };
+      monthlyExpensesDetail[m] = {};
+    }
+
+    result.forEach(r => {
+      const { month, cf, expense_item } = r._id;
+      const total = r.total;
+      if (!monthlySummary[month][cf]) monthlySummary[month][cf] = 0;
+      monthlySummary[month][cf] += total;
+
+      if (cf === '支出' && expense_item) {
+        if (!monthlyExpensesDetail[month][expense_item]) {
+          monthlyExpensesDetail[month][expense_item] = 0;
+        }
+        monthlyExpensesDetail[month][expense_item] += total;
+      }
+    });
+
+    const budgets = await FinanceExBudget.find({ group: groupId, year });
+    const budgetMap = {};
+    const ex_cfs = [];
+    for (let b of budgets) {
+      budgetMap[b.expense_item] = b.budget || 0;
+      if (b.expense_item && !ex_cfs.includes(b.expense_item)) {
+        ex_cfs.push(b.expense_item);
+      }
+    }
+    const orderMap_x = Object.fromEntries(budgets.map(b => [b.expense_item, (b.display_order ?? 9999)]));
+    ex_cfs.sort((a, b) => (orderMap_x[a] ?? 9999) - (orderMap_x[b] ?? 9999));
+
+    const cfMap = {
+      '収入項目': '収入',
+      '貯蓄項目': '貯蓄',
+      '控除項目': '控除',
+      '支出項目': '支出'
+    };
+    const totalBudgets = {
+      収入: 0,
+      貯蓄: 0,
+      控除: 0,
+      支出: 0
+    };
+    const budgetItems = await fetchItemsByYear(groupId, year);
+    for (const i of budgetItems) {
+      const cfKey = cfMap[i.la_cf];
+      if (cfKey && cfKey !== '支出') {
+        totalBudgets[cfKey] += i.budget || 0;
+      }
+    }
+    const exBudgets = await FinanceExBudget.find({ group: groupId, year });
+    for (const ex of exBudgets) {
+      totalBudgets['支出'] += ex.budget || 0;
+    }
+
+    const data = [];
+
+    const budgetMonthCount = getBudgetMonthCount(year);
+
+    // ヘッダー
+    const header = ['項目', '予算'];
+    for (let m = 1; m <= 12; m++) header.push(`${m}月`);
+    header.push('年合計', '', '予算累計', '累計差');
+    data.push(header);
+
+    const cfList = ['収入', '貯蓄', '控除', '支出'];
+    cfList.forEach(cf => {
+      const row = [cf, totalBudgets[cf] || 0];
+      let yearTotal = 0;
+      for (let m = 1; m <= 12; m++) {
+        const val = monthlySummary[m]?.[cf] || 0;
+        row.push(val);
+        yearTotal += val;
+      }
+      const budgetCumulative = (totalBudgets[cf] || 0) * budgetMonthCount;
+      const isIncomeOrSaving = cf === '収入' || cf === '貯蓄';
+      const diff = isIncomeOrSaving ? yearTotal - budgetCumulative : budgetCumulative - yearTotal;
+      row.push(yearTotal, '', budgetCumulative, diff);
+      data.push(row);
+    });
+
+    // 収支
+    const balanceRow = ['収支', ''];
+    let yearBalance = 0;
+    for (let m = 1; m <= 12; m++) {
+      const income = monthlySummary[m]?.['収入'] || 0;
+      const save = monthlySummary[m]?.['貯蓄'] || 0;
+      const dedu = monthlySummary[m]?.['控除'] || 0;
+      const expe = monthlySummary[m]?.['支出'] || 0;
+      const b = income - save - dedu - expe;
+      balanceRow.push(b);
+      yearBalance += b;
+    }
+    balanceRow.push(yearBalance, '', '', '');
+    data.push(balanceRow);
+
+    // 空行
+    data.push([]);
+    // 支出明細タイトル行
+    const detailTitle = '【支出明細】';
+    data.push([detailTitle]);
+
+    // 支出内訳
+    ex_cfs.forEach(item => {
+      const row = [item, budgetMap[item] || 0];
+      let total = 0;
+      for (let m = 1; m <= 12; m++) {
+        const val = monthlyExpensesDetail[m]?.[item] || 0;
+        row.push(val);
+        total += val;
+      }
+      const budgetCumulative = (budgetMap[item] || 0) * budgetMonthCount;
+      const diff = budgetCumulative - total;
+      row.push(total, '', budgetCumulative, diff);
+      data.push(row);
+    });
+
+    const os = require('os');
+    const path = require('path');
+    const outputDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(os.homedir(), 'Downloads');
+    const outputPath = path.join(outputDir, `${year}サマリー.xlsx`);
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Yearly Summary', {
+      views: [{ state: 'frozen', ySplit: 1, showGridLines: false }]
+    });
+
+    const columns = data[0].map((header, idx) => ({
+      header,
+      key: `c${idx}`,
+      width: header === '' ? 2.5 : 12
+    }));
+    sheet.columns = columns;
+    data.slice(1).forEach(row => {
+      const rowObj = {};
+      row.forEach((val, idx) => {
+        rowObj[`c${idx}`] = val;
+      });
+      sheet.addRow(rowObj);
+    });
+
+    const headerRow = sheet.getRow(1);
+    headerRow.height = 20;
+    headerRow.eachCell((cell, colNumber) => {
+      if (sheet.getColumn(colNumber).header === '') return;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '006400' } };
+      cell.font = { name: 'Meiryo UI', size: 14, color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell) => {
+        if (!cell.font) {
+          cell.font = { name: 'Meiryo UI', size: 14 };
+        }
+      });
+    });
+
+    let itemRowIndex = 0;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const itemCell = row.getCell(1);
+      const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+      const hasItem = itemLabel !== '';
+      if (itemLabel === detailTitle) return;
+      if (!hasItem) return;
+      itemRowIndex += 1;
+      if (itemRowIndex % 2 === 1) {
+        row.eachCell((cell, colNumber) => {
+          if (sheet.getColumn(colNumber).header === '') return;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6F4EA' } };
+        });
+      }
+    });
+
+    sheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell) => {
+        if (rowNumber > 1 && typeof cell.value === 'number') {
+          cell.numFmt = '#,##0';
+        }
+      });
+    });
+
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const itemCell = row.getCell(1);
+      const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+      if (itemLabel === detailTitle) {
+        itemCell.font = { name: 'Meiryo UI', size: 14, bold: true };
+        itemCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    });
+
+    const negativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8D7DA' } };
+    const negativeFontColor = { argb: '9C0006' };
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell, colNumber) => {
+        const itemCell = row.getCell(1);
+        const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+        if (itemLabel === detailTitle) return;
+        if (sheet.getColumn(colNumber).header === '') return;
+        if (typeof cell.value === 'number' && cell.value < 0) {
+          cell.fill = negativeFill;
+          const baseFont = cell.font || { name: 'Meiryo UI', size: 14 };
+          cell.font = { ...baseFont, color: negativeFontColor };
+        }
+      });
+    });
+
+    sheet.columns.forEach((col) => {
+      if (col.header === '') return;
+      let maxLen = String(col.header || '').length;
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        if (cell.value == null) return;
+        const text = cell.value instanceof Date ? cell.value.toISOString().slice(0, 10) : String(cell.value);
+        maxLen = Math.max(maxLen, text.length);
+      });
+      col.width = Math.min(Math.max(maxLen + 4, 12), 40);
+    });
+
+    const thick = { style: 'thick', color: { argb: 'FF2E2E2E' } };
+    const lastCol = sheet.columnCount;
+    const summaryRows = cfList.length + 1; // 収入〜収支
+    const summaryEndRow = 1 + summaryRows;
+    const detailStartRow = summaryEndRow + 3; // 空行+タイトル行の次から
+    const detailEndRow = detailStartRow + ex_cfs.length - 1;
+
+    const applyThickBorder = (startRow, endRow) => {
+      if (!endRow || endRow < startRow) return;
+      for (let r = startRow; r <= endRow; r++) {
+        for (let c = 1; c <= lastCol; c++) {
+          const cell = sheet.getCell(r, c);
+          const border = {};
+          if (r === startRow) border.top = thick;
+          if (r === endRow) border.bottom = thick;
+          if (c === 1) border.left = thick;
+          if (c === lastCol) border.right = thick;
+          if (Object.keys(border).length > 0) cell.border = border;
+        }
+      }
+    };
+
+    applyThickBorder(1, summaryEndRow);
+    applyThickBorder(detailStartRow, detailEndRow);
+
+    sheet.pageSetup = {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 1
+    };
+
+    await workbook.xlsx.writeFile(outputPath);
+
+    res.download(outputPath, `${year}サマリー.xlsx`, (err) => {
+      fs.unlink(outputPath, () => {});
+      if (err) {
+        console.error('❌ 年次Excelダウンロードエラー:', err);
+      }
+    });
+  } catch (err) {
+    console.error('❌ 年次Excel出力エラー:', err);
+    res.status(500).send('年次Excel出力エラー');
+  }
+});
+
+//年次集計結果をEXCELで出力（ビューと同じ構成）
 router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
@@ -813,10 +1138,12 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
 
     const data = [];
 
+    const budgetMonthCount = getBudgetMonthCount(year);
+
     // ヘッダー
     const header = ['項目', '予算'];
     for (let m = 1; m <= 12; m++) header.push(`${m}月`);
-    header.push('年合計');
+    header.push('年合計', '', '予算累計', '累計差');
     data.push(header);
 
     const cfList = ['収入', '貯蓄', '控除', '支出'];
@@ -828,7 +1155,10 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
         row.push(val);
         yearTotal += val;
       }
-      row.push(yearTotal);
+      const budgetCumulative = (totalBudgets[cf] || 0) * budgetMonthCount;
+      const isIncomeOrSaving = cf === '収入' || cf === '貯蓄';
+      const diff = isIncomeOrSaving ? yearTotal - budgetCumulative : budgetCumulative - yearTotal;
+      row.push(yearTotal, '', budgetCumulative, diff);
       data.push(row);
     });
 
@@ -844,11 +1174,14 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
       balanceRow.push(b);
       yearBalance += b;
     }
-    balanceRow.push(yearBalance);
+    balanceRow.push(yearBalance, '', '', '');
     data.push(balanceRow);
 
     // 空行
     data.push([]);
+    // 支出明細タイトル行
+    const detailTitle = '【支出明細】';
+    data.push([detailTitle]);
 
     // 支出内訳
     ex_cfs.forEach(item => {
@@ -859,7 +1192,9 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
         row.push(val);
         total += val;
       }
-      row.push(total);
+      const budgetCumulative = (budgetMap[item] || 0) * budgetMonthCount;
+      const diff = budgetCumulative - total;
+      row.push(total, '', budgetCumulative, diff);
       data.push(row);
     });
 
@@ -877,7 +1212,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const columns = data[0].map((header, idx) => ({
       header,
       key: `c${idx}`,
-      width: 12
+      width: header === '' ? 2.5 : 12
     }));
     sheet.columns = columns;
     data.slice(1).forEach(row => {
@@ -890,7 +1225,8 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
 
     const headerRow = sheet.getRow(1);
     headerRow.height = 20;
-    headerRow.eachCell((cell) => {
+    headerRow.eachCell((cell, colNumber) => {
+      if (sheet.getColumn(colNumber).header === '') return;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '006400' } };
       cell.font = { name: 'Meiryo UI', size: 14, color: { argb: 'FFFFFFFF' }, bold: true };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -909,11 +1245,14 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
       const itemCell = row.getCell(1);
-      const hasItem = itemCell.value !== null && itemCell.value !== undefined && String(itemCell.value).trim() !== '';
+      const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+      const hasItem = itemLabel !== '';
+      if (itemLabel === detailTitle) return;
       if (!hasItem) return;
       itemRowIndex += 1;
       if (itemRowIndex % 2 === 1) {
-        row.eachCell((cell) => {
+        row.eachCell((cell, colNumber) => {
+          if (sheet.getColumn(colNumber).header === '') return;
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E6F4EA' } };
         });
       }
@@ -927,7 +1266,35 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
       });
     });
 
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const itemCell = row.getCell(1);
+      const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+      if (itemLabel === detailTitle) {
+        itemCell.font = { name: 'Meiryo UI', size: 14, bold: true };
+        itemCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    });
+
+    const negativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F8D7DA' } };
+    const negativeFontColor = { argb: '9C0006' };
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell, colNumber) => {
+        const itemCell = row.getCell(1);
+        const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+        if (itemLabel === detailTitle) return;
+        if (sheet.getColumn(colNumber).header === '') return;
+        if (typeof cell.value === 'number' && cell.value < 0) {
+          cell.fill = negativeFill;
+          const baseFont = cell.font || { name: 'Meiryo UI', size: 14 };
+          cell.font = { ...baseFont, color: negativeFontColor };
+        }
+      });
+    });
+
     sheet.columns.forEach((col) => {
+      if (col.header === '') return;
       let maxLen = String(col.header || '').length;
       col.eachCell({ includeEmpty: true }, (cell) => {
         if (cell.value == null) return;
@@ -941,7 +1308,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const lastCol = sheet.columnCount;
     const summaryRows = cfList.length + 1; // 収入〜収支
     const summaryEndRow = 1 + summaryRows;
-    const detailStartRow = summaryEndRow + 2; // 空行を1行挟む
+    const detailStartRow = summaryEndRow + 3; // 空行+タイトル行の次から
     const detailEndRow = detailStartRow + ex_cfs.length - 1;
 
     const applyThickBorder = (startRow, endRow) => {
