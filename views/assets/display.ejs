@@ -16,10 +16,11 @@
     </div>
   <% } %>
 
+  <% const latestInventoryLabel = latestInventory ? `${latestInventory.inventoryMonth.getFullYear()}年${String(latestInventory.inventoryMonth.getMonth() + 1).padStart(2, '0')}月` : '最新の棚卸し未登録'; %>
   <!-- 資産状況サマリー -->
   <div class="card shadow-sm mb-4">
     <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
-      <span class="fw-bold">資産状況</span>
+      <span class="fw-bold"><%= latestInventoryLabel %>時点の資産状況</span>
       <div class="d-flex gap-2">
         <a href="/asset?skipInventory=true" class="btn btn-warning btn-sm">登録・編集</a>
       </div>
@@ -50,7 +51,7 @@
   <!-- 資産明細 -->
   <div class="card shadow-sm mb-4">
     <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
-      <strong>資産明細</strong>
+      <strong><%= latestInventoryLabel %>時点の資産明細</strong>
     </div>
     <table class="table table-bordered table-sm mb-0">
       <thead>

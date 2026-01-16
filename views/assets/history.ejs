@@ -8,19 +8,30 @@
     <h5 class="mb-0">資産の推移</h5>
   </div>
   <div class="d-flex gap-2">
-    <a href="/asset/history/graph" class="btn btn-outline-primary btn-sm">グラフ表示</a>
+    <a href="/asset/inventory" class="btn btn-outline-secondary btn-sm">棚卸しを追加</a>
   </div>
 </div>
 
 <% if (!history || history.length === 0) { %>
   <div class="alert alert-secondary">まだ棚卸し履歴がありません。</div>
 <% } else { %>
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <% const hasChart = (JSON.parse(chartData || '{}').labels || []).length > 0; %>
+      <% if (!hasChart) { %>
+        <div class="alert alert-secondary mb-0">グラフに表示するデータがありません。棚卸しを登録してください。</div>
+      <% } else { %>
+        <canvas id="assetHistoryChart" height="120"></canvas>
+      <% } %>
+    </div>
+  </div>
+
   <% history.forEach(entry => { %>
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
         <div class="d-flex flex-column">
           <span><%= entry.label %> 棚卸し</span>
-          <a href="/asset/inventory?month=<%= entry.label.replace('年','-').replace('月','') %>" class="text-white text-decoration-underline small">この月の棚卸しに移動</a>
+          <a href="/asset/inventory?month=<%= entry.label.replace('年','-').replace('月','') %>" class="text-white text-decoration-underline small">この月の棚卸しを確認・編集</a>
         </div>
         <small class="text-end">
           更新: <%= entry.updatedAt ? new Date(entry.updatedAt).toLocaleString('ja-JP') : '-' %><br>
@@ -28,41 +39,100 @@
         </small>
       </div>
       <div class="card-body">
-        <div class="row mb-2">
-          <div class="col-md-8">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-6">
             <strong>合計</strong> ¥<%= entry.totalYen.toLocaleString() %>
           </div>
-          <div class="col-md-4 text-md-end text-muted small">
+          <div class="col-md-6 text-md-end text-muted small">
             <span class="me-2">金融資産: ¥<%= (entry.totalByCf['金融資産'] || 0).toLocaleString() %></span>
             <span class="me-2">実物資産: ¥<%= (entry.totalByCf['実物資産'] || 0).toLocaleString() %></span>
-            <span>無形資産: ¥<%= (entry.totalByCf['無形資産'] || 0).toLocaleString() %></span>
+            <span class="me-2">無形資産: ¥<%= (entry.totalByCf['無形資産'] || 0).toLocaleString() %></span>
+            <span>負債: ¥<%= (entry.totalByCf['負債'] || 0).toLocaleString() %></span>
           </div>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-bordered table-sm align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th style="width: 120px;">区分</th>
-                <th style="width: 150px;">項目</th>
-                <th>内容</th>
-                <th style="width: 90px;">コード</th>
-                <th class="text-end" style="width: 140px;">金額(円)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% entry.items.forEach(item => { %>
-                <tr>
-                  <td><%= item.asset_cf %></td>
-                  <td><%= item.asset_item %></td>
-                  <td><%= item.content %></td>
-                  <td><%= item.code %></td>
-                  <td class="text-end">¥<%= item.amountYen.toLocaleString() %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
   <% }) %>
 <% } %>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const chartData = <%- chartData || '{}' %>;
+
+  if (chartData.labels && chartData.labels.length > 0) {
+    const ctx = document.getElementById('assetHistoryChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: chartData.labels,
+        datasets: [
+          {
+            label: '金融資産',
+            data: chartData.series?.financial || [],
+            backgroundColor: 'rgba(31, 119, 180, 0.65)',
+            borderColor: '#1f77b4',
+            stack: 'net'
+          },
+          {
+            label: '実物資産',
+            data: chartData.series?.physical || [],
+            backgroundColor: 'rgba(44, 160, 44, 0.5)',
+            borderColor: '#2ca02c',
+            stack: 'net'
+          },
+          {
+            label: '無形資産',
+            data: chartData.series?.intangible || [],
+            backgroundColor: 'rgba(255, 193, 7, 0.55)',
+            borderColor: '#ffc107',
+            stack: 'net'
+          },
+          {
+            label: '負債',
+            data: chartData.series?.debt || [],
+            backgroundColor: 'rgba(220, 53, 69, 0.6)',
+            borderColor: '#dc3545',
+            stack: 'net'
+          },
+          {
+            type: 'line',
+            label: '合計',
+            data: chartData.series?.total || [],
+            borderColor: '#343a40',
+            backgroundColor: '#343a40',
+            tension: 0.2,
+            pointRadius: 3,
+            fill: false,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: {
+            position: 'top'
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ¥${Number(ctx.raw || 0).toLocaleString()}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            ticks: {
+              callback: (value) => `¥${Number(value).toLocaleString()}`
+            },
+            beginAtZero: true,
+            stacked: true
+          },
+          x: {
+            stacked: true
+          }
+        }
+      }
+    });
+  }
+</script>

@@ -15,16 +15,16 @@
   </div>
   <div class="card-body">
     <div class="alert alert-primary">
-      棚卸しは3月・6月・9月・12月のみ登録できます。<%= latestAllowedMonth ? `${latestAllowedMonth.getFullYear()}年${String(latestAllowedMonth.getMonth() + 1).padStart(2, '0')}月` : '' %>までが登録対象です。
+      棚卸し年月を手動で指定できます。未来の年月は登録できません。
     </div>
     <% if (targetInventory) { %>
       <div class="alert alert-success">
         この棚卸しは <%= new Date(targetInventory.updatedAt || targetInventory.createdAt).toLocaleString('ja-JP') %> に
         <%= targetInventory.updatedBy?.displayname || targetInventory.updatedBy?.username || '不明なユーザー' %> が保存済みです。上書きして更新できます。
       </div>
-    <% } else if (latestInventory) { %>
+    <% } else if (previousInventory) { %>
       <div class="alert alert-info">
-        前回（<%= latestInventory.inventoryMonth.getFullYear() %>年<%= String(latestInventory.inventoryMonth.getMonth() + 1).padStart(2, '0') %>月）
+        前回（<%= previousInventory.inventoryMonth.getFullYear() %>年<%= String(previousInventory.inventoryMonth.getMonth() + 1).padStart(2, '0') %>月）
         の棚卸し金額を初期表示しています。今回の棚卸し金額に更新してください。
       </div>
     <% } else { %>
@@ -37,7 +37,14 @@
       <p class="text-muted">登録されている資産がありません。まず資産を登録してください。</p>
     <% } else { %>
       <form action="/asset/inventory" method="POST" id="inventoryForm">
-        <input type="hidden" name="inventoryMonth" value="<%= targetMonthValue %>">
+        <div class="mb-3">
+          <label for="inventoryMonth" class="form-label">棚卸し年月</label>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <input type="month" id="inventoryMonth" name="inventoryMonth" class="form-control w-auto" value="<%= targetMonthValue %>" max="<%= latestAllowedMonth ? `${latestAllowedMonth.getFullYear()}-${String(latestAllowedMonth.getMonth() + 1).padStart(2, '0')}` : '' %>">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="inventoryReloadBtn">読み込み</button>
+          </div>
+          <div class="form-text text-muted small">年月を変更したら「読み込み」で前回の棚卸しを反映できます。</div>
+        </div>
         <div class="table-responsive">
           <table class="table table-bordered table-sm align-middle">
             <thead class="table-light">
@@ -204,5 +211,14 @@
       }
       inventoryModal.hide();
     });
+
+    const reloadBtn = document.getElementById('inventoryReloadBtn');
+    const monthInput = document.getElementById('inventoryMonth');
+    if (reloadBtn && monthInput) {
+      reloadBtn.addEventListener('click', () => {
+        if (!monthInput.value) return;
+        window.location.href = `/asset/inventory?month=${monthInput.value}`;
+      });
+    }
   });
 </script>

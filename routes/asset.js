@@ -36,6 +36,8 @@ const formatYearMonth = (date) => {
   return `${year}-${month}`;
 };
 
+const getMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
+
 //資産登録画面・編集画面　表示
 // 資産登録画面の表示
 
@@ -364,18 +366,22 @@ router.get('/inventory', ensureAuthenticated, async (req, res) => {
     const monthParam = req.query.month;
     const now = new Date();
     const parsedMonth = monthParam ? new Date(`${monthParam}-01`) : null;
-    const latestAllowedMonth = getQuarterStart(now);
-    const targetMonth = parsedMonth && !isNaN(parsedMonth) ? getQuarterStart(parsedMonth) : latestAllowedMonth;
+    const latestAllowedMonth = getMonthStart(now);
+    const targetMonth = parsedMonth && !isNaN(parsedMonth) ? getMonthStart(parsedMonth) : latestAllowedMonth;
 
     if (targetMonth.getTime() > latestAllowedMonth.getTime()) {
-      req.flash('error', '棚卸しは3・6・9・12月に到達してから登録できます。対象月を切り替えました。');
+      req.flash('error', '未来の年月は指定できません。対象月を切り替えました。');
       return res.redirect(`/asset/inventory?month=${formatYearMonth(latestAllowedMonth)}`);
     }
 
     const assets = await Asset.find({ group: groupId }).sort({ asset_cf: 1, asset_item: 1, entry_date: -1 });
     const latestInventory = await AssetInventory.findOne({ group: groupId }).sort({ inventoryMonth: -1 }).populate('updatedBy', 'username displayname').populate('items.updatedBy', 'username displayname');
     const targetInventory = await AssetInventory.findOne({ group: groupId, inventoryMonth: targetMonth }).populate('updatedBy', 'username displayname').populate('items.updatedBy', 'username displayname');
-    const prefillInventory = targetInventory || latestInventory;
+    const previousInventory = await AssetInventory.findOne({
+      group: groupId,
+      inventoryMonth: { $lt: targetMonth }
+    }).sort({ inventoryMonth: -1 }).populate('updatedBy', 'username displayname').populate('items.updatedBy', 'username displayname');
+    const prefillInventory = targetInventory || previousInventory;
     const rateCache = {};
     const stockCache = {};
     const stockDateCache = {};
@@ -430,6 +436,7 @@ router.get('/inventory', ensureAuthenticated, async (req, res) => {
       targetMonthValue: formatYearMonth(targetMonth),
       targetInventory,
       latestInventory,
+      previousInventory,
       inventoryTitle,
       latestAllowedMonth,
       currentUserDisplay
@@ -455,11 +462,11 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
     }
 
     const monthDate = new Date(`${inventoryMonth}-01`);
-    const targetMonth = getQuarterStart(monthDate);
-    const latestAllowedMonth = getQuarterStart(new Date());
+    const targetMonth = getMonthStart(monthDate);
+    const latestAllowedMonth = getMonthStart(new Date());
 
     if (isNaN(monthDate) || targetMonth.getTime() > latestAllowedMonth.getTime()) {
-      req.flash('error', '棚卸しは3・6・9・12月に到達後に登録してください。');
+      req.flash('error', '未来の年月は指定できません。');
       return res.redirect(`/asset/inventory?month=${formatYearMonth(latestAllowedMonth)}`);
     }
     const rawItems = Array.isArray(items) ? items : Object.values(items || {});
@@ -581,7 +588,8 @@ router.get('/history', ensureAuthenticated, async (req, res) => {
       };
     });
 
-    res.render('assets/history', { history });
+    const chartData = buildInventoryChartData(inventories.slice().sort((a, b) => a.inventoryMonth - b.inventoryMonth));
+    res.render('assets/history', { history, chartData: JSON.stringify(chartData) });
   } catch (err) {
     console.error(err);
     res.status(500).send('履歴の取得中にエラーが発生しました。');
