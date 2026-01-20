@@ -191,7 +191,7 @@ border: 2px solid rgb(0, 0, 0);
 main {
     width: 100%;
     max-width: 700px;
-    margin: 120px 0px;
+    margin: 50px 0px;
     padding: 10px;
 }
 
@@ -299,27 +299,27 @@ main {
 }
 
 .service-option.is-active.is-finance {
-    background-color: #e9f0ff;
-    border-color: #2f6fe4;
+    background-color: #fdecef;
+    border-color: #e59aa8;
     border-width: 3px;
-    color: #1e40af;
+    color: #9b1c31;
 }
 
 .service-option.is-active.is-myself {
-    background-color: #fff6d6;
-    border-color: #f3b11a;
+    background-color: #e9fbff;
+    border-color: #8ccfe0;
     border-width: 3px;
-    color: #9a5c00;
+    color: #0f6e84;
 }
 
 .service-option.is-finance {
-    background-color: #e9f0ff;
-    color: #1e40af;
+    background-color: #fdecef;
+    color: #9b1c31;
 }
 
 .service-option.is-myself {
-    background-color: #fff6d6;
-    color: #9a5c00;
+    background-color: #e9fbff;
+    color: #0f6e84;
 }
 
 .auth-submit {
@@ -336,6 +336,28 @@ main {
 
 .auth-submit:hover {
     background-color: #2f6fe4;
+}
+
+.btn-group-blue {
+    background-color: #1d4ed8;
+    color: #ffffff;
+    border: none;
+}
+
+.btn-group-blue:hover {
+    background-color: #1e40af;
+    color: #ffffff;
+}
+
+.btn-group-light {
+    background-color: #e9f0ff;
+    color: #1d4ed8;
+    border: 1px solid #bcd3ff;
+}
+
+.btn-group-light:hover {
+    background-color: #dbe7ff;
+    color: #1d4ed8;
 }
 
 .input-soft {
@@ -980,13 +1002,13 @@ color: white;
   }
 
   .menu-item.is-active.is-finance {
-    background-color: #e9f0ff;
-    border-right: 4px solid #2f6fe4;
+    background-color: #fdecef;
+    border-right: 4px solid #e59aa8;
   }
 
   .menu-item.is-active.is-myself {
-    background-color: #fff6d6;
-    border-right: 4px solid #f3b11a;
+    background-color: #e9fbff;
+    border-right: 4px solid #8ccfe0;
   }
 
   .related-tag {
@@ -998,21 +1020,21 @@ color: white;
   }
 
   .menu-pill.is-active.is-finance {
-    background-color: #e9f0ff;
-    border-color: #2f6fe4;
-    color: #1e40af;
+    background-color: #fdecef;
+    border-color: #e59aa8;
+    color: #9b1c31;
   }
 
   .menu-pill.is-active.is-myself {
-    background-color: #fff6d6;
-    border-color: #f3b11a;
-    color: #9a5c00;
+    background-color: #e9fbff;
+    border-color: #8ccfe0;
+    color: #0f6e84;
   }
 
   .menu-pill.related-blue {
-    background-color: #e9f4ff;
-    border-color: #7fb3ff;
-    color: #1d4ed8;
+    background-color: #e9fbff;
+    border-color: #8ccfe0;
+    color: #0f6e84;
   }
 
   .menu-pill.related-green {
@@ -1201,12 +1223,12 @@ li{
 }
 
 #top-nav.theme-finance .top-nav-bar {
-    background-color: #e9f2ff;
+    background-color: #fdecef;
     color: #1f2937;
 }
 
 #top-nav.theme-myself .top-nav-bar {
-    background-color: #fff6d6;
+    background-color: #e9fbff;
     color: #1f2937;
 }
 
@@ -1215,6 +1237,7 @@ li{
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: nowrap;
 }
 
 .top-nav-left,
@@ -1226,7 +1249,7 @@ li{
 }
 
 .top-nav-left {
-    min-width: 180px;
+    min-width: 0;
 }
 
 .top-nav-center {
@@ -1235,7 +1258,7 @@ li{
 }
 
 .top-nav-right {
-    min-width: 320px;
+    min-width: 0;
     justify-content: flex-end;
     gap: 12px;
 }
@@ -1256,7 +1279,7 @@ li{
 }
 
 #top-nav.theme-finance .top-nav-icon {
-    border-color: #bcd3ff;
+    border-color: #f3b6c2;
     background-color: #ffffff;
 }
 
@@ -1269,7 +1292,7 @@ li{
 }
 
 #top-nav.theme-myself .top-nav-icon {
-    border-color: #f0c86b;
+    border-color: #8ccfe0;
     background-color: #ffffff;
 }
 
@@ -1279,6 +1302,14 @@ li{
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+#top-nav.theme-finance .top-nav-service-label {
+    color: #9b1c31;
+}
+
+#top-nav.theme-myself .top-nav-service-label {
+    color: #0f6e84;
 }
 
 .menu-toggle {
@@ -1298,13 +1329,13 @@ li{
 }
 
 #top-nav.theme-finance .menu-toggle {
-    border-color: rgba(255, 255, 255, 0.8);
-    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #f3b6c2;
+    background-color: #ffffff;
 }
 
 #top-nav.theme-myself .menu-toggle {
-    border-color: #d6a63c;
-    background-color: #fff2c2;
+    border-color: #8ccfe0;
+    background-color: #ffffff;
 }
 
 .top-nav-field {
@@ -1336,6 +1367,30 @@ li{
     color: #2c2c2c;
     text-decoration: none;
     background-color: #f3efe6;
+}
+
+@media (max-width: 768px) {
+    .top-nav-bar {
+        padding: 4px 0;
+    }
+
+    .top-nav-brand {
+        display: none;
+    }
+
+    .top-nav-inner {
+        gap: 6px;
+    }
+
+    .menu-toggle {
+        width: 36px;
+        height: 36px;
+    }
+
+    .top-nav-icon {
+        width: 32px;
+        height: 32px;
+    }
 }
 
 #calendar {
@@ -1527,6 +1582,6 @@ padding-left: 10px;
 
 @media (max-width: 670px) {  /* 画面幅 768px 以下 (スマホサイズ) */
     main {
-        padding: 50px;
+        padding: 10px;
     }
 }
