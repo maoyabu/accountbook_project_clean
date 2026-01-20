@@ -1,4 +1,3 @@
-console.log('index.js start');
 // 起動デバッグ用（どこで止まっているかを特定）
 process.on('uncaughtException', (err) => {
   console.error('❌ uncaughtException:', err);
@@ -6,12 +5,9 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason) => {
   console.error('❌ unhandledRejection:', reason);
 });
-console.log('[boot] 1: before dotenv');
 require('dotenv').config();
-console.log('[boot] 2: after dotenv');
 const path = require('path');
 const fs = require('fs');
-console.log('[boot] 3: after core requires (path/fs)');
 
 // 🔐 Google Cloud 認証情報 (Base64文字列 → .jsonファイルに復元)
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 && process.env.NODE_ENV === 'production') {
@@ -44,11 +40,8 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 && process.env.NODE_ENV ==
     delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
   }
 }
-console.log('[boot] 4: before express require');
 const express = require('express');
-console.log('[boot] 5: after express require');
 const app = express();
-console.log('[boot] 6: after app init');
 
 // Basic security hardening
 app.disable('x-powered-by');
@@ -62,9 +55,7 @@ app.use((req, res, next) => {
   next();
 });
 }
-console.log('[boot] 7: before mongoose require');
 const mongoose = require('mongoose');
-console.log('[boot] 8: after mongoose require');
 const methodOverride = require('method-override');
 const ejsMate = require('ejs-mate');
 const ExpressError = require('./Utils/ExpressError');
@@ -79,58 +70,33 @@ const FinanceUser = require('./models/users');
 const googlePhotosRouter = require('./routes/googlePhotos');
 const ocrRoutes = require('./routes/ocr');
 
-console.log('[boot] 9: before loading local routes');
 const financeRoutes = require('./routes/finance');
-console.log('[boot] 9.1: loaded routes/finance');
 const userRoutes = require('./routes/users');
-console.log('[boot] 9.2: loaded routes/users');
 const outputRoutes = require('./routes/output');
-console.log('[boot] 9.3: loaded routes/output');
 const groupRoutes = require('./routes/groups');
-console.log('[boot] 9.4: loaded routes/groups');
 const manageRoutes = require('./routes/manage');
-console.log('[boot] 9.5: loaded routes/manage');
 const matometeRoutes = require('./routes/matomete');
-console.log('[boot] 9.6: loaded routes/matomete');
 const assetRoutes = require('./routes/asset');
-console.log('[boot] 9.7: loaded routes/asset');
 const allaboutmeRoutes = require('./routes/allaboutme');
-console.log('[boot] 9.8: loaded routes/allaboutme');
 const myTopRoutes = require('./routes/myTop');
-console.log('[boot] 9.9: loaded routes/myTop');
 const myselfRoutes = require('./routes/myself');
-console.log('[boot] 9.9.1: loaded routes/myself');
 const adminRoutes = require('./routes/admin');
-console.log('[boot] 9.10: loaded routes/admin');
 const supportRoutes = require('./routes/support');
-console.log('[boot] 9.11: loaded routes/support');
 const historyRoutes = require('./routes/history');
-console.log('[boot] 9.12: loaded routes/history');
 const gchatRoutes = require('./routes/gchat');
-console.log('[boot] 9.13: loaded routes/gchat');
 const relationRoutes = require('./routes/relation');
-console.log('[boot] 9.14: loaded routes/relation');
 const secureNoteRoutes = require('./routes/secureNote');
-console.log('[boot] 9.15: loaded routes/secureNote');
 const resumeRoutes = require('./routes/resume');
-console.log('[boot] 9.16: loaded routes/resume');
 const plannerRoutes = require('./routes/planner');
-console.log('[boot] 9.17: loaded routes/planner');
 
-console.log('[boot] 10: before loading middleware');
 const { setActiveGroup } = require('./middleware');
-console.log('[boot] 10.1: loaded middleware.setActiveGroup');
 const { logPageAccess } = require('./middleware');
-console.log('[boot] 10.2: loaded middleware.logPageAccess');
 
-console.log('[boot] 11: before connect-mongo require');
 const MongoStore = require('connect-mongo');
-console.log('[boot] 12: after connect-mongo require');
 
 // MongoDB接続設定
 const dburl = process.env.DB_URL || 'mongodb://localhost:27017/finance';
 // const dburl = process.env.DB_URL;
-console.log('[boot] 13: before mongoose.connect', dburl);
 mongoose.connect(dburl)
     .then(() => {
         console.log('MongoDBコネクションOK！！');
@@ -358,6 +324,11 @@ app.use('/planner', plannerRoutes);
 // OCR関連のルート
 app.use('/ocr', ocrRoutes);
 
+// Chrome DevTools の自動アクセス（ログ抑制）
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
+  res.status(204).end();
+});
+
 app.all('*',(req,res,next) => {
     // res.send('404');
     //エラークラス(ExpressError.js)を使ってハンドリングするやり方
@@ -380,9 +351,6 @@ app.use((err, req, res, next) => {
 //ポートの設定
 const port = process.env.PORT || 3000;
 
-console.log('[boot] 99: about to listen');
 app.listen(port, () => {
     console.log(`ポート${port}でリクエスト待受中....`);
   });
-
-console.log('index.js end');
