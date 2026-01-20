@@ -115,7 +115,7 @@ const checkSharedAccess = (type) => {
 
     if (!access) {
       req.flash('error', 'この情報を閲覧する権限がありません');
-      return res.redirect('/myTop/top');
+      return res.redirect('/myself/top');
     }
     next();
   };

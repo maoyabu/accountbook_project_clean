@@ -61,6 +61,60 @@ const whos = []; //activeGrouopIdから読み込む
 
 const currentYear = new Date().getFullYear();
 
+// Financeトップ
+router.get('/top', isLoggedIn, async (req, res) => {
+  try {
+    const activeGroupId = req.session.activeGroupId;
+    if (!activeGroupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/login');
+    }
+
+    const objectId = typeof activeGroupId === 'string'
+      ? new mongoose.Types.ObjectId(activeGroupId)
+      : activeGroupId;
+
+    const recentFinances = await Finance.find({
+      group: objectId,
+      user: req.user._id
+    })
+      .sort({ date: -1, entry_date: -1 })
+      .limit(5)
+      .populate('user');
+
+    const AssetInventory = require('../models/assetInventory');
+    const latestInventory = await AssetInventory.findOne({ group: objectId }).sort({ inventoryMonth: -1 });
+    let totalYen = 0;
+    let totalByCf = { '金融資産': 0, '実物資産': 0, '無形資産': 0, '負債': 0 };
+    let inventoryLabel = '未登録';
+
+    if (latestInventory) {
+      totalYen = latestInventory.totalYen || 0;
+      const invTotals =
+        latestInventory.totalByCf instanceof Map
+          ? Object.fromEntries(latestInventory.totalByCf)
+          : latestInventory.totalByCf || {};
+      Object.keys(totalByCf).forEach((key) => {
+        totalByCf[key] = invTotals[key] || 0;
+      });
+      const invDate = latestInventory.inventoryMonth;
+      if (invDate) {
+        inventoryLabel = `${invDate.getFullYear()}年${String(invDate.getMonth() + 1).padStart(2, '0')}月`;
+      }
+    }
+
+    res.render('finance/top', {
+      recentFinances,
+      totalYen,
+      totalByCf,
+      inventoryLabel
+    });
+  } catch (error) {
+    console.error('Financeトップ取得エラー:', error);
+    res.status(500).send('サーバーエラーが発生しました');
+  }
+});
+
 function extractYearFromDate(dateValue) {
   if (!dateValue) return null;
   const dt = new Date(dateValue);

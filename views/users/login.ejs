@@ -6,29 +6,128 @@
     ガイド
   </a>
 </div>
-    <div class="waku-1">
-        <div class = "waku-2">
-            <form action="/login" method="POST" novalidate>
-                <div class="mb-3">
-                    <label class="waku-3" for="username">ユーザー名 または メールアドレス</label>
-                    <input class="waku-4" type="text" id="username" name="username" placeholder="ユーザー名またはメールアドレスを入力してください"><br>
-                </div>
-                <div class="mb-3">
-                    <label class="waku-3" for="password">パスワード</label>
-                    <input class="waku-4" type="password" id="password" name = "password" placeholder="英数字6文字以上"><br>
-                </div>
-                <div class="waku-5">
-                    <button class="button-3">ログイン</button>
-                    <div class="spinner-border text-dark d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
-                        <span class="visually-hidden">送信中...</span>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="waku-5"><a href="/forgot-password">パスワードを忘れた方はこちら</a></div>
-        <hr>
-        <div class="waku-5">
-            <label for="login">まだ会員ではない方</label>
-        </div>
-        <a class = "login" href="/register">新規会員登録</a>
+
+<div class="auth-container">
+  <div class="text-center mb-4">
+    <h1 class="auth-title">ユーザーログイン / 新規会員登録</h1>
+    <p class="auth-subtitle">タブを切り替えてログインまたは新規登録を選択できます。</p>
+  </div>
+
+  <div class="auth-card">
+    <ul class="nav nav-tabs auth-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link <%= activeTab === 'login' ? 'active' : '' %>" data-bs-toggle="tab" data-bs-target="#tab-login" type="button" role="tab">ログイン</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link <%= activeTab === 'register' ? 'active' : '' %>" data-bs-toggle="tab" data-bs-target="#tab-register" type="button" role="tab">新規会員登録</button>
+      </li>
+    </ul>
+
+    <div class="tab-content p-4">
+      <div class="tab-pane fade <%= activeTab === 'login' ? 'show active' : '' %>" id="tab-login" role="tabpanel">
+        <div class="auth-pane-title">ようこそ。</div>
+        <div class="auth-pane-desc">登録済みのメールアドレスまたはユーザー名でログインしてください。</div>
+        <form action="/login" method="POST" novalidate>
+          <input type="hidden" name="service" id="login-service" value="<%= selectedService %>">
+          <div class="mb-3">
+            <label class="waku-3" for="login-username">メールアドレス または ユーザー名</label>
+            <input class="waku-4 input-soft" type="text" id="login-username" name="username" placeholder="ユーザー名またはメールアドレスを入力してください">
+          </div>
+          <div class="mb-3">
+            <label class="waku-3" for="login-password">パスワード</label>
+            <input class="waku-4 input-soft" type="password" id="login-password" name="password" placeholder="英数字6文字以上">
+          </div>
+          <div class="mb-3">
+            <label class="waku-3">利用するサービス</label>
+            <div class="service-options service-options-full" data-target="login-service">
+              <button type="button" class="service-option is-finance <%= selectedService === 'finance' ? 'is-active' : '' %>" data-service="finance">Finance</button>
+              <button type="button" class="service-option is-myself <%= selectedService === 'myself' ? 'is-active' : '' %>" data-service="myself">Myself</button>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="remember">
+              <label class="form-check-label" for="remember">ログイン情報を保持する</label>
+            </div>
+            <a href="/forgot-password">パスワードを忘れた方はこちら</a>
+          </div>
+          <div class="waku-5">
+            <button class="button-3 auth-submit">ログイン</button>
+            <div class="spinner-border text-dark d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+              <span class="visually-hidden">送信中...</span>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="tab-pane fade <%= activeTab === 'register' ? 'show active' : '' %>" id="tab-register" role="tabpanel">
+        <div class="auth-pane-title">新規会員登録</div>
+        <div class="auth-pane-desc">初めての方はこちらから登録してください。</div>
+        <form action="/register" method="POST">
+          <% if (query?.group) { %>
+            <input type="hidden" name="group" value="<%= query.group %>">
+          <% } %>
+          <div class="mb-3">
+            <label class="waku-3" for="register-username">ログインネーム（変更は出来ません）</label>
+            <input class="waku-4 input-soft <%= errors?.username ? 'error-field' : '' %>" type="text" id="register-username" name="username" value="<%= formData?.username || '' %>" placeholder="ユーザーネームを入力してください">
+            <% if (errors?.username) { %>
+              <div class="error-message"><%= errors.username %></div>
+            <% } %>
+          </div>
+          <div class="mb-3">
+            <label class="waku-3" for="register-email">メールアドレス</label>
+            <input class="waku-4 input-soft <%= errors?.email ? 'error-field' : '' %>" type="email" id="register-email" name="email" value="<%= formData?.email || '' %>" placeholder="メールアドレスを入力してください">
+            <% if (errors?.email) { %>
+              <div class="error-message"><%= errors.email %></div>
+            <% } %>
+          </div>
+          <div class="mb-3">
+            <label class="waku-3" for="register-password">パスワード</label>
+            <div class="input-wrapper">
+              <input class="waku-4 input-soft <%= errors?.password ? 'error-field' : '' %>" type="password" id="register-password" name="password" placeholder="パスワードは英数字6文字以上">
+              <button class="eye-icon" type="button" onclick="togglePassword('register-password')"><i class="fa-regular fa-eye"></i></button>
+            </div>
+            <label class="waku-3" for="register-password-check">パスワード</label>
+            <div class="input-wrapper">
+              <input class="waku-4 input-soft <%= errors?.password ? 'error-field' : '' %>" type="password" id="register-password-check" name="password_check" placeholder="パスワードをもう一度入力してください">
+              <button class="eye-icon" type="button" onclick="togglePassword('register-password-check')"><i class="fa-regular fa-eye"></i></button>
+            </div>
+            <% if (errors?.password) { %>
+              <div class="error-message"><%= errors.password %></div>
+            <% } %>
+          </div>
+          <div class="waku-5">
+            <button class="button-3 auth-submit">登録する</button>
+            <div class="spinner-border text-dark d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+              <span class="visually-hidden">送信中...</span>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
+  </div>
+</div>
+
+<script>
+  function togglePassword(id) {
+    const input = document.getElementById(id);
+    if (input.type === "password") {
+      input.type = "text";
+    } else {
+      input.type = "password";
+    }
+  }
+
+  document.querySelectorAll('.service-options').forEach((container) => {
+    const targetId = container.getAttribute('data-target');
+    const targetInput = document.getElementById(targetId);
+    container.querySelectorAll('.service-option').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('.service-option').forEach((item) => item.classList.remove('is-active'));
+        const value = btn.getAttribute('data-service');
+        btn.classList.add('is-active');
+        if (targetInput) targetInput.value = value;
+      });
+    });
+  });
+</script>

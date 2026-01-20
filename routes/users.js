@@ -43,9 +43,12 @@ router.get('/privacy', (req,res) => {
 
 //ユーザー登録画面の表示
 router.get('/register', (req, res) => {
-    res.render('users/register', {
+    res.render('users/login', {
+        page: 'login',
+        activeTab: 'register',
+        selectedService: req.session?.activeService || 'finance',
         formData: {},   // 初期値として空のオブジェクトを渡す
-        errors: {},      // 初期値として空のオブジェクトを渡す
+        errors: {},     // 初期値として空のオブジェクトを渡す
         query: req.query
     });
 });
@@ -62,7 +65,10 @@ router.post('/register', async (req, res, next) => {
     else if (password.length < 8) errors.password = 'パスワードは8文字以上で入力してください';
 
     if (Object.keys(errors).length > 0) {
-        return res.render('users/register', {
+        return res.render('users/login', {
+            page: 'login',
+            activeTab: 'register',
+            selectedService: req.session?.activeService || 'finance',
             errors,
             formData: { username, email },
             query: req.query
@@ -130,7 +136,12 @@ router.post('/register', async (req, res, next) => {
 //ログインの画面表示
 router.get('/login', (req, res) => {
     res.render('users/login',{
-        page: 'login' // ←これがないとエラーになる構成だった
+        page: 'login', // ←これがないとエラーになる構成だった
+        activeTab: 'login',
+        selectedService: req.session?.activeService || 'finance',
+        formData: {},
+        errors: {},
+        query: req.query
     });
 });
 
@@ -138,6 +149,8 @@ router.get('/login', (req, res) => {
 router.post('/login',
   async (req, res, next) => {
     const { username, password } = req.body;
+    const selectedService = req.body.service === 'myself' ? 'myself' : 'finance';
+    req.session.activeService = selectedService;
 
     const user = await FinanceUser.findOne({
       $or: [{ username: username }, { email: username }]
@@ -171,7 +184,8 @@ router.post('/login',
       req.session.activeGroupId = user.groups[0]._id;
       await logAction({ req, action: 'ログイン', target: 'ユーザー' });
       req.flash('success', `ようこそ！${req.user.username}さん、おかえりなさい！`);
-      const redirectUrl = req.session.returnTo || '/myTop/top';
+      const fallbackUrl = req.session.activeService === 'myself' ? '/myself/top' : '/finance/top';
+      const redirectUrl = req.session.returnTo || fallbackUrl;
       delete req.session.returnTo;
       return res.redirect(redirectUrl);
     } else {
@@ -190,6 +204,14 @@ router.get('/logout', (req, res) => {
         req.flash('success', 'ログアウトしました');
         res.redirect('/login');
     });
+});
+
+// サービス切替
+router.post('/service/select', isLoggedIn, (req, res) => {
+    const selectedService = req.body.service === 'myself' ? 'myself' : 'finance';
+    req.session.activeService = selectedService;
+    const redirectUrl = selectedService === 'myself' ? '/myself/top' : '/finance/top';
+    res.redirect(redirectUrl);
 });
 
 //パスワード再設定の画面の表示

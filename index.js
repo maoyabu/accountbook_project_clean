@@ -98,6 +98,8 @@ const allaboutmeRoutes = require('./routes/allaboutme');
 console.log('[boot] 9.8: loaded routes/allaboutme');
 const myTopRoutes = require('./routes/myTop');
 console.log('[boot] 9.9: loaded routes/myTop');
+const myselfRoutes = require('./routes/myself');
+console.log('[boot] 9.9.1: loaded routes/myself');
 const adminRoutes = require('./routes/admin');
 console.log('[boot] 9.10: loaded routes/admin');
 const supportRoutes = require('./routes/support');
@@ -200,6 +202,17 @@ const sessionConfig = {
 
 app.use(session(sessionConfig));
 
+// Track active service for navigation context.
+app.use((req, res, next) => {
+  const path = req.path || '';
+  if (path.startsWith('/finance') || path.startsWith('/export') || path.startsWith('/asset') || path.startsWith('/matomete')) {
+    req.session.activeService = 'finance';
+  } else if (path.startsWith('/allaboutme') || path.startsWith('/history') || path.startsWith('/relation') || path.startsWith('/resume') || path.startsWith('/myTop') || path.startsWith('/myself')) {
+    req.session.activeService = 'myself';
+  }
+  next();
+});
+
 // Passport 初期化
 app.use(passport.initialize());
 app.use(passport.session());
@@ -209,6 +222,7 @@ app.use((req, res, next) => {
   res.locals.currentUser = null;
   res.locals.userGroups = [];
   res.locals.activeGroupId = req.session?.activeGroupId || null;
+  res.locals.activeService = req.session?.activeService || 'finance';
   res.locals.services = {
     allaboutme: true,
     finance: true,
@@ -235,6 +249,8 @@ app.use((req, res, next) => {
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
     res.locals.activeGroupId = req.session.activeGroupId || null;
+    res.locals.activeService = req.session?.activeService || 'finance';
+    res.locals.currentPath = req.originalUrl || '';
 
     // currentUser は常に定義（EJS で ReferenceError を防ぐ）
     res.locals.currentUser = req.user || null;
@@ -313,6 +329,8 @@ app.use('/history', historyRoutes);
 
 //myTopへのルート
 app.use('/myTop' , myTopRoutes);
+//myselfへのルート
+app.use('/myself', myselfRoutes);
 
 //サポートページへのルート
 app.use('/support', supportRoutes);
