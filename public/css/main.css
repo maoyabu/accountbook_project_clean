@@ -191,7 +191,7 @@ border: 2px solid rgb(0, 0, 0);
 main {
     width: 100%;
     max-width: 700px;
-    margin: 50px 0px;
+    margin: 60px 0px;
     padding: 10px;
 }
 
@@ -299,27 +299,27 @@ main {
 }
 
 .service-option.is-active.is-finance {
-    background-color: #fdecef;
-    border-color: #e59aa8;
+    background-color: #e9f0ff;
+    border-color: #2f6fe4;
     border-width: 3px;
-    color: #9b1c31;
+    color: #1e40af;
 }
 
 .service-option.is-active.is-myself {
-    background-color: #e9fbff;
-    border-color: #8ccfe0;
+    background-color: #f8eaea;
+    border-color: #800000;
     border-width: 3px;
-    color: #0f6e84;
+    color: #800000;
 }
 
 .service-option.is-finance {
-    background-color: #fdecef;
-    color: #9b1c31;
+    background-color: #e9f0ff;
+    color: #1e40af;
 }
 
 .service-option.is-myself {
-    background-color: #e9fbff;
-    color: #0f6e84;
+    background-color: #f8eaea;
+    color: #800000;
 }
 
 .auth-submit {
@@ -1002,13 +1002,13 @@ color: white;
   }
 
   .menu-item.is-active.is-finance {
-    background-color: #fdecef;
-    border-right: 4px solid #e59aa8;
+    background-color: #e9f0ff;
+    border-right: 4px solid #2f6fe4;
   }
 
   .menu-item.is-active.is-myself {
-    background-color: #e9fbff;
-    border-right: 4px solid #8ccfe0;
+    background-color: #f8eaea;
+    border-right: 4px solid #800000;
   }
 
   .related-tag {
@@ -1020,21 +1020,21 @@ color: white;
   }
 
   .menu-pill.is-active.is-finance {
-    background-color: #fdecef;
-    border-color: #e59aa8;
-    color: #9b1c31;
+    background-color: #e9f0ff;
+    border-color: #2f6fe4;
+    color: #1e40af;
   }
 
   .menu-pill.is-active.is-myself {
-    background-color: #e9fbff;
-    border-color: #8ccfe0;
-    color: #0f6e84;
+    background-color: #f8eaea;
+    border-color: #800000;
+    color: #800000;
   }
 
   .menu-pill.related-blue {
-    background-color: #e9fbff;
-    border-color: #8ccfe0;
-    color: #0f6e84;
+    background-color: #eef5ff;
+    border-color: #9bbcff;
+    color: #1e40af;
   }
 
   .menu-pill.related-green {
@@ -1223,12 +1223,12 @@ li{
 }
 
 #top-nav.theme-finance .top-nav-bar {
-    background-color: #fdecef;
+    background-color: #e9f2ff;
     color: #1f2937;
 }
 
 #top-nav.theme-myself .top-nav-bar {
-    background-color: #e9fbff;
+    background-color: #f8eaea;
     color: #1f2937;
 }
 
@@ -1279,7 +1279,7 @@ li{
 }
 
 #top-nav.theme-finance .top-nav-icon {
-    border-color: #f3b6c2;
+    border-color: #bcd3ff;
     background-color: #ffffff;
 }
 
@@ -1292,7 +1292,7 @@ li{
 }
 
 #top-nav.theme-myself .top-nav-icon {
-    border-color: #8ccfe0;
+    border-color: #caa2a2;
     background-color: #ffffff;
 }
 
@@ -1305,11 +1305,11 @@ li{
 }
 
 #top-nav.theme-finance .top-nav-service-label {
-    color: #9b1c31;
+    color: #1e40af;
 }
 
 #top-nav.theme-myself .top-nav-service-label {
-    color: #0f6e84;
+    color: #800000;
 }
 
 .menu-toggle {
@@ -1329,12 +1329,12 @@ li{
 }
 
 #top-nav.theme-finance .menu-toggle {
-    border-color: #f3b6c2;
+    border-color: #bcd3ff;
     background-color: #ffffff;
 }
 
 #top-nav.theme-myself .menu-toggle {
-    border-color: #8ccfe0;
+    border-color: #caa2a2;
     background-color: #ffffff;
 }
 

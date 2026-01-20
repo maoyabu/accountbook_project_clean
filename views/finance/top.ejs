@@ -1,10 +1,10 @@
 <% layout('layouts/boilerplate') %>
 
 <div class="row g-3">
-  <div class="col-12 col-lg-6">
+  <div class="col-12">
     <div class="card">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
-        <span>【家計簿サービス】</span>
+        <span>【家計簿】</span>
         <a class="btn btn-outline-light btn-sm" href="/finance/budget">家計簿設定</a>
       </div>
       <div class="card-body">
@@ -60,68 +60,72 @@
     </div>
   </div>
 
-  <div class="col-12 col-lg-6">
-    <div class="card">
-      <div class="card-header text-white" style="background-color: #3a7ca5;">
-        【Dashboard】
-      </div>
-      <div class="card-body">
-        <div class="row g-2">
-          <div class="col-6">
-            <a class="btn btn-sm w-100 btn-group-blue" href="/export/dashboard/monthly-g">月次集計（グループ）</a>
+  <div class="col-12">
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header text-white" style="background-color: #3a7ca5;">
+            【Dashboard】
           </div>
-          <div class="col-6">
-            <a class="btn btn-outline-primary btn-sm w-100" href="/export/dashboard/monthly-m">月次集計（個人）</a>
-          </div>
-          <div class="col-6">
-            <a class="btn btn-sm w-100 btn-group-blue" href="/export/dashboard/yearly-g">年次集計（グループ）</a>
-          </div>
-          <div class="col-6">
-            <a class="btn btn-outline-primary btn-sm w-100" href="/export/dashboard/yearly-m">年次集計（個人）</a>
-          </div>
-          <div class="col-6">
-            <a class="btn btn-sm w-100 btn-group-light" href="/export/yearly-stacked">年グラフ（グループ）</a>
-          </div>
-          <div class="col-6">
-            <a class="btn btn-sm w-100 btn-group-light" href="/export/monthly-stacked">月グラフ（グループ）</a>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-6">
+                <a class="btn btn-sm w-100 btn-group-blue" href="/export/dashboard/monthly-g">月次集計（グループ）</a>
+              </div>
+              <div class="col-6">
+                <a class="btn btn-outline-primary btn-sm w-100" href="/export/dashboard/monthly-m">月次集計（個人）</a>
+              </div>
+              <div class="col-6">
+                <a class="btn btn-sm w-100 btn-group-blue" href="/export/dashboard/yearly-g">年次集計（グループ）</a>
+              </div>
+              <div class="col-6">
+                <a class="btn btn-outline-primary btn-sm w-100" href="/export/dashboard/yearly-m">年次集計（個人）</a>
+              </div>
+              <div class="col-6">
+                <a class="btn btn-sm w-100 btn-group-light" href="/export/yearly-stacked">年グラフ（グループ）</a>
+              </div>
+              <div class="col-6">
+                <a class="btn btn-sm w-100 btn-group-light" href="/export/monthly-stacked">月グラフ（グループ）</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
-        <span>【資産管理】</span>
-        <a class="btn btn-outline-light btn-sm" href="/asset/display">資産管理トップへ</a>
-      </div>
-      <div class="card-body">
-        <div class="fw-bold mb-2">⚫︎<%= inventoryLabel %>時点の資産状況</div>
-        <div class="row g-2">
-          <div class="col-12 col-md-6">
-            <ul class="list-group">
-              <li class="list-group-item d-flex justify-content-between">
-                <span>資産合計</span>
-                <strong>¥<%= Number(totalYen || 0).toLocaleString() %></strong>
-              </li>
-              <li class="list-group-item d-flex justify-content-between">
-                <span>金融資産</span>
-                <span>¥<%= Number(totalByCf['金融資産'] || 0).toLocaleString() %></span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between">
-                <span>実物資産</span>
-                <span>¥<%= Number(totalByCf['実物資産'] || 0).toLocaleString() %></span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between">
-                <span>無形資産</span>
-                <span>¥<%= Number(totalByCf['無形資産'] || 0).toLocaleString() %></span>
-              </li>
-              <li class="list-group-item d-flex justify-content-between">
-                <span>負債</span>
-                <span>¥<%= Number(totalByCf['負債'] || 0).toLocaleString() %></span>
-              </li>
-            </ul>
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
+            <span>【資産管理】</span>
+            <a class="btn btn-outline-light btn-sm" href="/asset/display">資産管理トップへ</a>
+          </div>
+          <div class="card-body">
+            <div class="fw-bold mb-2">⚫︎<%= inventoryLabel %>時点の資産状況</div>
+            <div class="row g-2">
+              <div class="col-12 col-md-6">
+                <ul class="list-group">
+                  <li class="list-group-item d-flex justify-content-between">
+                    <span>資産合計</span>
+                    <strong>¥<%= Number(totalYen || 0).toLocaleString() %></strong>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between">
+                    <span>金融資産</span>
+                    <span>¥<%= Number(totalByCf['金融資産'] || 0).toLocaleString() %></span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between">
+                    <span>実物資産</span>
+                    <span>¥<%= Number(totalByCf['実物資産'] || 0).toLocaleString() %></span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between">
+                    <span>無形資産</span>
+                    <span>¥<%= Number(totalByCf['無形資産'] || 0).toLocaleString() %></span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between">
+                    <span>負債</span>
+                    <span>¥<%= Number(totalByCf['負債'] || 0).toLocaleString() %></span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </div>
