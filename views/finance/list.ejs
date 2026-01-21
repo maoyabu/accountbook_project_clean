@@ -77,6 +77,10 @@
   .list-frame .table-responsive { margin: 0; }
   .filter-select { min-width: 120px; }
   :root { --action-gap: 4px; --edge-gap: 8px; }
+  .list-frame .table thead th {
+    background-color: #44616D;
+    color: #fff;
+  }
   /* 横並びの操作ボタン */
   .actions-cell { white-space: nowrap; padding-right: var(--edge-gap); overflow: visible; text-overflow: clip; }
   .actions-inline { display: inline-flex; gap: var(--action-gap); align-items: center; flex-wrap: nowrap; }
@@ -131,7 +135,7 @@
 <div class="list-body">
   <div class="table-responsive">
   <table class="table table-fixed w-100 m-0" style="border: 2px solid #3a7ca5; border-collapse: collapse;">
-    <thead style="background-color: #44616D; color: white;">
+    <thead>
       <tr>
         <th class="col-date">日付</th>
         <th class="col-cf">区分</th>
