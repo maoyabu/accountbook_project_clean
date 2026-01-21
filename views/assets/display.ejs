@@ -19,7 +19,7 @@
   <% const latestInventoryLabel = latestInventory ? `${latestInventory.inventoryMonth.getFullYear()}年${String(latestInventory.inventoryMonth.getMonth() + 1).padStart(2, '0')}月` : '最新の棚卸し未登録'; %>
   <!-- 資産状況サマリー -->
   <div class="card shadow-sm mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
+    <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #44616D;">
       <span class="fw-bold"><%= latestInventoryLabel %>時点の資産状況</span>
       <div class="d-flex gap-2">
         <a href="/asset?skipInventory=true" class="btn btn-warning btn-sm">登録・編集</a>
@@ -50,12 +50,12 @@
 
   <!-- 資産明細 -->
   <div class="card shadow-sm mb-4">
-    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
+    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #44616D;">
       <strong><%= latestInventoryLabel %>時点の資産明細</strong>
     </div>
     <table class="table table-bordered table-sm mb-0">
       <thead>
-        <tr style="background-color: #3a7ca5;">
+        <tr style="background-color: #44616D;">
           <th>区分</th>
           <th>項目</th>
           <th>code</th>
@@ -79,7 +79,7 @@
 
   <!-- 資産推移グラフ -->
   <div class="card shadow-sm mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #3a7ca5;">
+    <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #44616D;">
       <strong>資産推移</strong>
       <a href="/asset/history" class="btn btn-outline-light btn-sm">棚卸し履歴</a>
     </div>

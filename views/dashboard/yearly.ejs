@@ -3,7 +3,7 @@
 
 <!-- Year Selector Card -->
   <div class="card mb-3 mt-4 rounded">
-    <div class="card-body text-white p-2 d-flex justify-content-between align-items-center" style="background-color: #3a7ca5;">
+    <div class="card-body text-white p-2 d-flex justify-content-between align-items-center" style="background-color: #44616D;">
       
       <!-- 年セレクタ部分 -->
       <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
@@ -25,7 +25,7 @@
 
   <!-- Table Card -->
   <div class="card mb-3 rounded">
-    <div class="card-body p-2" style="background-color: #3a7ca5;">
+    <div class="card-body p-2" style="background-color: #44616D;">
       <div class="dashboard-yearly-wrap">
         <table class="table table-bordered table-sm text-end dashboard-yearly" style="table-layout: auto;">
           <!-- <table class="table table-bordered table-sm text-end align-middle" style="width: 80%; margin: auto; table-layout: auto;"> -->
@@ -34,10 +34,10 @@
               <th class="sticky-top sticky-col header-fixed" style="border-left: none; border-right: none;">項目</th>
               <th class="sticky-top sticky-col2 header-fixed" style="border-left: none; border-right: none;">予算</th>
               <% for (let m = 1; m <= 12; m++) { %>
-              <th class="sticky-top" style="background-color: #3a7ca5; color: white; border-left: none; border-right: none;"><%= m %>月</th>
+              <th class="sticky-top" style="background-color: #44616D; color: white; border-left: none; border-right: none;"><%= m %>月</th>
               <% } %>
-              <th class="sticky-top" style="background-color: #3a7ca5; color: white; border-left: none; border-right: none;">累計</th>
-              <th class="sticky-top" style="background-color: #3a7ca5; color: white;">累計差</th>
+              <th class="sticky-top" style="background-color: #44616D; color: white; border-left: none; border-right: none;">累計</th>
+              <th class="sticky-top" style="background-color: #44616D; color: white;">累計差</th>
             </tr>
           </thead>
           <tbody>

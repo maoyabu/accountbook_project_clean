@@ -170,6 +170,10 @@ nav p {
     width: 100%;
     margin-bottom: 5px;
 }
+
+.section-title {
+    background-color: #60707B;
+}
 .navbar-avatar {
     width: 32px;
     height: 32px;
@@ -306,10 +310,10 @@ main {
 }
 
 .service-option.is-active.is-myself {
-    background-color: #f8eaea;
-    border-color: #800000;
+    background-color: #e8f7ef;
+    border-color: #7bc89c;
     border-width: 3px;
-    color: #800000;
+    color: #166534;
 }
 
 .service-option.is-finance {
@@ -318,8 +322,8 @@ main {
 }
 
 .service-option.is-myself {
-    background-color: #f8eaea;
-    color: #800000;
+    background-color: #e8f7ef;
+    color: #166534;
 }
 
 .auth-submit {
@@ -358,6 +362,24 @@ main {
 .btn-group-light:hover {
     background-color: #dbe7ff;
     color: #1d4ed8;
+}
+
+.footer.theme-finance {
+    background-color: #e9f2ff;
+}
+
+.footer.theme-myself {
+    background-color: #e8f7ef;
+}
+
+.footer.theme-finance .text-white,
+.footer.theme-finance .text-white a {
+    color: #1e40af !important;
+}
+
+.footer.theme-myself .text-white,
+.footer.theme-myself .text-white a {
+    color: #166534 !important;
 }
 
 .input-soft {
@@ -1007,8 +1029,8 @@ color: white;
   }
 
   .menu-item.is-active.is-myself {
-    background-color: #f8eaea;
-    border-right: 4px solid #800000;
+    background-color: #e8f7ef;
+    border-right: 4px solid #7bc89c;
   }
 
   .related-tag {
@@ -1026,9 +1048,9 @@ color: white;
   }
 
   .menu-pill.is-active.is-myself {
-    background-color: #f8eaea;
-    border-color: #800000;
-    color: #800000;
+    background-color: #e8f7ef;
+    border-color: #7bc89c;
+    color: #166534;
   }
 
   .menu-pill.related-blue {
@@ -1228,7 +1250,7 @@ li{
 }
 
 #top-nav.theme-myself .top-nav-bar {
-    background-color: #f8eaea;
+    background-color: #e8f7ef;
     color: #1f2937;
 }
 
@@ -1292,7 +1314,7 @@ li{
 }
 
 #top-nav.theme-myself .top-nav-icon {
-    border-color: #caa2a2;
+    border-color: #7bc89c;
     background-color: #ffffff;
 }
 
@@ -1309,7 +1331,7 @@ li{
 }
 
 #top-nav.theme-myself .top-nav-service-label {
-    color: #800000;
+    color: #166534;
 }
 
 .menu-toggle {
@@ -1334,7 +1356,7 @@ li{
 }
 
 #top-nav.theme-myself .menu-toggle {
-    border-color: #caa2a2;
+    border-color: #7bc89c;
     background-color: #ffffff;
 }
 
