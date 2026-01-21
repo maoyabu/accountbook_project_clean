@@ -1502,6 +1502,18 @@ li{
     margin-bottom: 12px;
 }
 
+.mylist-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #166534;
+    background-color: #e8f7ef;
+    border: 1px solid #7bc89c;
+}
+
 .top-nav-field {
     display: flex;
     align-items: center;
@@ -1559,7 +1571,7 @@ li{
 }
 
 #calendar {
-    background-color: #fff;
+    background-color: #eef4f7;
     border-radius: 6px;
     padding: 10px;
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
@@ -1567,7 +1579,7 @@ li{
 
 .fc .fc-daygrid-day-top {
     font-weight: bold;
-    color: #3a7ca5;
+    color: #4f6c7a;
     font-size: 0.95rem;
 }
 
@@ -1575,7 +1587,7 @@ li{
     padding: 0 0.5rem;
     font-size: 1.2rem;
     font-weight: bold;
-    color: #333;
+    color: #3f5b66;
 }
 
 .fc .fc-button {
@@ -1583,52 +1595,64 @@ li{
     padding: 0.4rem 0.6rem;
 }
 .fc .fc-button-primary {
-    color: #3a7ca5; /* Bootstrap gray-600 */
-    background-color: #eaf4fb;
+    color: #4f6c7a;
+    background-color: #e2edf2;
     border: none;
 }
 
 .fc .fc-button-primary:hover {
-    background-color: #f0f0f0;
-    color: #343a40;
+    background-color: #d6e3e9;
+    color: #3f5b66;
 }
 .fc .fc-col-header-cell-cushion {
     font-size: 0.9rem;
     font-weight: 500;
     color: #ffffff;
 }
+.fc .fc-col-header-cell {
+    background-color: #4f6c7a;
+}
+.fc .fc-col-header-cell-cushion {
+    padding: 6px 0;
+}
+.fc .fc-daygrid-body tr:nth-child(even) .fc-daygrid-day {
+    background-color: #e4edf1;
+}
+.fc .fc-daygrid-body tr:nth-child(odd) .fc-daygrid-day {
+    background-color: #ffffff;
+}
 
 /* Highlight today on all FullCalendar views */
 .fc .fc-day-today {
-    background-color: #3a7ca5 !important;
+    background-color: #4f6c7a !important;
 }
 .fc .fc-day-today * {
     color: white !important;
 }
 .fc .fc-daygrid-day.fc-day-today {
-    background-color: #0d6efd !important;
+    background-color: #4f6c7a !important;
 }
 
 .fc .fc-daygrid-day.fc-day-selected {
     position: relative;
-    background-color: #ffc107 !important;
+    background-color: #d18b5a !important;
     border-radius: 4px;
     box-shadow: inset 0 0 0 2px #fff;
 }
 
 .fc .fc-daygrid-day.fc-day-selected * {
-    color: white !important;
+    color: #ffffff !important;
 }
 
 /* Style the FullCalendar "Today" button in the toolbar */
 .fc .fc-toolbar .fc-today-button {
-    background-color: #3a7ca5 !important;
+    background-color: #4f6c7a !important;
     color: white !important;
     border: none !important;
     border-radius: 4px;
 }
 .fc .fc-today-button:disabled {
-  background-color: #4188fa !important;
+  background-color: #6b8a98 !important;
   color: white !important;
   opacity: 1 !important;
   cursor: default;

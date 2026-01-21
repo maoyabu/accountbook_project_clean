@@ -46,7 +46,7 @@
         <ul class="list-group mb-3">
           <% newItems.forEach(item => { %>
             <li class="list-group-item">
-              <strong><%= item.title %></strong> &lt; <%= item.item %> &gt;
+              <strong><%= item.title %></strong> <span class="mylist-tag"><%= item.item %></span>
               <small class="text-muted">（ 登録日: <%= new Date(item.entry_date).toLocaleDateString() %> ）</small>
             </li>
           <% }) %>
@@ -61,7 +61,7 @@
         <ul class="list-group mb-3">
           <% completedItems.forEach(item => { %>
             <li class="list-group-item">
-              <strong><%= item.title %></strong> &lt; <%= item.item %> &gt;
+              <strong><%= item.title %></strong> <span class="mylist-tag"><%= item.item %></span>
               <span class="badge bg-secondary"><%= item.status %></span>
               <small class="text-muted">（ 変更日: <%= new Date(item.update_date).toLocaleDateString() %> ）</small>
             </li>
