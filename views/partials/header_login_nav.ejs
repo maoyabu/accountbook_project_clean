@@ -9,6 +9,7 @@
 <% const hasGroup = cu && Array.isArray(cu.groups) && cu.groups.length > 0 && activeGroupStr && cu.groups.some(group => group && group._id && group._id.toString() === activeGroupStr); %>
 <% const serviceTop = activeSvc === 'myself' ? '/myself/top' : '/finance/top'; %>
 <% const serviceLabel = activeSvc === 'myself' ? 'Myself' : 'Finance'; %>
+<% const serviceIcon = activeSvc === 'myself' ? 'fa-user' : 'fa-wallet'; %>
 
 <header id="top-nav" class="theme-<%= activeSvc %>">
   <nav class="navbar top-nav-bar">
@@ -18,7 +19,7 @@
           <i class="fas fa-bars"></i>
         </button>
         <div class="top-nav-service">
-          <a class="top-nav-service-label" href="<%= serviceTop %>"><i class="fa-solid fa-briefcase"></i> <%= serviceLabel %></a>
+          <a class="top-nav-service-label" href="<%= serviceTop %>"><i class="fa-solid <%= serviceIcon %>"></i> <%= serviceLabel %></a>
         </div>
       </div>
 
@@ -109,11 +110,15 @@
         <div class="menu-pills">
           <form action="/service/select" method="POST">
             <input type="hidden" name="service" value="finance">
-            <button type="submit" class="menu-pill <%= activeSvc === 'finance' ? 'is-active is-finance' : '' %>" <%= svc.finance ? '' : 'disabled' %>><span>Finance</span></button>
+            <button type="submit" class="menu-pill <%= activeSvc === 'finance' ? 'is-active is-finance' : '' %>" <%= svc.finance ? '' : 'disabled' %>>
+              <span class="menu-pill-main"><i class="fa-solid fa-wallet"></i><span>Finance</span></span>
+            </button>
           </form>
           <form action="/service/select" method="POST">
             <input type="hidden" name="service" value="myself">
-            <button type="submit" class="menu-pill <%= activeSvc === 'myself' ? 'is-active is-myself' : '' %>" <%= svc.allaboutme ? '' : 'disabled' %>><span>Myself</span></button>
+            <button type="submit" class="menu-pill <%= activeSvc === 'myself' ? 'is-active is-myself' : '' %>" <%= svc.allaboutme ? '' : 'disabled' %>>
+              <span class="menu-pill-main"><i class="fa-solid fa-user"></i><span>Myself</span></span>
+            </button>
           </form>
         </div>
       </div>
@@ -175,9 +180,18 @@
       <div class="menu-section">
         <div class="menu-title"><i class="fa-solid fa-link"></i> 関連サービス</div>
         <div class="menu-pills">
-          <a class="menu-pill related-pill related-blue" href="https://menu-service-app-0f01af8634e2.herokuapp.com/users/my-top" target="_blank" rel="noopener"><span class="menu-pill-label">7 DAYS PLAN</span><span class="related-tag">外部</span></a>
-          <a class="menu-pill related-pill related-green" href="https://menu-service-app-0f01af8634e2.herokuapp.com/users/stock-top" target="_blank" rel="noopener"><span class="menu-pill-label">ストック管理</span><span class="related-tag">外部</span></a>
-          <a class="menu-pill related-pill related-yellow" href="https://menu-service-app-0f01af8634e2.herokuapp.com/users/packing" target="_blank" rel="noopener"><span class="menu-pill-label">パッキングプラン</span><span class="related-tag">外部</span></a>
+          <a class="menu-pill related-pill related-blue" href="https://menu-service-app-0f01af8634e2.herokuapp.com/users/my-top" target="_blank" rel="noopener">
+            <span class="menu-pill-main"><i class="fa-solid fa-calendar-days"></i><span class="menu-pill-label">7 DAYS PLAN</span></span>
+            <span class="related-tag">外部</span>
+          </a>
+          <a class="menu-pill related-pill related-green" href="https://menu-service-app-0f01af8634e2.herokuapp.com/users/stock-top" target="_blank" rel="noopener">
+            <span class="menu-pill-main"><i class="fa-solid fa-box"></i><span class="menu-pill-label">ストック管理</span></span>
+            <span class="related-tag">外部</span>
+          </a>
+          <a class="menu-pill related-pill related-yellow" href="https://menu-service-app-0f01af8634e2.herokuapp.com/users/packing" target="_blank" rel="noopener">
+            <span class="menu-pill-main"><i class="fa-solid fa-clipboard-list"></i><span class="menu-pill-label">パッキングプラン</span></span>
+            <span class="related-tag">外部</span>
+          </a>
         </div>
       </div>
 

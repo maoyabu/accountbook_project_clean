@@ -1070,6 +1070,17 @@ color: white;
     justify-content: flex-start;
   }
 
+  .menu-pill-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .menu-pill-main i {
+    width: 18px;
+    text-align: center;
+  }
+
   .menu-pill .menu-pill-label {
     font-weight: 600;
   }
