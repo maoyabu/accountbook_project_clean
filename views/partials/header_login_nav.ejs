@@ -28,33 +28,6 @@
       </div>
 
       <div class="top-nav-right">
-        <div class="d-none d-md-flex align-items-center gap-2">
-          <div class="top-nav-field">
-            <span class="top-nav-field-label"><i class="fa-solid fa-layer-group"></i> サービス</span>
-            <form action="/service/select" method="POST">
-              <select name="service" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="finance" <%= activeSvc === 'finance' ? 'selected' : '' %> <%= svc.finance ? '' : 'disabled' %>>Finance</option>
-                <option value="myself" <%= activeSvc === 'myself' ? 'selected' : '' %> <%= svc.allaboutme ? '' : 'disabled' %>>Myself</option>
-              </select>
-            </form>
-          </div>
-
-          <div class="top-nav-field">
-            <span class="top-nav-field-label"><i class="fa-solid fa-users"></i> グループ</span>
-            <form action="/group/select" method="POST">
-              <select name="groupId" class="form-select form-select-sm" onchange="this.form.submit()" <%= cu && cu.groups && cu.groups.length > 1 ? '' : 'disabled' %>>
-                <% if (cu && cu.groups && cu.groups.length > 0) { %>
-                  <% cu.groups.forEach(group => { %>
-                    <option value="<%= group._id %>" <%= (String(group._id) === String(agid)) ? 'selected' : '' %>><%= group.group_name %></option>
-                  <% }) %>
-                <% } else { %>
-                  <option value="">グループ未登録</option>
-                <% } %>
-              </select>
-            </form>
-          </div>
-        </div>
-
         <a class="top-nav-icon" href="/logout" title="ログアウト">
           <i class="fas fa-sign-out-alt"></i>
         </a>

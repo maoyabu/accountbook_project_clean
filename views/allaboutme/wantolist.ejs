@@ -1,25 +1,25 @@
 <% layout('layouts/boilerplate') -%>
 <% page = 'wantolist' %>
-<%- include('../partials/allaboutme_tabs_nav') %>
-<div class="text-end mb-2">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/441E2766-5DE7-48B8-A4DA-57644E496D7E/My%E3%83%AA%E3%82%B9%E3%83%88"
-     target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2">
-    ガイド
-  </a>
-</div>
-<div>
-  <form method="GET" action="/allaboutme/wantolist" class="mb-3 d-flex justify-content-end">
-    <div class="input-group input-group-sm" style="max-width: 300px;">
-      <label class="input-group-text" for="userId">表示対象</label>
-      <select name="userId" id="userId" class="form-select" onchange="this.form.submit()">
-        <% groupMembers.forEach(member => { %>
-          <option value="<%= member._id %>" <%= selectedUserId?.toString() === member._id.toString() ? 'selected' : '' %>>          <%= member.displayname || member.username %><%= member._id.toString() === currentUser._id.toString() ? '（自分）' : '' %>
-          </option>
-        <% }) %>
-      </select>
-    </div>
-  </form>
+<div class="nav-guide-row d-flex justify-content-between align-items-center gap-2 flex-wrap">
+  <%- include('../partials/allaboutme_tabs_nav') %>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/441E2766-5DE7-48B8-A4DA-57644E496D7E/My%E3%83%AA%E3%82%B9%E3%83%88"
+       target="_blank" rel="noopener"
+       class="badge bg-success text-white text-decoration-none p-2">
+      ガイド
+    </a>
+    <form method="GET" action="/allaboutme/wantolist" class="m-0">
+      <div class="input-group input-group-sm" style="max-width: 300px;">
+        <label class="input-group-text" for="userId">表示対象</label>
+        <select name="userId" id="userId" class="form-select" onchange="this.form.submit()">
+          <% groupMembers.forEach(member => { %>
+            <option value="<%= member._id %>" <%= selectedUserId?.toString() === member._id.toString() ? 'selected' : '' %>>          <%= member.displayname || member.username %><%= member._id.toString() === currentUser._id.toString() ? '（自分）' : '' %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </form>
+  </div>
 </div>
 <% wantolist_items.forEach((category, index) => {
   const collapseId = `collapse${index}`;
@@ -48,7 +48,7 @@
     </div>
   </div>
 
-  <div id="<%= collapseId %>" class="accordion-collapse collapse <%= shouldOpen ? 'show' : '' %>" aria-labelledby="<%= headingId %>" data-bs-parent="#wantolistAccordion">
+  <div id="<%= collapseId %>" class="accordion-collapse collapse <%= shouldOpen ? 'show' : '' %>" aria-labelledby="<%= headingId %>" data-bs-parent="#wantolistAccordion" data-category="<%= category %>">
     <div class="accordion-body">
       <ul class="list-group">
         <% items.filter(i => i.item === category && i.status === '継続中').forEach(i => { %>
@@ -98,7 +98,7 @@
         ▼
         </button>
   </div>
-    <div id="completedCollapse" class="accordion-collapse collapse" aria-labelledby="completedHeading" data-bs-parent="#wantolistAccordion">
+    <div id="completedCollapse" class="accordion-collapse collapse" aria-labelledby="completedHeading" data-bs-parent="#wantolistAccordion" data-category="__completed__">
     <div class="accordion-body">
       <ul class="list-group">
         <% items.filter(i => ['実現・解決', '破棄'].includes(i.status)).forEach(i => { %>
@@ -231,6 +231,35 @@
 <% } %>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const selectedUserId = '<%= selectedUserId %>';
+        const storageKey = `wantolistAccordionState:${selectedUserId || 'self'}`;
+        const savedState = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        const collapses = document.querySelectorAll('.accordion-collapse[data-category]');
+
+        collapses.forEach(collapseEl => {
+            const category = collapseEl.dataset.category;
+            if (Object.prototype.hasOwnProperty.call(savedState, category)) {
+                const shouldShow = !!savedState[category];
+                collapseEl.classList.toggle('show', shouldShow);
+                const trigger = document.querySelector(`[data-bs-target="#${collapseEl.id}"]`);
+                if (trigger) {
+                    trigger.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
+                    trigger.classList.toggle('collapsed', !shouldShow);
+                }
+            }
+
+            collapseEl.addEventListener('shown.bs.collapse', () => {
+                savedState[category] = true;
+                localStorage.setItem(storageKey, JSON.stringify(savedState));
+            });
+            collapseEl.addEventListener('hidden.bs.collapse', () => {
+                savedState[category] = false;
+                localStorage.setItem(storageKey, JSON.stringify(savedState));
+            });
+        });
+    });
+
     function setCategoryAndShowModal(category) {
         document.getElementById('modalItem').value = category;
         const modal = new bootstrap.Modal(document.getElementById('entryModal'));

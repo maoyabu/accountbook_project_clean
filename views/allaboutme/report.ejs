@@ -1,4 +1,5 @@
 <% layout('layouts/boilerplate') %>
+<% page = 'report' %>
 
 <style>
   .bg-light-green { background-color: #d4edda; }
@@ -6,7 +7,10 @@
   .bg-light-red { background-color: #f8d7da; }
 </style>
 
-<div class="container mt-4">
+<div class="container mt-2">
+  <div class="nav-guide-row d-flex justify-content-start align-items-center mb-2">
+    <%- include('../partials/allaboutme_tabs_nav') %>
+  </div>
   <div class="d-flex justify-content-between align-items-end mb-2">
     <h1 class="mb-0 fw-bold border-start border-4 ps-3"><i class="fa-regular fa-clipboard"></i> All About me レポート</h1>
     <form method="GET" action="/allaboutme/report/mylist" class="d-flex align-items-end gap-2">

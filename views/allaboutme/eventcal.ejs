@@ -3,13 +3,28 @@
 <% let selectedEvent = typeof locals.selectedEvent !== 'undefined' ? locals.selectedEvent : ''; %>
 <% let selectedRate = typeof locals.selectedRate !== 'undefined' ? locals.selectedRate : 3; %>
 <% let selectedContent = typeof locals.selectedContent !== 'undefined' ? locals.selectedContent : ''; %>
-<%- include('../partials/allaboutme_tabs_nav') %>
-<div class="text-end mb-2">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/11A0D3D1-F656-42AF-8E71-FF1F0449A773/My%E6%97%A5%E8%A8%98%E3%80%80-%E3%80%80My%E6%97%A5%E8%A8%98%E8%A8%AD%E5%AE%9A"
-     target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2">
-    ガイド
-  </a>
+<div class="nav-guide-row d-flex justify-content-between align-items-center gap-2 flex-wrap">
+  <%- include('../partials/allaboutme_tabs_nav') %>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/11A0D3D1-F656-42AF-8E71-FF1F0449A773/My%E6%97%A5%E8%A8%98%E3%80%80-%E3%80%80My%E6%97%A5%E8%A8%98%E8%A8%AD%E5%AE%9A"
+       target="_blank" rel="noopener"
+       class="badge bg-success text-white text-decoration-none p-2">
+      ガイド
+    </a>
+    <form method="GET" action="/allaboutme/eventcal" class="m-0">
+      <input type="hidden" name="date" value="<%= selectedDate %>">
+      <div class="input-group input-group-sm" style="max-width: 300px;">
+        <label class="input-group-text" for="user">表示対象</label>
+        <select name="user" id="user" class="form-select" onchange="this.form.submit()">
+          <% groupMembers.forEach(member => { %>
+            <option value="<%= member._id %>" <%= selectedUserId === member._id.toString() ? 'selected' : '' %>>
+              <%= member.displayname || member.username %><%= member._id.toString() === currentUser._id.toString() ? '（自分）' : '' %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+    </form>
+  </div>
 </div>
 <style>
   @keyframes fadeInScale { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
@@ -21,19 +36,7 @@
   /* Scope overlay positioning to the entry modal only */
   #entryModal .modal-content { position: relative; }
 </style>
-<form method="GET" action="/allaboutme/eventcal" class="mb-3 d-flex justify-content-end">
-  <input type="hidden" name="date" value="<%= selectedDate %>">
-  <div class="input-group input-group-sm" style="max-width: 300px;">
-    <label class="input-group-text" for="user">表示対象</label>
-    <select name="user" id="user" class="form-select" onchange="this.form.submit()">
-      <% groupMembers.forEach(member => { %>
-        <option value="<%= member._id %>" <%= selectedUserId === member._id.toString() ? 'selected' : '' %>>
-          <%= member.displayname || member.username %><%= member._id.toString() === currentUser._id.toString() ? '（自分）' : '' %>
-        </option>
-      <% }) %>
-    </select>
-  </div>
-</form>
+ 
 
 <!-- Removed My日記の一括入力 button from here -->
 <div class="container mt-3">

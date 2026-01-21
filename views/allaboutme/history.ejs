@@ -1,30 +1,28 @@
 <% layout('layouts/boilerplate') %>
 <% page = 'history' %>
-<%- include('../partials/allaboutme_tabs_nav') %>
-
 <div class="container">
-  <div class="text-end mb-2">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1BEE7958-A1BF-425A-B3C6-416596371620/My-History-My-History%E8%A8%AD%E5%AE%9A"
-     target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2">
-    ガイド
-  </a>
-</div>
-  <!-- 表示対象セレクタ用フォーム -->
-  <form method="GET" action="/history/list" class="mb-3">
-    <div class="d-flex justify-content-end">
-      <div class="d-flex align-items-center gap-2" style="width: 30%; white-space: nowrap;">
-        <label for="user" class="form-label mb-0 whitespace-nowrap"><i class="fas fa-user"></i> 表示対象：</label>
-        <select name="user" id="user" class="form-select form-select-sm" style="min-width: 160px;" onchange="this.form.submit()">
-          <% groupMembers.forEach(member => { %>
-            <option value="<%= member._id %>" <%= selectedUserId === String(member._id) ? 'selected' : '' %>>
-              <%= member.displayname || member.username %><%= String(member._id) === String(currentUser._id) ? '（自分）' : '' %>
-            </option>
-          <% }) %>
-        </select>
-      </div>
+  <div class="nav-guide-row d-flex justify-content-between align-items-center gap-2 flex-wrap">
+    <%- include('../partials/allaboutme_tabs_nav') %>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1BEE7958-A1BF-425A-B3C6-416596371620/My-History-My-History%E8%A8%AD%E5%AE%9A"
+         target="_blank" rel="noopener"
+         class="badge bg-success text-white text-decoration-none p-2">
+        ガイド
+      </a>
+      <form method="GET" action="/history/list" class="m-0">
+        <div class="d-flex align-items-center gap-2" style="width: 30%; white-space: nowrap;">
+          <label for="user" class="form-label mb-0 whitespace-nowrap"><i class="fas fa-user"></i> 表示対象：</label>
+          <select name="user" id="user" class="form-select form-select-sm" style="min-width: 160px;" onchange="this.form.submit()">
+            <% groupMembers.forEach(member => { %>
+              <option value="<%= member._id %>" <%= selectedUserId === String(member._id) ? 'selected' : '' %>>
+                <%= member.displayname || member.username %><%= String(member._id) === String(currentUser._id) ? '（自分）' : '' %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 
   <!-- カテゴリー絞り込みとタイトル -->
   <div class="d-flex justify-content-between align-items-center mb-4">

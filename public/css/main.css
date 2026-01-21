@@ -1341,6 +1341,7 @@ li{
     justify-content: space-between;
     gap: 12px;
     flex-wrap: nowrap;
+    position: relative;
 }
 
 .top-nav-left,
@@ -1358,6 +1359,10 @@ li{
 .top-nav-center {
     flex: 1;
     justify-content: center;
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
 }
 
 .top-nav-right {
@@ -1371,6 +1376,7 @@ li{
     font-size: 20px;
     color: #2c2c2c;
     text-decoration: none;
+    pointer-events: auto;
 }
 
 #top-nav.theme-finance .top-nav-brand,
@@ -1421,6 +1427,14 @@ li{
     color: #166534;
 }
 
+#top-nav.theme-finance .top-nav-brand {
+    color: #1e40af;
+}
+
+#top-nav.theme-myself .top-nav-brand {
+    color: #166534;
+}
+
 .menu-toggle {
     display: inline-flex !important;
     align-items: center;
@@ -1445,6 +1459,47 @@ li{
 #top-nav.theme-myself .menu-toggle {
     border-color: #7bc89c;
     background-color: #ffffff;
+}
+
+.myself-nav-wrap {
+    display: inline-block;
+    min-width: 200px;
+    max-width: 260px;
+}
+
+.myself-nav-select {
+    border-color: #166534;
+    background-color: #e8f7ef;
+    color: #166534;
+    font-weight: 600;
+}
+
+.myself-nav-select:focus {
+    border-color: #166534;
+    box-shadow: 0 0 0 0.2rem rgba(22, 101, 52, 0.2);
+}
+
+.resume-nav-wrap {
+    display: inline-block;
+    min-width: 200px;
+    max-width: 260px;
+}
+
+.resume-nav-select {
+    border-color: #3a7ca5;
+    background-color: #eaf4fb;
+    color: #3a7ca5;
+    font-weight: 600;
+}
+
+.resume-nav-select:focus {
+    border-color: #3a7ca5;
+    box-shadow: 0 0 0 0.2rem rgba(58, 124, 165, 0.2);
+}
+
+.nav-guide-row {
+    margin-top: 0;
+    margin-bottom: 12px;
 }
 
 .top-nav-field {
@@ -1484,7 +1539,8 @@ li{
     }
 
     .top-nav-brand {
-        display: none;
+        display: inline-flex;
+        font-size: 18px;
     }
 
     .top-nav-inner {
