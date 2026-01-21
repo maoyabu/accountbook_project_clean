@@ -364,6 +364,26 @@ main {
     color: #1d4ed8;
 }
 
+@media (min-width: 992px) {
+    .dashboard-body {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dashboard-grid {
+        flex: 1 1 auto;
+        align-content: stretch;
+    }
+
+    .dashboard-button {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
 .footer.theme-finance {
     background-color: #e9f2ff;
 }
@@ -380,6 +400,56 @@ main {
 .footer.theme-myself .text-white,
 .footer.theme-myself .text-white a {
     color: #166534 !important;
+}
+
+.recent-finance-list .list-group-item {
+    gap: 12px;
+}
+
+.recent-finance-row {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+}
+
+.recent-finance-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-finance-amount {
+    flex: 0 0 140px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.recent-finance-actions {
+    flex: 0 0 140px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .recent-finance-row {
+        gap: 8px;
+    }
+
+    .recent-finance-main {
+        flex: 1 1 auto;
+        text-align: left;
+    }
+
+    .recent-finance-amount {
+        flex: 0 0 90px;
+        font-size: 0.9rem;
+    }
+
+    .recent-finance-actions {
+        flex: 0 0 120px;
+        gap: 6px;
+    }
 }
 
 .input-soft {
@@ -1324,6 +1394,12 @@ li{
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    text-decoration: none;
+}
+
+.top-nav-service-label:hover {
+    text-decoration: none;
+    opacity: 0.85;
 }
 
 #top-nav.theme-finance .top-nav-service-label {
