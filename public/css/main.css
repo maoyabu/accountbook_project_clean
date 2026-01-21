@@ -1550,6 +1550,12 @@ li{
         padding: 4px 0;
     }
 
+    .top-nav-center {
+        position: static;
+        flex: 1;
+        pointer-events: auto;
+    }
+
     .top-nav-brand {
         display: inline-flex;
         font-size: 18px;
