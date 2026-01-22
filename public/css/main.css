@@ -398,6 +398,18 @@ main {
     background-color: #1e40af;
     color: #ffffff;
 }
+.myself-action-btn {
+    background-color: #166534;
+    color: #dcfce7;
+    border: none;
+    font-size: 0.95rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 12px;
+}
+.myself-action-btn:hover {
+    background-color: #14532d;
+    color: #dcfce7;
+}
 .recent-input-icon {
     display: inline-block;
     margin-right: 8px;
