@@ -26,7 +26,9 @@
       </div>
     </div>
     <div class="card-body">
-      <h4>資産合計　¥<%= totalYen.toLocaleString() %></h4>
+      <% const totalValue = Number(totalYen || 0); %>
+      <% const totalClass = totalValue >= 0 ? 'asset-total-positive' : 'asset-total-negative'; %>
+      <h4 class="asset-total-badge <%= totalClass %>">資産合計　¥<%= totalValue.toLocaleString() %></h4>
       <table class="table borderless mt-3">
         <tr>
           <td>金融資産</td>

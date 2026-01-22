@@ -16,8 +16,12 @@ const { isLoggedIn } = require('../middleware');
 
 //myTop　の表示
 router.get('/top', isLoggedIn, async (req, res) => {
-    req.session.activeService = 'myself';
-    return res.redirect('/myself/top');
+    const activeService = req.session?.activeService === 'myself' ? 'myself' : 'finance';
+    if (!req.session.activeService) {
+        req.session.activeService = activeService;
+    }
+    const redirectUrl = activeService === 'myself' ? '/myself/top' : '/finance/top';
+    return res.redirect(redirectUrl);
 });
 
   module.exports = router;

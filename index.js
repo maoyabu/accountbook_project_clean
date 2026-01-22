@@ -173,7 +173,7 @@ app.use((req, res, next) => {
   const path = req.path || '';
   if (path.startsWith('/finance') || path.startsWith('/export') || path.startsWith('/asset') || path.startsWith('/matomete')) {
     req.session.activeService = 'finance';
-  } else if (path.startsWith('/allaboutme') || path.startsWith('/history') || path.startsWith('/relation') || path.startsWith('/resume') || path.startsWith('/myTop') || path.startsWith('/myself')) {
+  } else if (path.startsWith('/allaboutme') || path.startsWith('/history') || path.startsWith('/relation') || path.startsWith('/resume') || path.startsWith('/myself')) {
     req.session.activeService = 'myself';
   }
   next();

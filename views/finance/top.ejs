@@ -4,16 +4,27 @@
   <div class="col-12">
     <div class="card">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #4A6A7A;">
-        <span>【家計簿】</span>
-        <a class="btn btn-outline-light btn-sm" href="/finance/budget">家計簿設定</a>
+        <span>家計簿</span>
+        <a class="btn btn-outline-light btn-sm finance-btn-rounded" href="/finance/budget"><i class="fa-solid fa-gear me-2"></i>家計簿設定</a>
       </div>
       <div class="card-body">
         <div class="mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="fw-bold">直近の入力（5件）</div>
             <div class="d-flex gap-2">
-              <a class="btn btn-outline-primary btn-sm" href="/finance/list">直近の入力</a>
-              <a class="btn btn-outline-primary btn-sm" href="/finance/search">検索</a>
+              <a class="btn btn-sm finance-btn-rounded finance-recent-btn" href="/finance/list">
+                <svg class="recent-input-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <rect class="recent-input-icon-frame" x="2" y="2" width="20" height="20" rx="4" />
+                  <circle cx="7" cy="8" r="1.2" fill="currentColor" />
+                  <rect x="9.5" y="7.2" width="9" height="1.6" rx="0.8" fill="currentColor" />
+                  <circle cx="7" cy="12" r="1.2" fill="currentColor" />
+                  <rect x="9.5" y="11.2" width="9" height="1.6" rx="0.8" fill="currentColor" />
+                  <circle cx="7" cy="16" r="1.2" fill="currentColor" />
+                  <rect x="9.5" y="15.2" width="9" height="1.6" rx="0.8" fill="currentColor" />
+                </svg>
+                直近の入力
+              </a>
+              <a class="btn btn-sm finance-btn-rounded finance-search-btn" href="/finance/search"><i class="fa-solid fa-magnifying-glass me-2"></i>検索</a>
             </div>
           </div>
           <% if (recentFinances.length > 0) { %>
@@ -51,10 +62,10 @@
           <% } %>
         </div>
         <div class="d-flex flex-nowrap gap-2 overflow-auto">
-          <a class="btn btn-outline-primary btn-sm" href="/finance/entry">新規登録</a>
-          <a class="btn btn-outline-primary btn-sm" href="/finance/receipt/new">レシートから登録</a>
-          <a class="btn btn-outline-primary btn-sm" href="/matomete/regular-entry/push">まとめて入力</a>
-          <a class="btn btn-outline-primary btn-sm" href="/export/view">EXCEL書出し</a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/entry"><i class="fa-solid fa-plus me-2"></i>新規登録</a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/receipt/new"><i class="fa-solid fa-receipt me-2"></i>レシートから登録</a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/matomete/regular-entry/push"><i class="fa-solid fa-layer-group me-2"></i>まとめて入力</a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn finance-action-excel ms-auto" href="/export/view"><i class="fa-solid fa-file-excel me-2"></i>EXCEL書出し</a>
         </div>
       </div>
     </div>
@@ -65,27 +76,27 @@
       <div class="col-12 col-lg-6">
         <div class="card h-100">
           <div class="card-header text-white" style="background-color: #4A6A7A;">
-            【Dashboard】
+            Dashboard
           </div>
           <div class="card-body dashboard-body">
-            <div class="row g-2 dashboard-grid">
+            <div class="row g-3 dashboard-grid">
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/monthly-g">月次集計（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/monthly-g"><i class="fa-solid fa-table me-2"></i>月次集計（グループ）</a>
               </div>
               <div class="col-6">
-                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/monthly-m">月次集計（個人）</a>
+                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/monthly-m"><i class="fa-solid fa-table me-2"></i>月次集計（個人）</a>
               </div>
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/yearly-g">年次集計（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/yearly-g"><i class="fa-solid fa-table me-2"></i>年次集計（グループ）</a>
               </div>
               <div class="col-6">
-                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/yearly-m">年次集計（個人）</a>
+                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/yearly-m"><i class="fa-solid fa-table me-2"></i>年次集計（個人）</a>
               </div>
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/yearly-stacked">年グラフ（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/yearly-stacked"><i class="fa-solid fa-chart-line me-2"></i>年グラフ（グループ）</a>
               </div>
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/monthly-stacked">月グラフ（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/monthly-stacked"><i class="fa-solid fa-chart-line me-2"></i>月グラフ（グループ）</a>
               </div>
             </div>
           </div>
@@ -95,18 +106,16 @@
       <div class="col-12 col-lg-6">
         <div class="card h-100">
           <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #4A6A7A;">
-            <span>【資産管理】</span>
+            <span>資産管理</span>
             <a class="btn btn-outline-light btn-sm" href="/asset/display">資産管理トップへ</a>
           </div>
           <div class="card-body">
             <div class="fw-bold mb-2">⚫︎<%= inventoryLabel %>時点の資産状況</div>
+            <% const totalValue = Number(totalYen || 0); %>
+            <% const totalClass = totalValue >= 0 ? 'asset-total-positive' : 'asset-total-negative'; %>
             <div class="row g-2">
               <div class="col-12">
                 <ul class="list-group">
-                  <li class="list-group-item d-flex justify-content-between">
-                    <span>資産合計</span>
-                    <strong>¥<%= Number(totalYen || 0).toLocaleString() %></strong>
-                  </li>
                   <li class="list-group-item d-flex justify-content-between">
                     <span>金融資産</span>
                     <span>¥<%= Number(totalByCf['金融資産'] || 0).toLocaleString() %></span>
@@ -122,6 +131,10 @@
                   <li class="list-group-item d-flex justify-content-between">
                     <span>負債</span>
                     <span>¥<%= Number(totalByCf['負債'] || 0).toLocaleString() %></span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between <%= totalClass %>">
+                    <span>資産合計</span>
+                    <strong>¥<%= totalValue.toLocaleString() %></strong>
                   </li>
                 </ul>
               </div>
