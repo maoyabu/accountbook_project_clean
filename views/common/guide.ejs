@@ -79,13 +79,23 @@
             background-color: rgba(255, 193, 7, 0.05); /* Warning color with low opacity */
         }
         .section-title {
-            color: #0a58ca; /* Bootstrap primary darker shade */
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #dee2e6; /* Bootstrap default border color */
+            color: #f8f9fa;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            background-color: #0b2559;
             margin-bottom: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         .subsection-title {
-             color: #343a40; /* Darker text color */
+            color: #f8f9fa;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            background-color: #0b2559;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         /* main要素自体をbody中央に表示し最大幅960pxに調整 */
@@ -118,39 +128,59 @@
         .service-map .root { margin-bottom: 4px; }
         .service-map .branch { display: flex; gap: 24px; justify-content: center; align-items: stretch; width: 100%; max-width: 780px; position: relative; }
         .service-map .branch::before { content: ""; position: absolute; top: -10px; left: 10%; right: 10%; height: 2px; background: #d0e3ff; }
-        /* 子機能グループ: 左=Myself / 右=Finance（50%/50%） */
-        .service-map .leaf-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: 100%; max-width: 980px; position: relative; align-items: start; }
+        /* 子機能グループ: Finance / Myself / Message（3列） */
+        .service-map .leaf-groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; width: 100%; max-width: 980px; position: relative; align-items: start; }
         .service-map .leaf-groups::before { content: ""; position: absolute; top: -10px; left: 5%; right: 5%; height: 2px; background: #e8eef9; }
         .service-map .leaf-group { padding-top: 6px; }
         .service-map .leafs { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(140px,1fr)); }
         /* Myself は2x2（上: リスト/日記、下: History/Relation） */
         .service-map .leaf-group.group-myself .leafs { grid-template-columns: 1fr 1fr; }
         .service-map .leaf-group.group-finance .leafs { grid-template-columns: 1fr 1fr; }
-        @media (max-width: 768px) { .service-map .leaf-groups { grid-template-columns: 1fr; } }
+        .service-map .leaf-group.group-message .leafs { grid-template-columns: 1fr; }
+        .service-map .leaf-group.group-message .node { max-width: 100%; }
+        @media (max-width: 992px) {
+            .service-map .leaf-groups { grid-template-columns: repeat(3, 1fr); }
+            .service-map .leaf-group.group-myself .leafs { grid-template-columns: 1fr; }
+            .service-map .leaf-group.group-finance .leafs { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .service-map .leaf-groups { grid-template-columns: 1fr; }
+            .service-map .leaf-group.group-myself .leafs { grid-template-columns: 1fr; }
+            .service-map .leaf-group.group-message .node { max-width: 100%; }
+        }
         @media (max-width: 576px) { .service-map .leafs { grid-template-columns: 1fr; } }
         .service-map .node { background: #ffffff; border: 1px solid #e5eaf3; border-radius: 10px; padding: 10px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
         .service-map .node .node-title { font-weight: 600; color: #0a58ca; display: inline-flex; align-items: center; gap: 6px; }
         .service-map .node .node-desc { font-size: 0.85rem; color: #6c757d; margin-top: 4px; }
         .service-map .node.pillar .node-title { color: #0d6efd; }
-        .service-map .node.root { border-color: #bcd7ff; background: #eef6ff; }
-        /* Myself: Yellow */
-        .service-map .node.pillar-myself { border-color: #ffe08a; background: #fffdf3; }
-        .service-map .node.pillar-myself .node-title { color: #b8860b; }
-        .service-map .leaf-group.group-myself .node { border-color: #ffe8a1; background: #fffaf0; }
-        .service-map .leaf-group.group-myself .node .node-title { color: #c58a00; }
-        /* Finance: Green */
-        .service-map .node.pillar-finance { border-color: #a9e5a1; background: #f4fff4; }
-        .service-map .node.pillar-finance .node-title { color: #198754; }
-        .service-map .leaf-group.group-finance .node { border-color: #c7f1c4; background: #f6fff6; }
-        .service-map .leaf-group.group-finance .node .node-title { color: #1e7e34; }
+        .service-map .node.root { border-color: #0b2559; background: #0b2559; }
+        .service-map .node.root .node-title { color: #eaf2ff; }
+        /* Myself: Green */
+        .service-map .node.pillar-myself { border-color: #9ad6a1; background: #edf7f0; }
+        .service-map .node.pillar-myself .node-title { color: #1e7e34; }
+        .service-map .leaf-group.group-myself .node { border-color: #bfe7c6; background: #f1fbf4; }
+        .service-map .leaf-group.group-myself .node .node-title { color: #1f7a34; }
+        /* Message: Yellow */
+        .service-map .node.pillar-message { border-color: #ffe08a; background: #fffdf3; }
+        .service-map .node.pillar-message .node-title { color: #b8860b; }
+        .service-map .leaf-group.group-message .node { border-color: #ffe8a1; background: #fffaf0; }
+        .service-map .leaf-group.group-message .node .node-title { color: #c58a00; }
+        /* Finance: Blue */
+        .service-map .node.pillar-finance { border-color: #9bbcff; background: #eef5ff; }
+        .service-map .node.pillar-finance .node-title { color: #1e40af; }
+        .service-map .leaf-group.group-finance .node { border-color: #cfe2ff; background: #f5f9ff; }
+        .service-map .leaf-group.group-finance .node .node-title { color: #1d4ed8; }
 
         /* Section color themes */
         .section-yellow { background-color: #fffdf3; border: 1px solid #ffe8a1; }
-        .section-yellow .section-title, .section-yellow h2, .section-yellow .subsection-title { color: #b8860b; }
+        .section-yellow .section-title, .section-yellow h2, .section-yellow .subsection-title { color: #fff7e6; background-color: #8a5c00; }
         .section-yellow .list-icon { color: #c58a00; }
-        .section-green { background-color: #f6fff6; border: 1px solid #c7f1c4; }
-        .section-green .section-title, .section-green h2, .section-green .subsection-title { color: #1e7e34; }
-        .section-green .list-icon { color: #198754; }
+        .section-green { background-color: #f1fbf4; border: 1px solid #bfe7c6; }
+        .section-green .section-title, .section-green h2, .section-green .subsection-title { color: #e9f7ef; background-color: #0f5132; }
+        .section-green .list-icon { color: #1f7a34; }
+        .section-blue { background-color: #eef5ff; border: 1px solid #cfe2ff; }
+        .section-blue .section-title, .section-blue h2, .section-blue .subsection-title { color: #eaf2ff; background-color: #0f2f7a; }
+        .section-blue .list-icon { color: #1d4ed8; }
 </style>
 
     <div class="container py-2 py-md-2" style="position:relative;"> <!-- max-w-5xl に近い -->
@@ -164,14 +194,15 @@
             </div>
         </header>
         <main class="p-0 mt-0 mb-1">
-            <section class="p-4 p-md-5 section-card mb-5">
+            <section class="p-4 p-md-5 section-card section-blue mb-5">
                 <h2 class="h2 fw-semibold section-title">All About me サービス概要</h2>
-                <p class="text-muted leading-relaxed mb-3">本サービスは大きく「Finance」と「Myself」の二つのサービスで構成されています。Financeの配下には「家計簿」「資産管理」の2つのサービス、Myselfの中には4つのサービスがあります。</p>
+                <p class="text-muted leading-relaxed mb-3">本サービスは大きく「Finance」「Myself」「Message」の3つのサービスで構成されています。Financeの配下には「家計簿」「資産管理」の2つのサービス、Myselfの中には4つのサービスがあります。</p>
                 <div class="service-map">
                     <div class="node root"><div class="node-title"><i class="fa-solid fa-seedling"></i>All About me</div></div>
                     <div class="branch">
                         <div class="node pillar pillar-finance"><div class="node-title"><i class="fa-solid fa-wallet"></i> Finance</div></div>
                         <div class="node pillar pillar-myself"><div class="node-title"><i class="fa-solid fa-user"></i> Myself</div></div>
+                        <div class="node pillar pillar-message"><div class="node-title"><i class="fa-regular fa-envelope"></i> Message</div></div>
                     </div>
                     <div class="leaf-groups">
                         <div class="leaf-group group-finance">
@@ -188,11 +219,16 @@
                                 <div class="node leaf"><div class="node-title"><i class="fa-solid fa-people-arrows"></i> MyRelation</div><div class="node-desc">関係の設定と共有</div></div>
                             </div>
                         </div>
+                        <div class="leaf-group group-message">
+                            <div class="leafs">
+                                <div class="node leaf"><div class="node-title"><i class="fa-regular fa-envelope"></i> Message</div><div class="node-desc">大切な情報と伝言を管理</div></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <section class="p-4 p-md-5 section-card section-green mb-5">
+            <section class="p-4 p-md-5 section-card section-blue mb-5">
                 <h2 class="h2 fw-medium subsection-title mb-3">Finance</h2>
                 <p class="text-muted leading-relaxed mb-3">夫婦や家族、サークルや町内会などグループの間で収入や控除、貯蓄、支出を共同で管理することができる家計簿サービスと資産を共有して管理できるサービスです。</p>
                 <p class="text-muted leading-relaxed mb-3">もちろん自分ひとりだけでも管理することも可能です。</p>
@@ -202,7 +238,7 @@
             </section>
 
             <!-- Finance: 家計簿 -->
-            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
+            <section class="p-4 p-md-5 section-card section-blue mb-5 mx-auto">
                 <h2 class="h4 fw-semibold section-title">家計簿</h2>
                 <p class="text-muted leading-relaxed mb-3">家計簿の最大の特徴は“グループで記入できること”。仲間や家族と一緒に予算を立て、日々の支出をすぐに振り返ることで、お金の使い方そのものを前向きに変えていける家計管理サービスです。</p>
                 <ul class="list-unstyled mb-0">
@@ -213,7 +249,7 @@
             </section>
 
             <!-- Finance: 資産管理 -->
-            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
+            <section class="p-4 p-md-5 section-card section-blue mb-5 mx-auto">
                 <h2 class="h4 fw-semibold section-title">資産管理</h2>
                 <p class="text-muted leading-relaxed mb-3">資産の登録・分類・評価を行い、一覧や明細から保有状況を把握します。グループ内共有にも対応し、将来的な推移把握にも役立ちます。</p>
                 <ul class="list-unstyled mb-0">
@@ -222,7 +258,7 @@
                 </ul>
             </section>
 
-            <section class="p-4 p-md-5 section-card section-yellow mb-5">
+            <section class="p-4 p-md-5 section-card section-green mb-5">
                 <h2 class="h2 fw-medium subsection-title mb-3">Myself</h2>
                 <p class="text-muted leading-relaxed mb-3">自分の過去（歴史）と現在、そしてこれからを自分に可視化するために記録するサービスです。</p>
                 <p class="text-muted leading-relaxed">Myselfには4つのサービスがございます：
@@ -233,7 +269,7 @@
                 </p>
             </section>
 
-            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
                 <h2 class="h4 fw-semibold section-title">Myリスト</h2>
                 <p class="text-muted leading-relaxed mb-3">自分の過去（歴史）から現在、そしてこれからの事（あくまでも予定ではない）を可視化するもの。</p>
                 <ul class="list-unstyled mb-4">
@@ -257,23 +293,56 @@
                 <p class="text-muted leading-relaxed small">共有したいときに共有したい人だけに共有する事もできます。</p>
             </section>
 
-            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
                 <h2 class="h4 fw-semibold section-title">My日記</h2>
                 <p class="text-muted leading-relaxed mb-3">毎日の出来事を記録するサービスですが、日々日課としている事は項目として自分でオリジナルな項目を設定することが出来て、項目毎に記録する事が出来るようになります。</p>
                 <p class="text-muted leading-relaxed mb-3">例えば、毎日の食事の事やその日の体調や気分、よく眠れたかどうか、生活のサイクルとして薬を飲んだかどうかとか体重の測定や血圧の測定とか、散歩やサイクリングとか日課としているものをやったかどうかを記録したりすることが出来ます。</p>
                 <p class="text-muted leading-relaxed">毎日日記に何を書こうか悩んでなかなか筆が進まないという事があるかと思いますが、行動の記録をしている中でその日の振り返りをしながら日記を書き進めやすくすることをサポートします。</p>
             </section>
 
-            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
                 <h2 class="h4 fw-semibold section-title">My History</h2>
                 <p class="text-muted leading-relaxed mb-3">自分史的なものなのですが、仕事の経歴や学校のことだけでなく自分が過ごしてきた日々の足跡を記録していつでもそれをみて懐かしんだり、振り返ったりする事をサポートするサービスです。</p>
                 <p class="text-muted leading-relaxed">例えば転勤とかが多く色んな住まいを過ごしてきたことや、それに伴って転校した学校の事。自分が乗り継いできた車やバイク、自転車など乗り物のことや、Gadgetや電話番号など自分の足跡として残しておきたいなと思っている事を写真と一緒に記録する事が出来るようになります。</p>
             </section>
 
-            <section class="p-4 p-md-5 section-card section-yellow mb-5 mx-auto">
+            <section class="p-4 p-md-5 section-card section-green mb-5 mx-auto">
                 <h2 class="h4 fw-semibold section-title">My Relation</h2>
                 <p class="text-muted leading-relaxed mb-3">このサービスを利用している人と繋がり、その人との関係性を設定しお互いの情報を共有し合うことができるようになります。</p>
                 <p class="text-muted leading-relaxed">共有する内容はMyリストやMy日記、MyHistoryの中で自分が共有した許可情報のみとなり、許可された情報は閲覧が可能となります。</p>
+            </section>
+
+            <section class="p-4 p-md-5 section-card section-yellow mb-5">
+                <h2 class="h2 fw-medium subsection-title mb-3">Message</h2>
+                <p class="text-muted leading-relaxed mb-3">自分の銀行口座や証券口座、保険、携帯電話、ネットサービスなど様々な契約情報を記録し、万が一の時に家族などへ必要な情報を届けるためのサービスです。</p>
+                <p class="text-muted leading-relaxed mb-3">資産（銀行/証券/保険）やライフライン（携帯/光回線/電気/ガス/水道）などの情報を登録・編集・削除でき、検索も可能です。</p>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="p-3 rounded highlight-box">
+                            <p class="text-dark small leading-relaxed mb-2 fw-semibold">基本設定</p>
+                            <ul class="list-unstyled mb-0">
+                                <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">メッセージ閲覧用パスワード</span></li>
+                                <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">サービス状態（ON/OFF）</span></li>
+                                <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">確認期間（初期30日、変更可）</span></li>
+                                <li class="d-flex align-items-start"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">確認方法と送付先（メール/LINEなど）</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="p-3 rounded highlight-box">
+                            <p class="text-dark small leading-relaxed mb-2 fw-semibold">個別メッセージ</p>
+                            <ul class="list-unstyled mb-0">
+                                <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">カテゴリー、タイトル、内容、URL</span></li>
+                                <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">共有相手（グループ全員/個別）</span></li>
+                                <li class="d-flex align-items-start mb-2"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">ON/OFF、開始日/終了日</span></li>
+                                <li class="d-flex align-items-start"><i class="fas fa-check-circle fa-fw me-2 mt-1 list-icon"></i><span class="text-muted">登録日/更新日（自動）</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 rounded highlight-box-warning">
+                    <p class="text-dark small leading-relaxed mb-0">毎日「Alive！」確認を送信し、ログインやボタン操作で未確認期間をリセットします。未確認期間が設定期間を超えると本人への警告や通知予定者への予告・最終通知が行われ、URLとパスワードでメッセージにアクセスできるようになります。</p>
+                </div>
             </section>
 
 

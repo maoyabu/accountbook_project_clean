@@ -1,15 +1,17 @@
 <% const cu = (typeof currentUser !== 'undefined') ? currentUser : null; %>
 <% const agid = (typeof activeGroupId !== 'undefined') ? activeGroupId : null; %>
-<% const svc = (typeof services !== 'undefined' && services) ? services : { allaboutme: true, finance: true, assets: true }; %>
+<% const svc = (typeof services !== 'undefined' && services)
+  ? Object.assign({ allaboutme: true, finance: true, assets: true, message: true }, services)
+  : { allaboutme: true, finance: true, assets: true, message: true }; %>
 <% const activeSvc = (typeof activeService !== 'undefined' && activeService) ? activeService : 'finance'; %>
 <% const activeGroupStr = agid ? agid.toString() : null; %>
 <% const pathNow = (typeof currentPath !== 'undefined') ? currentPath : ''; %>
 <% const isActive = (path) => pathNow.startsWith(path); %>
-<% const activeThemeClass = activeSvc === 'finance' ? 'is-finance' : 'is-myself'; %>
+<% const activeThemeClass = activeSvc === 'finance' ? 'is-finance' : (activeSvc === 'message' ? 'is-message' : 'is-myself'); %>
 <% const hasGroup = cu && Array.isArray(cu.groups) && cu.groups.length > 0 && activeGroupStr && cu.groups.some(group => group && group._id && group._id.toString() === activeGroupStr); %>
-<% const serviceTop = activeSvc === 'myself' ? '/myself/top' : '/finance/top'; %>
-<% const serviceLabel = activeSvc === 'myself' ? 'Myself' : 'Finance'; %>
-<% const serviceIcon = activeSvc === 'myself' ? 'fa-user' : 'fa-wallet'; %>
+<% const serviceTop = activeSvc === 'myself' ? '/myself/top' : (activeSvc === 'message' ? '/message/top' : '/finance/top'); %>
+<% const serviceLabel = activeSvc === 'myself' ? 'Myself' : (activeSvc === 'message' ? 'Message' : 'Finance'); %>
+<% const serviceIcon = activeSvc === 'myself' ? 'fa-user' : (activeSvc === 'message' ? 'fa-envelope' : 'fa-wallet'); %>
 
 <header id="top-nav" class="theme-<%= activeSvc %>">
   <nav class="navbar top-nav-bar">
@@ -96,6 +98,12 @@
               <span class="menu-pill-main"><i class="fa-solid fa-user"></i><span>Myself</span></span>
             </button>
           </form>
+          <form action="/service/select" method="POST">
+            <input type="hidden" name="service" value="message">
+            <button type="submit" class="menu-pill <%= activeSvc === 'message' ? 'is-active is-message' : '' %>" <%= svc.message ? '' : 'disabled' %>>
+              <span class="menu-pill-main"><i class="fa-regular fa-envelope"></i><span>Message</span></span>
+            </button>
+          </form>
         </div>
       </div>
 
@@ -125,6 +133,11 @@
 
           <ul class="nav flex-column menu-list">
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/asset/display') ? 'is-active is-finance' : '' %> <%= svc.assets ? '' : 'disabled' %>" href="<%= svc.assets ? '/asset/display' : '#' %>"><i class="fa-regular fa-money-bill-1 icon-asset"></i> 資産管理</a></li>
+          </ul>
+        <% } else if (activeSvc === 'message') { %>
+          <ul class="nav flex-column menu-list">
+            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/message/top') ? 'is-active is-message' : '' %> <%= hasGroup && svc.message ? '' : 'disabled' %>" href="<%= hasGroup && svc.message ? '/message/top' : '#' %>"><i class="fa-regular fa-envelope"></i> メッセージ一覧</a></li>
+            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/message/settings') ? 'is-active is-message' : '' %> <%= hasGroup && svc.message ? '' : 'disabled' %>" href="<%= hasGroup && svc.message ? '/message/settings' : '#' %>"><i class="fa-solid fa-gear"></i> Message設定</a></li>
           </ul>
         <% } else { %>
           <ul class="nav flex-column menu-list">

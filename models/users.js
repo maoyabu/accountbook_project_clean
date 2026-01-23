@@ -68,7 +68,8 @@ const userSchema = new Schema({
     services: {
         allaboutme: { type: Boolean, default: true },
         finance: { type: Boolean, default: true },
-        assets: { type: Boolean, default: true }
+        assets: { type: Boolean, default: true },
+        message: { type: Boolean, default: true }
     }
 });
 

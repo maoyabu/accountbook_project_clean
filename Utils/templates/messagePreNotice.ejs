@@ -1,0 +1,6 @@
+<%- include('_mailHeader') %>
+<h2>Message 予告のお知らせ</h2>
+<p><%= name %> さんのMessageサービスで「Alive！」確認が期間を超えました。</p>
+<p>今後、一定期間の確認がなければ最終通知が送られます。</p>
+<p>確認期間：<%= confirmDays %>日</p>
+<%- include('_mailFooter') %>

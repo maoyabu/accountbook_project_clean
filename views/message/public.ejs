@@ -1,0 +1,19 @@
+<% layout('layouts/top_boilerplate') %>
+
+<div class="container" style="max-width: 560px;">
+  <div class="card mt-4">
+    <div class="card-header text-white" style="background-color: #4A6A7A;">
+      Message 閲覧
+    </div>
+    <div class="card-body">
+      <p class="text-muted">メッセージを閲覧するためのパスワードを入力してください。</p>
+      <form method="POST" action="">
+        <div class="mb-3">
+          <label class="form-label">閲覧パスワード</label>
+          <input type="password" name="view_password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">確認</button>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,51 @@
+<% layout('layouts/boilerplate') %>
+
+<h1 class="mb-3">Message 管理</h1>
+
+<form action="/admin/message" method="GET" class="mb-3 d-flex">
+  <input type="text" name="q" class="form-control" placeholder="フリーワード検索" value="<%= query || '' %>">
+  <button class="btn btn-primary ms-2" type="submit">検索</button>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead style="background-color: #4A6A7A; color: #ffffff;">
+      <tr>
+        <th style="background-color: #4A6A7A; color: #ffffff;">利用者</th>
+        <th style="background-color: #4A6A7A; color: #ffffff;">利用状況</th>
+        <th style="background-color: #4A6A7A; color: #ffffff;">共有相手</th>
+        <th style="background-color: #4A6A7A; color: #ffffff;">確認期間</th>
+        <th style="background-color: #4A6A7A; color: #ffffff;">未確認のべ日数</th>
+        <th style="background-color: #4A6A7A; color: #ffffff;">警告メール</th>
+        <th style="background-color: #4A6A7A; color: #ffffff;">最終通知</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!rows || rows.length === 0) { %>
+        <tr>
+          <td colspan="7" class="text-muted">対象データがありません。</td>
+        </tr>
+      <% } else { %>
+        <% rows.forEach(row => { %>
+          <tr>
+            <td><%= row.userName %></td>
+            <td><%= row.serviceStatus %></td>
+            <td><%- row.shareDisplay %></td>
+            <td><%= row.confirmDays %>日</td>
+            <td><%= row.daysSinceAlive %>日</td>
+            <td>
+              <form method="POST" action="/admin/message/<%= row.settingId %>/warn-test" class="m-0">
+                <button class="btn btn-sm btn-outline-danger" type="submit" <%= (row.isTestEnv || row.canWarn) ? '' : 'disabled' %>>警告送信</button>
+              </form>
+            </td>
+            <td>
+              <form method="POST" action="/admin/message/<%= row.settingId %>/share-test" class="m-0">
+                <button class="btn btn-sm btn-outline-primary" type="submit" <%= (row.isTestEnv || row.canShare) ? '' : 'disabled' %>>共有送信</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,257 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'message-top' %>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <span class="fw-semibold text-muted">Alive！状況:</span>
+    <form method="POST" action="/message/alive/confirm-now" class="m-0">
+      <button type="submit" class="btn btn-sm border" style="background-color: <%= aliveStatus === '未確認' ? '#f8d7da' : '#d1e7dd' %>; color: <%= aliveStatus === '未確認' ? '#842029' : '#0f5132' %>;">
+        <%= aliveStatus %>
+        <% if (aliveAt) { %>
+          <span class="ms-2"><%= new Date(aliveAt).toLocaleDateString('ja-JP') %></span>
+        <% } %>
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <%- include('../partials/message_tabs_nav') %>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <% if (isTestEnv) { %>
+      <form method="POST" action="/message/alive/test" class="m-0">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">
+          <i class="fa-solid fa-paper-plane me-1"></i>テスト送信
+        </button>
+      </form>
+    <% } %>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#messageEntryModal">
+      <i class="fa-solid fa-plus me-1"></i>新規登録
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header text-white" style="background-color: #4A6A7A;">
+    Message 一覧
+  </div>
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <form method="GET" action="/message/top" class="d-flex align-items-center gap-2 flex-nowrap">
+      <span class="fw-semibold text-muted">絞込み</span>
+      <select name="category" class="form-select form-select-sm" style="width: auto;">
+        <option value="">カテゴリー</option>
+        <% messageCategories.forEach(category => { %>
+          <option value="<%= category %>" <%= selectedCategory === category ? 'selected' : '' %>><%= category %></option>
+        <% }) %>
+      </select>
+      <select name="status" class="form-select form-select-sm" style="width: 90px;">
+        <option value="">状態</option>
+        <option value="on" <%= selectedStatus === 'on' ? 'selected' : '' %>>ON</option>
+        <option value="off" <%= selectedStatus === 'off' ? 'selected' : '' %>>OFF</option>
+      </select>
+      <input type="text" name="q" value="<%= searchQuery %>" class="form-control form-control-sm" style="width: 280px;" placeholder="フリーワード">
+      <button class="btn btn-primary btn-sm ms-2" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </form>
+    </div>
+    <% if (items.length === 0) { %>
+      <div class="text-muted">登録されたメッセージはありません。</div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead style="background-color: #4A6A7A; color: #ffffff;">
+            <tr>
+              <th style="background-color: #4A6A7A; color: #ffffff;">カテゴリー</th>
+              <th style="background-color: #4A6A7A; color: #ffffff;">内容</th>
+              <th style="background-color: #4A6A7A; color: #ffffff;">所有者</th>
+              <th style="background-color: #4A6A7A; color: #ffffff;">共有</th>
+              <th style="background-color: #4A6A7A; color: #ffffff;">状態</th>
+              <th style="background-color: #4A6A7A; color: #ffffff;">更新日</th>
+              <th style="background-color: #4A6A7A; color: #ffffff;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% items.forEach(item => { %>
+              <% const ownerName = item.user?.displayname || item.user?.username || '自分'; %>
+              <% const shareLabel = item.share_scope === 'all' ? '全員' : (item.share_scope === 'selected' ? '個別' : '非公開'); %>
+              <tr>
+                <td><span class="badge bg-secondary"><%= item.category %></span></td>
+                <td style="min-width: 240px;">
+                  <div class="fw-semibold"><%= item.title %></div>
+                  <div class="text-muted small">
+                    <% if (item.isOwner) { %>
+                      <%= item.decryptedContent ? item.decryptedContent.slice(0, 80) : '内容未入力' %>
+                    <% } else { %>
+                      共有中（内容は非表示）
+                    <% } %>
+                  </div>
+                  <% if (item.url) { %>
+                    <div class="small"><a href="<%= item.url %>" target="_blank" rel="noopener">リンク</a></div>
+                  <% } %>
+                </td>
+                <td><%= ownerName %><% if (item.isOwner) { %>（自分）<% } %></td>
+                <td><%= shareLabel %></td>
+                <td>
+                  <span class="badge <%= item.is_active ? 'bg-success' : 'bg-secondary' %>"><%= item.is_active ? 'ON' : 'OFF' %></span>
+                  <div class="small text-muted">
+                    <%= item.start_date ? new Date(item.start_date).toLocaleDateString('ja-JP') : '開始未設定' %>
+                    〜
+                    <%= item.end_date ? new Date(item.end_date).toLocaleDateString('ja-JP') : '終了未設定' %>
+                  </div>
+                </td>
+                <td><%= item.update_date ? new Date(item.update_date).toLocaleDateString('ja-JP') : '-' %></td>
+                <td>
+                  <% if (item.isOwner) { %>
+                    <div class="btn-group">
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                              onclick="openEditMessageModal('<%= encodeURIComponent(JSON.stringify(item)) %>')">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                      </button>
+                      <form action="/message/<%= item._id %>/delete" method="POST" onsubmit="return confirm('本当に削除しますか？')">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>
+                      </form>
+                    </div>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<datalist id="messageCategoryList">
+  <% messageCategories.forEach(category => { %>
+    <option value="<%= category %>"></option>
+  <% }) %>
+</datalist>
+
+<div class="modal fade" id="messageEntryModal" tabindex="-1" aria-labelledby="messageEntryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="/message" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title" id="messageEntryModalLabel">メッセージ登録</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">カテゴリー</label>
+              <input type="text" name="category" class="form-control" list="messageCategoryList" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">タイトル</label>
+              <input type="text" name="title" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">内容</label>
+              <textarea name="content" class="form-control" rows="4"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">URL</label>
+              <input type="url" name="url" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">利用開始日</label>
+              <input type="date" name="start_date" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">利用終了日</label>
+              <input type="date" name="end_date" class="form-control">
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_active" checked>
+                <label class="form-check-label">このメッセージを有効にする</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">登録</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="messageEditModal" tabindex="-1" aria-labelledby="messageEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="messageEditForm" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title" id="messageEditModalLabel">メッセージ編集</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">カテゴリー</label>
+              <input type="text" name="category" id="editCategory" class="form-control" list="messageCategoryList" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">タイトル</label>
+              <input type="text" name="title" id="editTitle" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">内容</label>
+              <textarea name="content" id="editContent" class="form-control" rows="4"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">URL</label>
+              <input type="url" name="url" id="editUrl" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">利用開始日</label>
+              <input type="date" name="start_date" id="editStartDate" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">利用終了日</label>
+              <input type="date" name="end_date" id="editEndDate" class="form-control">
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_active" id="editIsActive">
+                <label class="form-check-label" for="editIsActive">このメッセージを有効にする</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">更新</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const formatDateValue = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  };
+
+  const openEditMessageModal = (itemJson) => {
+    const item = JSON.parse(decodeURIComponent(itemJson));
+    document.getElementById('messageEditForm').action = `/message/${item._id}/edit`;
+    document.getElementById('editCategory').value = item.category || '';
+    document.getElementById('editTitle').value = item.title || '';
+    document.getElementById('editContent').value = item.decryptedContent || '';
+    document.getElementById('editUrl').value = item.url || '';
+    document.getElementById('editStartDate').value = formatDateValue(item.start_date);
+    document.getElementById('editEndDate').value = formatDateValue(item.end_date);
+    document.getElementById('editIsActive').checked = !!item.is_active;
+
+    const modal = new bootstrap.Modal(document.getElementById('messageEditModal'));
+    modal.show();
+  };
+</script>

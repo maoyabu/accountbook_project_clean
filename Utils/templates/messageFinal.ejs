@@ -1,0 +1,5 @@
+<%- include('_mailHeader') %>
+<h2><%= name %> さんからMessageをお預かりしています</h2>
+<p>以下のURLにアクセスし、共有されたパスワードを使って<%= name %> さんからのMessageをご確認ください。（パスワードは別のメールで送付しています）</p>
+<p><a href="<%= url %>"><%= url %></a></p>
+<%- include('_mailFooter') %>

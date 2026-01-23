@@ -10,6 +10,11 @@ const Log = require('../models/log');
 const Inquiry = require('../models/inquiry');
 const Qa = require('../models/qa'); 
 const Planner = require('../models/planner');
+const MessageSetting = require('../models/messageSetting');
+const MessageStatus = require('../models/messageStatus');
+const MessageAccessToken = require('../models/messageAccessToken');
+const MessageAliveToken = require('../models/messageAliveToken');
+const crypto = require('crypto');
 
 const { isAdmin, logAction } = require('../middleware');
 const fs = require('fs');
@@ -139,6 +144,174 @@ router.get('/users', isAdmin, async (req, res) => {
     res.render('admin/users', { users, query: q || '' });
 });
 
+// Message 管理一覧
+router.get('/message', isAdmin, async (req, res) => {
+  const q = (req.query.q || '').trim().toLowerCase();
+  const settings = await MessageSetting.find({}).populate('user');
+
+  const rows = [];
+  for (const setting of settings) {
+    const userName = setting.user?.displayname || setting.user?.username || '不明';
+    const serviceStatus = setting.service_enabled ? 'ON' : 'OFF';
+    const confirmDays = Number(setting.confirm_period_days || 30);
+
+    const status = await MessageStatus.findOne({ user: setting.user?._id, group: setting.group });
+    const lastAlive = status?.last_alive_at || setting.entry_date || setting.user?.entry_date || new Date();
+    const today = new Date();
+    const diffDays = Math.floor((new Date(today.toDateString()) - new Date(new Date(lastAlive).toDateString())) / (1000 * 60 * 60 * 24));
+
+    let shareLabel = '非公開';
+    let shareMembersLabel = '';
+    if (setting.share_scope === 'all') {
+      shareLabel = '全員';
+      shareMembersLabel = '全員';
+    } else if (setting.share_scope === 'selected') {
+      shareLabel = '個別';
+      const members = await FinanceUser.find({ _id: { $in: setting.shared_members || [] } });
+      shareMembersLabel = members.map(m => m.displayname || m.username).join('<br>');
+    }
+
+    const shareDisplay = shareMembersLabel ? `${shareLabel}<br>${shareMembersLabel}` : shareLabel;
+
+    rows.push({
+      settingId: setting._id,
+      userName,
+      serviceStatus,
+      shareDisplay,
+      confirmDays,
+      daysSinceAlive: diffDays,
+      canWarn: diffDays >= confirmDays,
+      canShare: setting.share_scope === 'all' || setting.share_scope === 'selected',
+      isTestEnv: process.env.NODE_ENV !== 'production'
+    });
+  }
+
+  const filtered = q
+    ? rows.filter(row => {
+        const haystack = [
+          row.userName,
+          row.serviceStatus,
+          row.shareDisplay,
+          String(row.confirmDays),
+          String(row.daysSinceAlive)
+        ].join(' ').toLowerCase();
+        return haystack.includes(q);
+      })
+    : rows;
+
+  res.render('admin/message', { rows: filtered, query: req.query.q || '' });
+});
+
+// 未確認テスト警告メール送信
+router.post('/message/:id/warn-test', isAdmin, async (req, res) => {
+  const setting = await MessageSetting.findById(req.params.id).populate('user');
+  if (!setting || !setting.user) {
+    req.flash('error', '対象が見つかりません');
+    return res.redirect('/admin/message');
+  }
+  if (setting.user.isMail === false || !setting.user.email) {
+    req.flash('error', '送信先メールがありません');
+    return res.redirect('/admin/message');
+  }
+
+  const token = crypto.randomBytes(24).toString('hex');
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  await MessageAliveToken.create({
+    user: setting.user._id,
+    group: setting.group,
+    token,
+    expires_at: expiresAt
+  });
+  const baseUrl = process.env.NODE_ENV === 'production' && process.env.BASE_URL
+    ? process.env.BASE_URL
+    : 'http://localhost:3000';
+  const aliveUrl = `${baseUrl}/message/alive/confirm/${token}`;
+  const warnDays = Number(setting.final_notice_days || 7);
+
+  await sendMail({
+    to: setting.user.email,
+    subject: '⚠️【All About me】未確認の日数が設定した期間を過ぎました。',
+    templateName: 'messageWarning',
+    templateData: {
+      name: setting.user.displayname || setting.user.username,
+      daysLeft: warnDays,
+      url: aliveUrl
+    }
+  });
+
+  req.flash('success', '警告メールを送信しました');
+  res.redirect('/admin/message');
+});
+
+// 共有メンバー向けテストメール送信
+router.post('/message/:id/share-test', isAdmin, async (req, res) => {
+  const setting = await MessageSetting.findById(req.params.id).populate('user');
+  if (!setting || !setting.user) {
+    req.flash('error', '対象が見つかりません');
+    return res.redirect('/admin/message');
+  }
+
+  let recipientUsers = [];
+  if (setting.share_scope === 'all') {
+    const group = await Group.findById(setting.group);
+    recipientUsers = group?.members?.length
+      ? await FinanceUser.find({ _id: { $in: group.members } })
+      : [];
+  } else if (setting.share_scope === 'selected') {
+    recipientUsers = await FinanceUser.find({ _id: { $in: setting.shared_members || [] } });
+  }
+
+  const recipients = recipientUsers
+    .map(user => user.email)
+    .filter(Boolean);
+
+  if (recipients.length === 0) {
+    req.flash('error', '共有メンバーのメールがありません');
+    return res.redirect('/admin/message');
+  }
+
+  const token = crypto.randomBytes(24).toString('hex');
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+  await MessageAccessToken.create({
+    user: setting.user._id,
+    group: setting.group,
+    token,
+    expires_at: expiresAt
+  });
+
+  const baseUrl = process.env.NODE_ENV === 'production' && process.env.BASE_URL
+    ? process.env.BASE_URL
+    : 'http://localhost:3000';
+  const url = `${baseUrl}/message/public/${token}`;
+
+  await sendMail({
+    to: recipients.join(','),
+    subject: `【⚠️重要⚠️】${setting.user.displayname || setting.user.username}さんからのMessageを預かっています。`,
+    templateName: 'messageFinal',
+    templateData: {
+      name: setting.user.displayname || setting.user.username,
+      url
+    }
+  });
+
+  if (setting.view_password) {
+    await sendMail({
+      to: recipients.join(','),
+      subject: `【⚠️重要⚠️】${setting.user.displayname || setting.user.username}さんからのMessageを預かっています。`,
+      templateName: 'messageFinalPassword',
+      templateData: {
+        name: setting.user.displayname || setting.user.username,
+        password: setting.decryptViewPassword()
+      }
+    });
+  }
+
+  req.flash('success', '共有テストメールを送信しました');
+  res.redirect('/admin/message');
+});
+
 // ユーザー詳細取得（モーダル表示用API）
 router.get('/users/:id/json', isAdmin, async (req, res) => {
   try {
@@ -165,7 +338,8 @@ router.put('/users/:id', isAdmin, async (req, res) => {
         services: {
           allaboutme: req.body.services_allaboutme === 'true' || req.body.services_allaboutme === 'on',
           finance: req.body.services_finance === 'true' || req.body.services_finance === 'on',
-          assets: req.body.services_assets === 'true' || req.body.services_assets === 'on'
+          assets: req.body.services_assets === 'true' || req.body.services_assets === 'on',
+          message: req.body.services_message === 'true' || req.body.services_message === 'on'
         },
     update_date: new Date()
   });
@@ -555,7 +729,7 @@ router.post('/planner/:id/approve', isAdmin, async (req, res) => {
 
     await sendMail({
       to: planner.user.email,
-      subject: '【All About Me】Planner承認のお知らせ',
+      subject: '【All About me】Planner承認のお知らせ',
       templateName: 'planner_yes',
       templateData: {
         user: planner.user,
@@ -586,7 +760,7 @@ router.post('/planner/:id/reject', isAdmin, async (req, res) => {
 
     await sendMail({
       to: planner.user.email,
-      subject: '【All About Me】Planner申請結果のお知らせ',
+      subject: '【All About me】Planner申請結果のお知らせ',
       templateName: 'planner_no',
       templateData: {
         user: planner.user

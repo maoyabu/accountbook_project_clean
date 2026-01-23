@@ -1,0 +1,163 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'message-settings' %>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <%- include('../partials/message_tabs_nav') %>
+</div>
+
+<div class="card">
+  <div class="card-header text-white" style="background-color: #4A6A7A;">
+    Message 基本設定
+  </div>
+  <div class="card-body">
+    <form action="/message/settings" method="POST">
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="serviceEnabled" name="service_enabled" <%= setting && setting.service_enabled ? 'checked' : '' %>>
+            <label class="form-check-label" for="serviceEnabled">メッセージサービスを有効にする</label>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">確認期間（日）</label>
+          <input type="number" name="confirm_period_days" class="form-control" min="1" value="<%= setting && setting.confirm_period_days ? setting.confirm_period_days : 30 %>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">最終の共有メールを送るまでの期間（日）</label>
+          <input type="number" name="final_notice_days" class="form-control" min="1" value="<%= setting && setting.final_notice_days ? setting.final_notice_days : 7 %>">
+        </div>
+        <% const targets = (setting && Array.isArray(setting.confirm_targets) && setting.confirm_targets.length)
+          ? setting.confirm_targets
+          : (setting && Array.isArray(setting.confirm_emails) && setting.confirm_emails.length)
+            ? setting.confirm_emails.map(email => ({ method: 'email', destination: email }))
+            : (setting && setting.confirm_line_id)
+              ? [{ method: 'line', destination: setting.confirm_line_id }]
+              : [{ method: 'email', destination: '' }]; %>
+        <div class="col-12">
+          <label class="form-label">確認先</label>
+          <div id="confirmTargetList" class="d-flex flex-column gap-2">
+            <% targets.forEach((target, index) => { %>
+              <div class="d-flex align-items-center gap-2 confirm-target-row">
+                <select name="confirm_method" class="form-select form-select-sm" style="width: 130px;">
+                  <option value="email" <%= target.method === 'email' ? 'selected' : '' %>>メール</option>
+                  <option value="line" <%= target.method === 'line' ? 'selected' : '' %>>LINE</option>
+                  <option value="push" <%= target.method === 'push' ? 'selected' : '' %>>PUSH</option>
+                </select>
+                <input type="text" name="confirm_destination" class="form-control form-control-sm" value="<%= target.destination || '' %>" placeholder="送付先">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeConfirmTarget(this)" <%= targets.length === 1 ? 'disabled' : '' %>>
+                  <i class="fa-solid fa-minus"></i>
+                </button>
+              </div>
+            <% }) %>
+          </div>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addConfirmTarget()">
+            <i class="fa-solid fa-plus me-1"></i>追加
+          </button>
+        </div>
+        <div class="col-12">
+          <label class="form-label">共有する相手</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="share_scope" id="shareScopePrivate" value="private" <%= !setting || setting.share_scope === 'private' ? 'checked' : '' %>>
+              <label class="form-check-label" for="shareScopePrivate">非公開</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="share_scope" id="shareScopeAll" value="all" <%= setting && setting.share_scope === 'all' ? 'checked' : '' %>>
+              <label class="form-check-label" for="shareScopeAll">全員に共有</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="share_scope" id="shareScopeSelected" value="selected" <%= setting && setting.share_scope === 'selected' ? 'checked' : '' %>>
+              <label class="form-check-label" for="shareScopeSelected">個別に共有</label>
+            </div>
+          </div>
+          <div id="sharedMembersWrap" class="mt-2 d-flex flex-wrap gap-2 <%= setting && setting.share_scope === 'selected' ? '' : 'd-none' %>">
+            <% if (groupMembers && groupMembers.length > 0) { %>
+              <% groupMembers.forEach(member => { %>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="shared_members" value="<%= member._id %>" <%= setting && Array.isArray(setting.shared_members) && setting.shared_members.some(id => id.toString() === member._id.toString()) ? 'checked' : '' %>>
+                  <label class="form-check-label"><%= member.displayname || member.username %></label>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <span class="text-muted small">グループメンバーがいません。</span>
+            <% } %>
+          </div>
+          <div class="form-text">個別に共有を選んだ場合のみメンバー指定が有効です。</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label d-flex align-items-center gap-2">
+            <span>メッセージ閲覧用パスワード</span>
+            <% if (setting && setting.view_password) { %>
+              <span class="badge" style="background-color: #f8d7da; color: #842029;">保存済み</span>
+            <% } %>
+          </label>
+          <input type="password" name="view_password" class="form-control" placeholder="変更する場合のみ入力" autocomplete="new-password">
+          <div class="form-text">空欄のまま保存するとパスワードは変更されません。</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">メッセージ本文</label>
+          <textarea name="message_body" class="form-control" rows="5"><%= setting && setting.message_body ? setting.message_body : '' %></textarea>
+        </div>
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+  const toggleSharedMembers = () => {
+    const selected = document.querySelector('input[name="share_scope"]:checked');
+    const wrap = document.getElementById('sharedMembersWrap');
+    if (!wrap) return;
+    if (selected && selected.value === 'selected') {
+      wrap.classList.remove('d-none');
+    } else {
+      wrap.classList.add('d-none');
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    toggleSharedMembers();
+    document.querySelectorAll('input[name="share_scope"]').forEach((input) => {
+      input.addEventListener('change', toggleSharedMembers);
+    });
+  });
+
+  const addConfirmTarget = () => {
+    const list = document.getElementById('confirmTargetList');
+    const row = document.createElement('div');
+    row.className = 'd-flex align-items-center gap-2 confirm-target-row';
+    row.innerHTML = `
+      <select name="confirm_method" class="form-select form-select-sm" style="width: 130px;">
+        <option value="email">メール</option>
+        <option value="line">LINE</option>
+        <option value="push">PUSH</option>
+      </select>
+      <input type="text" name="confirm_destination" class="form-control form-control-sm" placeholder="送付先">
+      <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeConfirmTarget(this)">
+        <i class="fa-solid fa-minus"></i>
+      </button>
+    `;
+    list.appendChild(row);
+    syncRemoveButtons();
+  };
+
+  const removeConfirmTarget = (button) => {
+    const row = button.closest('.confirm-target-row');
+    if (row) {
+      row.remove();
+      syncRemoveButtons();
+    }
+  };
+
+  const syncRemoveButtons = () => {
+    const rows = document.querySelectorAll('#confirmTargetList .confirm-target-row');
+    rows.forEach((row, index) => {
+      const removeButton = row.querySelector('button');
+      if (removeButton) {
+        removeButton.disabled = rows.length === 1;
+      }
+    });
+  };
+</script>

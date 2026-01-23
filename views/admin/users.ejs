@@ -45,6 +45,7 @@
                 if (key === 'allaboutme') return 'All About me';
                 if (key === 'finance') return '家計簿';
                 if (key === 'assets') return '資産管理';
+                if (key === 'message') return 'Message';
                 return key;
               }); %>
               <%= activeServices.join(', ') %>
@@ -113,8 +114,8 @@
           <div class="mb-2">
             <label class="form-label">利用サービス</label>
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="userServiceAllAboutMe" name="services_allaboutme">
-              <label class="form-check-label" for="userServiceAllAboutMe">All About me</label>
+              <input class="form-check-input" type="checkbox" id="userServiceAll About me" name="services_allaboutme">
+              <label class="form-check-label" for="userServiceAll About me">All About me</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="userServiceFinance" name="services_finance">
@@ -123,6 +124,10 @@
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="userServiceAssets" name="services_assets">
               <label class="form-check-label" for="userServiceAssets">資産管理</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="userServiceMessage" name="services_message">
+              <label class="form-check-label" for="userServiceMessage">Message</label>
             </div>
           </div>
           <div class="modal-footer justify-content-between">
@@ -171,9 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('userIsPlanner').checked = !!user.isPlanner;
       document.getElementById('userIsActive').checked = user.isActive !== false;
       document.getElementById('userIsMail').checked = user.isMail !== false;
-      document.getElementById('userServiceAllAboutMe').checked = user.services?.allaboutme !== false;
+      document.getElementById('userServiceAll About me').checked = user.services?.allaboutme !== false;
       document.getElementById('userServiceFinance').checked = user.services?.finance !== false;
       document.getElementById('userServiceAssets').checked = user.services?.assets !== false;
+      document.getElementById('userServiceMessage').checked = user.services?.message !== false;
     });
 
     // 削除トリガーボタンをクリックしたら deleteForm を送信

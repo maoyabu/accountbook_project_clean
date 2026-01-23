@@ -316,6 +316,13 @@ main {
     color: #166534;
 }
 
+.service-option.is-active.is-message {
+    background-color: #fff6d6;
+    border-color: #f3b11a;
+    border-width: 3px;
+    color: #9a5c00;
+}
+
 .service-option.is-finance {
     background-color: #e9f0ff;
     color: #1e40af;
@@ -324,6 +331,11 @@ main {
 .service-option.is-myself {
     background-color: #e8f7ef;
     color: #166534;
+}
+
+.service-option.is-message {
+    background-color: #fff6d6;
+    color: #9a5c00;
 }
 
 .auth-submit {
@@ -449,6 +461,10 @@ main {
     background-color: #e8f7ef;
 }
 
+.footer.theme-message {
+    background-color: #fff6d6;
+}
+
 .footer.theme-finance .text-white,
 .footer.theme-finance .text-white a {
     color: #1e40af !important;
@@ -457,6 +473,11 @@ main {
 .footer.theme-myself .text-white,
 .footer.theme-myself .text-white a {
     color: #166534 !important;
+}
+
+.footer.theme-message .text-white,
+.footer.theme-message .text-white a {
+    color: #9a5c00 !important;
 }
 
 .recent-finance-list .list-group-item {
@@ -1190,6 +1211,11 @@ color: white;
     border-right: 4px solid #7bc89c;
   }
 
+  .menu-item.is-active.is-message {
+    background-color: #fff6d6;
+    border-right: 4px solid #f3b11a;
+  }
+
   .related-tag {
     border: 1px solid currentColor;
     border-radius: 999px;
@@ -1208,6 +1234,12 @@ color: white;
     background-color: #e8f7ef;
     border-color: #7bc89c;
     color: #166534;
+  }
+
+  .menu-pill.is-active.is-message {
+    background-color: #fff6d6;
+    border-color: #f3b11a;
+    color: #9a5c00;
   }
 
   .menu-pill.related-blue {
@@ -1411,6 +1443,11 @@ li{
     color: #1f2937;
 }
 
+#top-nav.theme-message .top-nav-bar {
+    background-color: #fff6d6;
+    color: #1f2937;
+}
+
 .top-nav-inner {
     display: flex;
     align-items: center;
@@ -1489,6 +1526,19 @@ li{
     background-color: #ffffff;
 }
 
+#top-nav.theme-message .top-nav-brand,
+#top-nav.theme-message .top-nav-service-label,
+#top-nav.theme-message .top-nav-field-label,
+#top-nav.theme-message .top-nav-icon,
+#top-nav.theme-message .menu-toggle i {
+    color: #1f2937;
+}
+
+#top-nav.theme-message .top-nav-icon {
+    border-color: #f3b11a;
+    background-color: #ffffff;
+}
+
 .top-nav-service-label {
     font-weight: 700;
     color: #c45a00;
@@ -1511,12 +1561,20 @@ li{
     color: #166534;
 }
 
+#top-nav.theme-message .top-nav-service-label {
+    color: #9a5c00;
+}
+
 #top-nav.theme-finance .top-nav-brand {
     color: #1e40af;
 }
 
 #top-nav.theme-myself .top-nav-brand {
     color: #166534;
+}
+
+#top-nav.theme-message .top-nav-brand {
+    color: #9a5c00;
 }
 
 .menu-toggle {
@@ -1542,6 +1600,11 @@ li{
 
 #top-nav.theme-myself .menu-toggle {
     border-color: #7bc89c;
+    background-color: #ffffff;
+}
+
+#top-nav.theme-message .menu-toggle {
+    border-color: #f3b11a;
     background-color: #ffffff;
 }
 

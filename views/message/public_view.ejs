@@ -1,0 +1,41 @@
+<% layout('layouts/top_boilerplate') %>
+
+<div class="container">
+  <div class="card mt-4">
+    <div class="card-header text-white" style="background-color: #4A6A7A;">
+      Message 一覧
+    </div>
+    <div class="card-body">
+      <% if (items.length === 0) { %>
+        <div class="text-muted">表示できるメッセージがありません。</div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead style="background-color: #4A6A7A; color: #ffffff;">
+              <tr>
+                <th style="background-color: #4A6A7A; color: #ffffff;">カテゴリー</th>
+                <th style="background-color: #4A6A7A; color: #ffffff;">タイトル</th>
+                <th style="background-color: #4A6A7A; color: #ffffff;">内容</th>
+                <th style="background-color: #4A6A7A; color: #ffffff;">URL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% items.forEach(item => { %>
+                <tr>
+                  <td><span class="badge bg-secondary"><%= item.category %></span></td>
+                  <td><%= item.title %></td>
+                  <td><%- (item.decryptedContent || '').replace(/\n/g, '<br>') %></td>
+                  <td>
+                    <% if (item.url) { %>
+                      <a href="<%= item.url %>" target="_blank" rel="noopener">リンク</a>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>

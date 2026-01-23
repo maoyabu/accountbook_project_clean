@@ -184,7 +184,11 @@ router.post('/login',
       req.session.activeGroupId = user.groups[0]._id;
       await logAction({ req, action: 'ログイン', target: 'ユーザー' });
       req.flash('success', `ようこそ！${req.user.username}さん、おかえりなさい！`);
-      const fallbackUrl = req.session.activeService === 'myself' ? '/myself/top' : '/finance/top';
+      const fallbackUrl = req.session.activeService === 'myself'
+        ? '/myself/top'
+        : req.session.activeService === 'message'
+          ? '/message/top'
+          : '/finance/top';
       const redirectUrl = req.session.returnTo || fallbackUrl;
       delete req.session.returnTo;
       return res.redirect(redirectUrl);
@@ -208,9 +212,17 @@ router.get('/logout', (req, res) => {
 
 // サービス切替
 router.post('/service/select', isLoggedIn, (req, res) => {
-    const selectedService = req.body.service === 'myself' ? 'myself' : 'finance';
+    const selectedService = req.body.service === 'message'
+      ? 'message'
+      : req.body.service === 'myself'
+        ? 'myself'
+        : 'finance';
     req.session.activeService = selectedService;
-    const redirectUrl = selectedService === 'myself' ? '/myself/top' : '/finance/top';
+    const redirectUrl = selectedService === 'myself'
+      ? '/myself/top'
+      : selectedService === 'message'
+        ? '/message/top'
+        : '/finance/top';
     res.redirect(redirectUrl);
 });
 
@@ -454,7 +466,8 @@ router.put('/profile/:id', isLoggedIn, (req, res, next) => {
         user.services = {
           allaboutme: req.body.services_allaboutme === 'true',
           finance: req.body.services_finance === 'true',
-          assets: req.body.services_assets === 'true'
+          assets: req.body.services_assets === 'true',
+          message: req.body.services_message === 'true'
         };
 
         if (req.file) {

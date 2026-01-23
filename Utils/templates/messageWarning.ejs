@@ -1,0 +1,10 @@
+<%- include('_mailHeader') %>
+<h2>⚠️Alive！確認のお願い⚠️</h2>
+<p><%= name %> さん</p>
+<p>Alive！の確認期間が設定した期間を過ぎました。</p>
+<p>残り<strong><%= daysLeft %></strong>日で、共有設定したメンバーがMessageを閲覧できるように閲覧用のパスワードと閲覧のURLを送信します。</p>
+<p>あと<strong><%= daysLeft %></strong>日間、このメッセージを毎日通知し続けます。</p>
+<p>All About meにログイン、またはこちらから「Alive！確認」を行ってください。</p>
+<p><a href="<%= url %>" style="display:inline-block; padding:10px 16px; background:#4A6A7A; color:#ffffff; border-radius:6px; text-decoration:none;">Alive！確認</a></p>
+<p>※このボタンをクリックするだけで「Alive！確認」が完了します</p>
+<%- include('_mailFooter') %>

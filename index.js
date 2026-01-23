@@ -88,6 +88,10 @@ const relationRoutes = require('./routes/relation');
 const secureNoteRoutes = require('./routes/secureNote');
 const resumeRoutes = require('./routes/resume');
 const plannerRoutes = require('./routes/planner');
+const messageRoutes = require('./routes/message');
+const MessageSetting = require('./models/messageSetting');
+const MessageStatus = require('./models/messageStatus');
+const { sendMail } = require('./Utils/mailer');
 
 const { setActiveGroup } = require('./middleware');
 const { logPageAccess } = require('./middleware');
@@ -173,6 +177,8 @@ app.use((req, res, next) => {
   const path = req.path || '';
   if (path.startsWith('/finance') || path.startsWith('/export') || path.startsWith('/asset') || path.startsWith('/matomete')) {
     req.session.activeService = 'finance';
+  } else if (path.startsWith('/message')) {
+    req.session.activeService = 'message';
   } else if (path.startsWith('/allaboutme') || path.startsWith('/history') || path.startsWith('/relation') || path.startsWith('/resume') || path.startsWith('/myself')) {
     req.session.activeService = 'myself';
   }
@@ -193,6 +199,7 @@ app.use((req, res, next) => {
     allaboutme: true,
     finance: true,
     assets: true,
+    message: true,
   };
   next();
 });
@@ -210,6 +217,59 @@ app.use(flash());
 // ✅ setActiveGroup を先に適用（req.user を populate する）
 app.use(setActiveGroup);
 
+// Alive自動確認（対象サービス利用時）
+app.use(async (req, res, next) => {
+  try {
+    if (!req.user || !req.session?.activeGroupId) return next();
+
+    const setting = await MessageSetting.findOne({
+      user: req.user._id,
+      group: req.session.activeGroupId,
+      service_enabled: true
+    });
+    if (!setting) return next();
+
+    const status = await MessageStatus.findOne({ user: req.user._id, group: req.session.activeGroupId });
+    const now = new Date();
+    if (status?.last_alive_at) {
+      const last = new Date(status.last_alive_at);
+      if (last.toDateString() === now.toDateString()) return next();
+    }
+
+    const updated = await MessageStatus.findOneAndUpdate(
+      { user: req.user._id, group: req.session.activeGroupId },
+      { last_alive_at: now, last_alive_source: 'service', warning_started_at: null, warning_days_sent: 0, pre_notice_sent_at: null, final_sent_at: null },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    if (req.user.isMail !== false && req.user.email) {
+      const sentAt = updated?.last_alive_notice_sent_at ? new Date(updated.last_alive_notice_sent_at) : null;
+      if (!sentAt || sentAt.toDateString() !== now.toDateString()) {
+        try {
+          await sendMail({
+            to: req.user.email,
+            subject: '【All About me】Alive確認 完了',
+            templateName: 'messageAliveConfirmed',
+            templateData: {
+              name: req.user.displayname || req.user.username
+            }
+          });
+          await MessageStatus.findOneAndUpdate(
+            { user: req.user._id, group: req.session.activeGroupId },
+            { last_alive_notice_sent_at: now }
+          );
+        } catch (err) {
+          console.error('Alive確認完了メール送信エラー:', err);
+        }
+      }
+    }
+    next();
+  } catch (err) {
+    console.error('Alive自動更新エラー:', err);
+    next();
+  }
+});
+
 // ✅ res.locals の設定（populate 済みの currentUser を信頼して使う）
 app.use((req, res, next) => {
     res.locals.success = req.flash('success');
@@ -224,12 +284,16 @@ app.use((req, res, next) => {
 
     // 🔽 利用可能サービス（ナビメニュー出し分け用）
     if (req.user && req.user.services) {
-        res.locals.services = req.user.services;
+        res.locals.services = Object.assign(
+          { allaboutme: true, finance: true, assets: true, message: true },
+          req.user.services
+        );
     } else {
         res.locals.services = {
             allaboutme: true,
             finance: true,
-            assets: true
+            assets: true,
+            message: true
         };
     }
 
@@ -321,6 +385,8 @@ app.use('/secure-note', secureNoteRoutes);
 app.use('/resume', resumeRoutes);
 //Plannerへのルート
 app.use('/planner', plannerRoutes);
+// Message へのルート
+app.use('/message', messageRoutes);
 // OCR関連のルート
 app.use('/ocr', ocrRoutes);
 

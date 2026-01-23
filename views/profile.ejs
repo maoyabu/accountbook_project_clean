@@ -138,6 +138,9 @@
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="service_assets" name="services_assets" value="true" <%= user.services?.assets ? 'checked' : '' %>>            <label class="form-check-label" for="service_assets">資産管理</label>
           </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="service_message" name="services_message" value="true" <%= user.services?.message ? 'checked' : '' %>>            <label class="form-check-label" for="service_message">Message</label>
+          </div>
         </div>
         <hr>
         <button type="submit" class="c-button">ユーザー情報を更新する</button>
