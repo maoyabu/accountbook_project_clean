@@ -384,6 +384,9 @@ main {
     border: none;
     font-size: 0.95rem;
     padding: 0.5rem 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 .finance-action-btn:hover {
     background-color: #1e40af;
@@ -391,6 +394,38 @@ main {
 }
 .finance-action-excel {
     margin-left: auto;
+}
+.finance-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.finance-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+}
+@media (max-width: 576px) {
+    .finance-action-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+    .finance-action-btn {
+        width: 100%;
+        flex-direction: column;
+        gap: 0.3rem;
+        text-align: center;
+        padding: 0.6rem 0.5rem;
+    }
+    .finance-action-text {
+        font-size: 0.85rem;
+        line-height: 1.2;
+    }
+    .finance-action-excel {
+        margin-left: 0;
+    }
 }
 .finance-search-btn {
     background-color: #1d4ed8;
@@ -442,6 +477,8 @@ main {
     .dashboard-grid {
         flex: 1 1 auto;
         align-content: stretch;
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
     }
 
     .dashboard-button {
@@ -450,7 +487,54 @@ main {
         align-items: center;
         justify-content: center;
         border-radius: 12px;
+        padding: 0.5rem 0.9rem;
     }
+}
+@media (max-width: 576px) {
+    .dashboard-button {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        row-gap: 0.15rem;
+        column-gap: 0.35rem;
+        text-align: center;
+    }
+    .dashboard-icon {
+        order: 1;
+    }
+    .dashboard-suffix {
+        order: 2;
+    }
+    .dashboard-title {
+        order: 3;
+        flex-basis: 100%;
+    }
+}
+.dashboard-button {
+    border-radius: 12px;
+    text-align: center;
+    padding: 0.5rem 0.9rem;
+}
+.dashboard-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dashboard-icon i {
+    margin-right: 0.35rem;
+}
+.dashboard-title,
+.dashboard-suffix {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dashboard-title {
+    width: 100%;
+}
+.dashboard-suffix {
+    white-space: nowrap;
 }
 
 .footer.theme-finance {

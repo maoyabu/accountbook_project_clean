@@ -159,7 +159,7 @@
             <%= finance.saving_item === 'Please Choice' ? '' : finance.saving_item %>
           </td>
           <td class="limited-text4 col-content"><%= finance.content %></td>
-          <td class="text-right col-amount">¥<%= finance.amount %></td>
+          <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
           <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
           <td class="limited-text2 col-user"><%= finance.user?.displayname || '不明' %></td>
           <td class="actions-cell">

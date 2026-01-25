@@ -61,11 +61,23 @@
             <div class="text-muted">直近の入力はありません。</div>
           <% } %>
         </div>
-        <div class="d-flex flex-nowrap gap-2 overflow-auto">
-          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/entry"><i class="fa-solid fa-plus me-2"></i>新規登録</a>
-          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/receipt/new"><i class="fa-solid fa-receipt me-2"></i>レシートから登録</a>
-          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/matomete/regular-entry/push"><i class="fa-solid fa-layer-group me-2"></i>まとめて入力</a>
-          <a class="btn btn-sm finance-btn-rounded finance-action-btn finance-action-excel ms-auto" href="/export/view"><i class="fa-solid fa-file-excel me-2"></i>EXCEL書出し</a>
+        <div class="finance-action-group">
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/entry">
+            <span class="finance-action-icon"><i class="fa-solid fa-plus"></i></span>
+            <span class="finance-action-text">新規登録</span>
+          </a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/receipt/new">
+            <span class="finance-action-icon"><i class="fa-solid fa-receipt"></i></span>
+            <span class="finance-action-text">レシートから登録</span>
+          </a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/matomete/regular-entry/push">
+            <span class="finance-action-icon"><i class="fa-solid fa-layer-group"></i></span>
+            <span class="finance-action-text">まとめて入力</span>
+          </a>
+          <a class="btn btn-sm finance-btn-rounded finance-action-btn finance-action-excel" href="/export/view">
+            <span class="finance-action-icon"><i class="fa-solid fa-file-excel"></i></span>
+            <span class="finance-action-text">EXCEL書出し</span>
+          </a>
         </div>
       </div>
     </div>
@@ -81,22 +93,46 @@
           <div class="card-body dashboard-body">
             <div class="row g-3 dashboard-grid">
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/monthly-g"><i class="fa-solid fa-table me-2"></i>月次集計（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/monthly-g">
+                  <span class="dashboard-icon"><i class="fa-solid fa-table"></i></span>
+                  <span class="dashboard-title">月次集計</span>
+                  <span class="dashboard-suffix">（グループ）</span>
+                </a>
               </div>
               <div class="col-6">
-                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/monthly-m"><i class="fa-solid fa-table me-2"></i>月次集計（個人）</a>
+                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/monthly-m">
+                  <span class="dashboard-icon"><i class="fa-solid fa-table"></i></span>
+                  <span class="dashboard-title">月次集計</span>
+                  <span class="dashboard-suffix">（個人）</span>
+                </a>
               </div>
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/yearly-g"><i class="fa-solid fa-table me-2"></i>年次集計（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-blue dashboard-button" href="/export/dashboard/yearly-g">
+                  <span class="dashboard-icon"><i class="fa-solid fa-table"></i></span>
+                  <span class="dashboard-title">年次集計</span>
+                  <span class="dashboard-suffix">（グループ）</span>
+                </a>
               </div>
               <div class="col-6">
-                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/yearly-m"><i class="fa-solid fa-table me-2"></i>年次集計（個人）</a>
+                <a class="btn btn-outline-primary btn-sm w-100 dashboard-button" href="/export/dashboard/yearly-m">
+                  <span class="dashboard-icon"><i class="fa-solid fa-table"></i></span>
+                  <span class="dashboard-title">年次集計</span>
+                  <span class="dashboard-suffix">（個人）</span>
+                </a>
               </div>
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/yearly-stacked"><i class="fa-solid fa-chart-line me-2"></i>年グラフ（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/yearly-stacked">
+                  <span class="dashboard-icon"><i class="fa-solid fa-chart-line"></i></span>
+                  <span class="dashboard-title">年グラフ</span>
+                  <span class="dashboard-suffix">（グループ）</span>
+                </a>
               </div>
               <div class="col-6">
-                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/monthly-stacked"><i class="fa-solid fa-chart-line me-2"></i>月グラフ（グループ）</a>
+                <a class="btn btn-sm w-100 btn-group-light dashboard-button" href="/export/monthly-stacked">
+                  <span class="dashboard-icon"><i class="fa-solid fa-chart-line"></i></span>
+                  <span class="dashboard-title">月グラフ</span>
+                  <span class="dashboard-suffix">（グループ）</span>
+                </a>
               </div>
             </div>
           </div>
