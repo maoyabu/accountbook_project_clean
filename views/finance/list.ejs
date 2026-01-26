@@ -103,7 +103,13 @@
   /* 種別 */
   .table-fixed th.col-type, .table-fixed td.col-type { width: 110px; }
   /* 使用者（漢字2文字=4ch + 余白） */
-  .table-fixed th.col-user, .table-fixed td.col-user { width: calc(4ch + 8px); max-width: calc(4ch + 8px); padding: 0 4px; }
+  .table-fixed th.col-user, .table-fixed td.col-user {
+    width: calc(4ch + 8px);
+    max-width: calc(4ch + 8px);
+    padding: 0 4px;
+    text-align: center;
+    vertical-align: middle;
+  }
   /* 操作列 */
   .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 110px; }
 
