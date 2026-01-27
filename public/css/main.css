@@ -199,6 +199,56 @@ main {
     padding: 10px;
 }
 
+/* Finance floating action button */
+.finance-fab {
+    position: fixed;
+    right: 20px;
+    top: 88px;
+    min-width: 78px;
+    height: 36px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #0d6efd;
+    border: 1px solid rgba(13, 110, 253, 0.7);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(13, 110, 253, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+    font-size: 0.95rem;
+    z-index: 1060;
+    user-select: none;
+    touch-action: none;
+}
+.finance-fab:hover {
+    color: #ffffff;
+    background: #0b5ed7;
+}
+.finance-fab:active {
+    transform: scale(0.98);
+}
+.finance-fab-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+@media (max-width: 576px) {
+    .finance-fab {
+        min-width: 72px;
+        height: 34px;
+        right: 16px;
+        top: 76px;
+    }
+    .finance-fab-label {
+        font-size: 0.8rem;
+    }
+}
+
 /* 初期状態では非表示 */
 #income_group, #expense_group, #deduction_group {
     display: none;
