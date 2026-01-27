@@ -234,9 +234,9 @@ main {
     position: fixed;
     right: 20px;
     top: 88px;
-    min-width: 78px;
-    height: 36px;
-    padding: 0 8px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
     border-radius: 999px;
     background: #0d6efd;
     border: 1px solid rgba(13, 110, 253, 0.7);
@@ -264,27 +264,45 @@ main {
     transform: scale(0.98);
 }
 .finance-fab-label {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     font-weight: 600;
     letter-spacing: 0.01em;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
 }
-.finance-fab-drag {
-    font-size: 0.85rem;
-    opacity: 0.7;
-    margin-right: 2px;
+.finance-fab-handle {
+    position: absolute;
+    left: -14px;
+    top: -12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #0d6efd;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    opacity: 0.9;
 }
 @media (max-width: 576px) {
     .finance-fab {
-        min-width: 72px;
-        height: 34px;
+        width: 44px;
+        height: 44px;
         right: 16px;
         top: 76px;
     }
     .finance-fab-label {
-        font-size: 0.8rem;
+        font-size: 1rem;
+    }
+    .finance-fab-handle {
+        left: -12px;
+        top: -10px;
+        width: 18px;
+        height: 18px;
+        font-size: 0.7rem;
     }
 }
 
