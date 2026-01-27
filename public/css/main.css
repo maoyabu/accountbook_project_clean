@@ -199,6 +199,36 @@ main {
     padding: 10px;
 }
 
+/* Header brand: show group name on narrow screens */
+.top-nav-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.top-nav-service-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.top-nav-group-name {
+    font-weight: 600;
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+.brand-group {
+    display: none;
+    font-weight: 600;
+    white-space: nowrap;
+}
+@media (max-width: 576px) {
+    .brand-title {
+        display: none;
+    }
+    .brand-group {
+        display: none;
+    }
+}
+
 /* Finance floating action button */
 .finance-fab {
     position: fixed;
@@ -221,6 +251,10 @@ main {
     z-index: 1060;
     user-select: none;
     touch-action: none;
+    cursor: grab;
+}
+.finance-fab:active {
+    cursor: grabbing;
 }
 .finance-fab:hover {
     color: #ffffff;
@@ -236,6 +270,11 @@ main {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+}
+.finance-fab-drag {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    margin-right: 2px;
 }
 @media (max-width: 576px) {
     .finance-fab {

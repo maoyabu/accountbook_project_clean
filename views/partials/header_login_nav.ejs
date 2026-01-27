@@ -12,6 +12,9 @@
 <% const serviceTop = activeSvc === 'myself' ? '/myself/top' : (activeSvc === 'message' ? '/message/top' : '/finance/top'); %>
 <% const serviceLabel = activeSvc === 'myself' ? 'Myself' : (activeSvc === 'message' ? 'Message' : 'Finance'); %>
 <% const serviceIcon = activeSvc === 'myself' ? 'fa-user' : (activeSvc === 'message' ? 'fa-envelope' : 'fa-wallet'); %>
+<% const activeGroupName = (cu && Array.isArray(cu.groups) && activeGroupStr)
+  ? (cu.groups.find(group => group && group._id && group._id.toString() === activeGroupStr)?.group_name || '')
+  : ''; %>
 
 <header id="top-nav" class="theme-<%= activeSvc %>">
   <nav class="navbar top-nav-bar">
@@ -21,14 +24,23 @@
           <i class="fas fa-bars"></i>
         </button>
         <div class="top-nav-service">
-          <a class="top-nav-service-label" href="<%= serviceTop %>"><i class="fa-solid <%= serviceIcon %>"></i> <%= serviceLabel %></a>
+          <a class="top-nav-service-label" href="<%= serviceTop %>">
+            <i class="fa-solid <%= serviceIcon %>"></i>
+            <span class="top-nav-service-text"><%= serviceLabel %></span>
+            <% if (activeGroupName) { %>
+              <span class="top-nav-group-name"><i class="fa-solid fa-users"></i> <%= activeGroupName %></span>
+            <% } %>
+          </a>
         </div>
       </div>
 
       <div class="top-nav-center">
         <a class="navbar-brand top-nav-brand" href="<%= serviceTop %>">
           <img class="top-nav-brand-icon" src="/images/App_icon.png" alt="App Icon">
-          All About me
+          <span class="brand-title">All About me</span>
+          <% if (activeGroupName) { %>
+            <span class="brand-group"><%= activeGroupName %></span>
+          <% } %>
         </a>
       </div>
 
