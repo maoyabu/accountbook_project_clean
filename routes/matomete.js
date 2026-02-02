@@ -228,13 +228,16 @@ router.get('/regular-entry/push', isLoggedIn, async (req, res) => {
     try {
       const entries = await RegularEntry.find({ group: groupId, user: userId });
       const now = new Date();
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
+      const defaultYearMonth = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
   
       res.render('finance/regularEntryP', {
         regularEntries: entries,
         currentYear,
-        currentMonth
+        currentMonth,
+        defaultYearMonth
       });
     } catch (err) {
       console.error('❌ 一括登録画面の取得エラー:', err);
