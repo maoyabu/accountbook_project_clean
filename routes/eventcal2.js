@@ -5,6 +5,7 @@ const router = express.Router();
 const { isLoggedIn } = require('../middleware');
 const Finance = require('../models/finance');
 const Eventcal = require('../models/eventcal');
+const Eventcal_events = require('../models/eventcal_events');
 
 const getSelectedDate = (rawDate) => {
   if (!rawDate) return new Date();
@@ -59,6 +60,11 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       date: { $gte: start, $lte: end }
     }).sort({ entry_date: 1 });
 
+    const events = await Eventcal_events.find({
+      user: req.user._id,
+      group: groupId
+    }).sort({ entry_date: 1 });
+
     const financeEntries = financeDocs.map((entry) => ({
       id: entry._id,
       cf: entry.cf,
@@ -71,15 +77,21 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
 
     const diaryEntries = diaryDocs.map((entry) => ({
       id: entry._id,
+      date: dayjs(entry.date).format('YYYY-MM-DD'),
+      item: entry.item || '',
       event: entry.event || '',
       rate: entry.rate || 0,
-      content: entry.content || ''
+      title: entry.title || '',
+      content: entry.content || '',
+      summary: entry.summary || '',
+      share: Boolean(entry.share)
     }));
 
     return res.render('allaboutme/eventcal2', {
       selectedDate: dayjs(start).format('YYYY-MM-DD'),
       financeEntries,
-      diaryEntries
+      diaryEntries,
+      events
     });
   } catch (error) {
     console.error('MyDialy取得エラー:', error);

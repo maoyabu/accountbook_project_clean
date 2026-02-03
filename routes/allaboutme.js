@@ -352,7 +352,7 @@ router.post('/eventcal/from-google', isLoggedIn, (req, res) => {
 // 日記登録処理（モーダル登録フロー） with photo upload
 router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), async (req, res) => {
     //const { date, item, event, rate, content, share } = req.body;
-    const { date, item, event, rate, content, share, title, summary, saveAction, existingId } = req.body;
+    const { date, item, event, rate, content, share, title, summary, saveAction, existingId, redirectTo } = req.body;
     // Unified photo object handling
     let photoObjs = (req.files || []).map(f => ({
       url: f.path,
@@ -375,6 +375,24 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
     start.setHours(0, 0, 0, 0);
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
+
+    // Ensure item/event mapping exists for this user/group
+    if (item && event) {
+      const existingEvent = await Eventcal_events.findOne({
+        user: req.user._id,
+        group: req.session.activeGroupId,
+        item,
+        event
+      });
+      if (!existingEvent) {
+        await new Eventcal_events({
+          item,
+          event,
+          user: req.user._id,
+          group: req.session.activeGroupId
+        }).save();
+      }
+    }
 
     const existing = await Eventcal.findOne({
         user: req.user._id,
@@ -431,11 +449,11 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
           return res.json({ ok: true, id: existing._id.toString() });
         }
 
-        return res.redirect(`/allaboutme/eventcal?date=${date}`);
+        return res.redirect(redirectTo || `/allaboutme/eventcal?date=${date}`);
       } else {
         // final（確定済み）だった場合は重複としてエラー扱い
         req.flash('error', '同じ日・同じ項目・同じイベントにはすでに登録があります');
-        return res.redirect(`/allaboutme/eventcal?date=${date}`);
+        return res.redirect(redirectTo || `/allaboutme/eventcal?date=${date}`);
       }
     }
 
@@ -464,7 +482,7 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
       return res.json({ ok: true, id: newEntry._id.toString() });
     }
 
-    res.redirect(`/allaboutme/eventcal?date=${date}`);
+    res.redirect(redirectTo || `/allaboutme/eventcal?date=${date}`);
 });
 
 // 日記編集画面表示
@@ -553,13 +571,32 @@ router.post('/eventcal/delete/:id', isLoggedIn, async (req, res) => {
 
   await Eventcal.deleteOne({ _id: req.params.id });
   await logAction({ req, action: '削除', target: 'allaboutme-日記'});
-  res.redirect(`/allaboutme/eventcal?date=${dayjs(entry.date).format('YYYY-MM-DD')}`);
+  const redirectTo = req.body.redirectTo;
+  res.redirect(redirectTo || `/allaboutme/eventcal?date=${dayjs(entry.date).format('YYYY-MM-DD')}`);
 });
 
 // 日記更新処理 (with photo upload and Google Photos integration)
 router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos', 5), async (req, res) => {
   //const { date, item, event, rate, content, share } = req.body;
-  const { date, item, event, rate, content, share, title, summary, saveAction } = req.body;
+  const { date, item, event, rate, content, share, title, summary, saveAction, redirectTo } = req.body;
+
+  // Ensure item/event mapping exists for this user/group
+  if (item && event) {
+    const existingEvent = await Eventcal_events.findOne({
+      user: req.user._id,
+      group: req.session.activeGroupId,
+      item,
+      event
+    });
+    if (!existingEvent) {
+      await new Eventcal_events({
+        item,
+        event,
+        user: req.user._id,
+        group: req.session.activeGroupId
+      }).save();
+    }
+  }
 
   // Unified photo object handling with deletion support
   let photoObjs = (req.files || []).map(f => ({
@@ -659,7 +696,7 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
     return res.json({ ok: true, id: req.params.id });
   }
 
-  res.redirect(`/allaboutme/eventcal?date=${date}`);
+  res.redirect(redirectTo || `/allaboutme/eventcal?date=${date}`);
 });
 
 // 日記用イベント登録画面の表示

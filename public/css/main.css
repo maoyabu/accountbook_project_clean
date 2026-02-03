@@ -2289,9 +2289,33 @@ padding-left: 10px;
   gap: 4px;
 }
 
+.dialy-entry-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 .dialy-entry-content {
   color: #2c3e57;
   font-size: 0.9rem;
+}
+
+.dialy-content-preview {
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dialy-content-preview:focus {
+  outline: 2px solid rgba(47, 106, 217, 0.35);
+  outline-offset: 2px;
 }
 
 .dialy-entry-meta {
@@ -2317,6 +2341,45 @@ padding-left: 10px;
   padding: 10px 0 6px;
   color: #8a97a8;
   font-size: 0.85rem;
+}
+
+.dialy-fab {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: #2f6ad9;
+  color: #ffffff;
+  font-size: 1.6rem;
+  box-shadow: 0 14px 28px rgba(47, 106, 217, 0.35);
+  z-index: 1080;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dialy-fab:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.dialy-modal .modal-content {
+  border-radius: 18px;
+  border: none;
+  box-shadow: 0 22px 40px rgba(31, 56, 86, 0.18);
+}
+
+.dialy-modal .modal-header {
+  border-bottom: 1px solid #eef2f7;
+}
+
+.dialy-modal .modal-footer {
+  border-top: 1px solid #eef2f7;
 }
 
 @media (max-width: 992px) {

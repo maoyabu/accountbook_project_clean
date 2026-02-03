@@ -51,9 +51,9 @@
       </div>
 
       <div class="dialy-section">
-        <div class="dialy-section-title">My日記</div>
-        <% if (!diaryEntries || diaryEntries.length === 0) { %>
-          <div class="dialy-empty">この日のMy日記はありません。</div>
+      <div class="dialy-section-title">My Dialy</div>
+      <% if (!diaryEntries || diaryEntries.length === 0) { %>
+        <div class="dialy-empty">この日のMy Dialyはありません。</div>
         <% } else { %>
           <% diaryEntries.forEach(entry => { %>
             <div class="dialy-entry">
@@ -68,12 +68,116 @@
                 </div>
               </div>
               <div class="dialy-entry-body">
-                <div class="dialy-entry-content"><%= entry.content || '（内容なし）' %></div>
+                <button type="button" class="dialy-entry-content dialy-content-preview" data-full="<%- (entry.content || '（内容なし）').replace(/"/g, '&quot;') %>">
+                  <%= entry.content || '（内容なし）' %>
+                </button>
+                <div class="dialy-entry-actions">
+                  <button type="button" class="btn btn-sm btn-outline-secondary dialy-edit-btn" data-id="<%= entry.id %>">編集</button>
+                  <form method="POST" action="/allaboutme/eventcal/delete/<%= entry.id %>" class="d-inline" onsubmit="return confirm('削除しますか？');">
+                    <input type="hidden" name="redirectTo" value="/allaboutme/eventcal2?date=<%= selectedDate %>">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">削除</button>
+                  </form>
+                </div>
               </div>
             </div>
           <% }) %>
         <% } %>
       </div>
+    </div>
+  </div>
+</div>
+
+<button type="button" class="dialy-fab" id="dialyFab" aria-label="My日記を追加">+</button>
+
+<div class="modal fade dialy-modal" id="dialyEntryModal" tabindex="-1" aria-labelledby="dialyEntryModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" enctype="multipart/form-data" action="/allaboutme/eventcal">
+        <input type="hidden" name="redirectTo" value="/allaboutme/eventcal2?date=<%= selectedDate %>">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dialyEntryModalLabel">My日記登録</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="existingId" value="">
+          <div class="mb-2">
+            <label for="dialyDate" class="form-label">年⽉⽇</label>
+            <input type="date" class="form-control" id="dialyDate" name="date" value="<%= selectedDate %>" required>
+          </div>
+          <div class="mb-2">
+            <label for="dialyItem" class="form-label">項目</label>
+            <input class="form-control" id="dialyItem" name="item" list="dialyItemList" placeholder="選択または入力してください" required>
+            <datalist id="dialyItemList">
+              <option value="今日の気分・体調・睡眠"></option>
+              <option value="今日のお食事"></option>
+              <option value="生活サイクル"></option>
+              <option value="日記"></option>
+            </datalist>
+          </div>
+          <div class="mb-2">
+            <label for="dialyEvent" class="form-label">日記</label>
+            <input class="form-control" id="dialyEvent" name="event" list="dialyEventList" placeholder="選択または入力してください" required>
+            <datalist id="dialyEventList">
+              <% (events || []).forEach(ev => { %>
+                <option value="<%= ev.event %>" data-item="<%= ev.item %>"></option>
+              <% }) %>
+            </datalist>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">満足度<i class="fa-regular fa-face-smile"></i>（選択してください）</label>
+            <select class="form-select" name="rate" required>
+              <% const rateOptions = ['最悪', '悪い', '普通', '良い', '最高']; %>
+              <% for (let i = 5; i >= 1; i--) { %>
+                <option value="<%= i %>" <%= i === 3 ? 'selected' : '' %>><%= rateOptions[i - 1] %></option>
+              <% } %>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="dialyTitle" class="form-label">タイトル</label>
+            <textarea class="form-control" id="dialyTitle" name="title" rows="1"></textarea>
+          </div>
+          <div class="mb-2">
+            <label for="dialyContent" class="form-label">内容</label>
+            <textarea class="form-control" id="dialyContent" name="content" rows="5"></textarea>
+          </div>
+          <div class="mb-2">
+            <label for="dialySummary" class="form-label d-flex align-items-center gap-2">
+              <span>サマリー</span>
+              <button type="button" id="dialySummarizeBtn" class="btn btn-sm btn-outline-success">AIで要約</button>
+            </label>
+            <textarea class="form-control" id="dialySummary" name="summary" rows="3"></textarea>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="share" id="dialyShare" checked>
+            <label class="form-check-label" for="dialyShare">共有する</label>
+          </div>
+          <div class="mb-3">
+            <label for="dialyPhotos" class="form-label">写真を追加</label>
+            <input type="file" class="form-control" name="photos" id="dialyPhotos" multiple accept="image/*">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Googleフォトから選択</label><br>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+          </div>
+          <div id="googlePhotoPreview" class="d-flex flex-wrap mt-2"></div>
+        </div>
+        <div class="modal-footer d-flex gap-2">
+          <button type="submit" name="saveAction" value="draft" class="btn btn-outline-success" style="width: 40%;">一時保存</button>
+          <button type="submit" name="saveAction" value="publish" class="btn btn-outline-primary" style="width: 40%;">登録</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade dialy-modal" id="dialyContentModal" tabindex="-1" aria-labelledby="dialyContentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dialyContentModalLabel">My Dialy 内容</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body" id="dialyContentModalBody" style="white-space: pre-wrap;"></div>
     </div>
   </div>
 </div>
@@ -165,4 +269,286 @@
     renderSelectedDate();
     renderCalendar();
   })();
+</script>
+
+<script>
+  (() => {
+    const fab = document.getElementById('dialyFab');
+    if (!fab) return;
+
+    fab.addEventListener('click', () => {
+      const modalEl = document.getElementById('dialyEntryModal');
+      if (!modalEl) return;
+      if (window.bootstrap && window.bootstrap.Modal) {
+        const form = modalEl.querySelector('form');
+        const modalTitle = document.getElementById('dialyEntryModalLabel');
+        if (form) {
+          form.action = '/allaboutme/eventcal';
+          const dateInput = document.getElementById('dialyDate');
+          if (dateInput) dateInput.value = '<%= selectedDate %>';
+          const itemInput = document.getElementById('dialyItem');
+          if (itemInput) itemInput.value = '';
+          if (itemInput) itemInput.dispatchEvent(new Event('input'));
+          const eventInput = document.getElementById('dialyEvent');
+          if (eventInput) eventInput.value = '';
+          const rateSelect = form.querySelector('select[name=\"rate\"]');
+          if (rateSelect) rateSelect.value = '3';
+          const titleInput = document.getElementById('dialyTitle');
+          if (titleInput) titleInput.value = '';
+          const contentInput = document.getElementById('dialyContent');
+          if (contentInput) contentInput.value = '';
+          const summaryInput = document.getElementById('dialySummary');
+          if (summaryInput) summaryInput.value = '';
+          const shareCheckbox = document.getElementById('dialyShare');
+          if (shareCheckbox) shareCheckbox.checked = true;
+          const photoPreview = document.getElementById('googlePhotoPreview');
+          if (photoPreview) photoPreview.innerHTML = '';
+        }
+        if (modalTitle) modalTitle.textContent = 'My日記登録';
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    });
+
+    const storageKey = 'dialyFabPosition';
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const { left, top } = JSON.parse(saved);
+        if (typeof left === 'number' && typeof top === 'number') {
+          fab.style.left = `${left}px`;
+          fab.style.top = `${top}px`;
+          fab.style.right = 'auto';
+          fab.style.bottom = 'auto';
+        }
+      } catch (_) {}
+    }
+
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const onMove = (event) => {
+      if (!dragging) return;
+      const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+      const nextLeft = Math.max(8, Math.min(window.innerWidth - 56, clientX - offsetX));
+      const nextTop = Math.max(8, Math.min(window.innerHeight - 56, clientY - offsetY));
+      fab.style.left = `${nextLeft}px`;
+      fab.style.top = `${nextTop}px`;
+      fab.style.right = 'auto';
+      fab.style.bottom = 'auto';
+    };
+
+    const onEnd = () => {
+      if (!dragging) return;
+      dragging = false;
+      const rect = fab.getBoundingClientRect();
+      localStorage.setItem(storageKey, JSON.stringify({ left: rect.left, top: rect.top }));
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+    };
+
+    fab.addEventListener('mousedown', (event) => {
+      dragging = true;
+      offsetX = event.clientX - fab.getBoundingClientRect().left;
+      offsetY = event.clientY - fab.getBoundingClientRect().top;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+    });
+
+    fab.addEventListener('touchstart', (event) => {
+      dragging = true;
+      const touch = event.touches[0];
+      offsetX = touch.clientX - fab.getBoundingClientRect().left;
+      offsetY = touch.clientY - fab.getBoundingClientRect().top;
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    });
+  })();
+
+  (() => {
+    const itemInput = document.getElementById('dialyItem');
+    const eventInput = document.getElementById('dialyEvent');
+    const eventList = document.getElementById('dialyEventList');
+    if (!itemInput || !eventInput || !eventList) return;
+
+    const events = <%- JSON.stringify((events || []).map(ev => ({ item: ev.item, event: ev.event }))) %>;
+    const diaryEntries = <%- JSON.stringify(diaryEntries || []) %>;
+
+    const renderEventOptions = (itemValue) => {
+      eventList.innerHTML = '';
+      const filtered = itemValue
+        ? events.filter(ev => ev.item === itemValue)
+        : events;
+      filtered.forEach(ev => {
+        const option = document.createElement('option');
+        option.value = ev.event;
+        option.dataset.item = ev.item;
+        eventList.appendChild(option);
+      });
+    };
+
+    renderEventOptions(itemInput.value);
+
+    itemInput.addEventListener('input', () => {
+      renderEventOptions(itemInput.value);
+    });
+
+    const form = document.querySelector('#dialyEntryModal form');
+    const modalTitle = document.getElementById('dialyEntryModalLabel');
+    const dateInput = document.getElementById('dialyDate');
+    const rateSelect = form?.querySelector('select[name=\"rate\"]');
+    const titleInput = document.getElementById('dialyTitle');
+    const contentInput = document.getElementById('dialyContent');
+    const summaryInput = document.getElementById('dialySummary');
+    const shareCheckbox = document.getElementById('dialyShare');
+    const photoPreview = document.getElementById('googlePhotoPreview');
+
+    const fillFormForEdit = (entry) => {
+      if (!form || !entry) return;
+      form.action = `/allaboutme/eventcal/edit/${entry.id}`;
+      if (modalTitle) modalTitle.textContent = 'My日記編集';
+      if (dateInput) dateInput.value = entry.date || '<%= selectedDate %>';
+      if (itemInput) itemInput.value = entry.item || '';
+      renderEventOptions(itemInput.value);
+      if (eventInput) eventInput.value = entry.event || '';
+      if (rateSelect) rateSelect.value = String(entry.rate || 3);
+      if (titleInput) titleInput.value = entry.title || '';
+      if (contentInput) contentInput.value = entry.content || '';
+      if (summaryInput) summaryInput.value = entry.summary || '';
+      if (shareCheckbox) shareCheckbox.checked = Boolean(entry.share);
+      if (photoPreview) photoPreview.innerHTML = '';
+    };
+
+    document.querySelectorAll('.dialy-edit-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const entryId = btn.dataset.id;
+        const entry = diaryEntries.find(e => e.id === entryId);
+        fillFormForEdit(entry);
+        const modalEl = document.getElementById('dialyEntryModal');
+        if (modalEl && window.bootstrap && window.bootstrap.Modal) {
+          const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+          modal.show();
+        }
+      });
+    });
+  })();
+
+  (() => {
+    const contentModalEl = document.getElementById('dialyContentModal');
+    const modalBody = document.getElementById('dialyContentModalBody');
+    if (!contentModalEl || !modalBody) return;
+
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const btn = target.closest('.dialy-content-preview');
+      if (!btn) return;
+      if (!window.bootstrap || !window.bootstrap.Modal) return;
+      modalBody.textContent = btn.dataset.full || '';
+      const modal = window.bootstrap.Modal.getOrCreateInstance(contentModalEl);
+      modal.show();
+    });
+  })();
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('#dialySummarizeBtn');
+    if (!btn) return;
+    const contentEl = document.getElementById('dialyContent');
+    const summaryEl = document.getElementById('dialySummary');
+    if (!contentEl || !summaryEl) return;
+
+    const text = (contentEl.value || '').trim();
+    if (!text) {
+      alert('内容にテキストを入力してください。');
+      return;
+    }
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '要約中...';
+
+    try {
+      const resp = await fetch('/allaboutme/eventcal/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text, maxChars: 180, lang: 'ja' })
+      });
+      if (!resp.ok) {
+        const msg = await resp.text().catch(()=>'');
+        throw new Error(msg || '要約に失敗しました');
+      }
+      const data = await resp.json();
+      if (data && data.summary) {
+        summaryEl.value = data.summary;
+      } else {
+        alert('要約結果を取得できませんでした。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('要約に失敗しました');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+
+  function openGooglePhotoPopup() {
+    const isLinked = <%= currentUser.googleTokens ? 'true' : 'false' %>;
+    const targetUrl = isLinked ? '/googlePhotos/select' : '/googlePhotos/auth';
+
+    const width = 800;
+    const height = 600;
+    const left = (window.innerWidth - width) / 2 + window.screenX;
+    const top = (window.innerHeight - height) / 2 + window.screenY;
+
+    const popup = window.open(
+      targetUrl,
+      'GooglePhotosSelect',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      alert('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+      return;
+    }
+
+    popup.focus();
+  }
+
+  window.addEventListener('message', function(event) {
+    if (event.origin !== location.origin) return;
+    if (event.data.selectedPhotos) {
+      const container = document.getElementById('googlePhotoPreview');
+      if (!container) return;
+
+      container.innerHTML = '';
+      event.data.selectedPhotos.forEach(url => {
+        const div = document.createElement('div');
+        div.classList.add('me-2', 'mb-2');
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selectedGooglePhotos';
+        input.value = url;
+        div.appendChild(input);
+
+        const img = document.createElement('img');
+        img.src = url + (url.startsWith('http') ? '=w100-h100' : '');
+        img.classList.add('img-fluid', 'border');
+        div.appendChild(img);
+
+        container.appendChild(div);
+      });
+
+      const modalEl = document.getElementById('dialyEntryModal');
+      if (modalEl && window.bootstrap && window.bootstrap.Modal) {
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    }
+  }, false);
 </script>
