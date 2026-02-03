@@ -2390,6 +2390,10 @@ padding-left: 10px;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  max-height: calc(1.5em * 3);
 }
 
 .diary-content-preview:focus {
