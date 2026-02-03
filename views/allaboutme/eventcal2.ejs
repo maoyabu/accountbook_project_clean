@@ -6,14 +6,14 @@
 </div>
 
 <div class="container mt-3">
-  <div class="dialy-layout">
-    <div class="dialy-calendar-card">
-      <div class="dialy-calendar-header">
-        <button type="button" class="dialy-nav-btn" data-nav="-1" aria-label="前の月">&#x2039;</button>
-        <div class="dialy-month" id="dialyMonthLabel"></div>
-        <button type="button" class="dialy-nav-btn" data-nav="1" aria-label="次の月">&#x203A;</button>
+  <div class="diary-layout">
+    <div class="diary-calendar-card">
+      <div class="diary-calendar-header">
+        <button type="button" class="diary-nav-btn" data-nav="-1" aria-label="前の月">&#x2039;</button>
+        <div class="diary-month" id="diaryMonthLabel"></div>
+        <button type="button" class="diary-nav-btn" data-nav="1" aria-label="次の月">&#x203A;</button>
       </div>
-      <div class="dialy-weekdays">
+      <div class="diary-weekdays">
         <span>月</span>
         <span>火</span>
         <span>水</span>
@@ -22,38 +22,38 @@
         <span>土</span>
         <span>日</span>
       </div>
-      <div id="dialyGrid" class="dialy-grid"></div>
+      <div id="diaryGrid" class="diary-grid"></div>
     </div>
 
-    <div class="dialy-list-card">
-      <div class="dialy-selected-date" id="dialySelectedDate" data-date="<%= selectedDate %>"></div>
+    <div class="diary-list-card">
+      <div class="diary-selected-date" id="diarySelectedDate" data-date="<%= selectedDate %>"></div>
 
-      <div class="dialy-section">
-        <div class="dialy-section-title">Finance</div>
+      <div class="diary-section">
+        <div class="diary-section-title">Finance</div>
         <% if (!financeEntries || financeEntries.length === 0) { %>
-          <div class="dialy-empty">この日のFinanceデータはありません。</div>
+          <div class="diary-empty">この日のFinanceデータはありません。</div>
         <% } else { %>
           <% financeEntries.forEach(entry => { %>
-            <div class="dialy-entry">
-              <div class="dialy-tags">
-                <span class="dialy-tag dialy-tag-cf"><%= entry.cf %></span>
+            <div class="diary-entry">
+              <div class="diary-tags">
+                <span class="diary-tag diary-tag-cf"><%= entry.cf %></span>
                 <% if (entry.category) { %>
-                  <span class="dialy-tag dialy-tag-category"><%= entry.category %></span>
+                  <span class="diary-tag diary-tag-category"><%= entry.category %></span>
                 <% } %>
               </div>
-              <div class="dialy-entry-body">
-                <div class="dialy-entry-content"><%= entry.content || '（内容なし）' %></div>
-                <div class="dialy-entry-meta">金額: <%= entry.amountFormatted %> / 支払い種別: <%= entry.payment_type || '未設定' %></div>
+              <div class="diary-entry-body">
+                <div class="diary-entry-content"><%= entry.content || '（内容なし）' %></div>
+                <div class="diary-entry-meta">金額: <%= entry.amountFormatted %> / 支払い種別: <%= entry.payment_type || '未設定' %></div>
               </div>
             </div>
           <% }) %>
         <% } %>
       </div>
 
-      <div class="dialy-section">
-        <div class="dialy-section-title">My Meal</div>
+      <div class="diary-section">
+        <div class="diary-section-title">My Meal</div>
         <% if (!mealEntries || mealEntries.length === 0) { %>
-          <div class="dialy-empty">この日のMy Mealはありません。</div>
+          <div class="diary-empty">この日のMy Mealはありません。</div>
         <% } else { %>
           <% const mealGroups = { breakfast: [], lunch: [], dinner: [] }; %>
           <% mealEntries.forEach(entry => { %>
@@ -68,29 +68,29 @@
 
           <% mealOrder.forEach(group => { %>
             <% const items = mealGroups[group.key]; %>
-            <div class="dialy-meal-group">
-              <div class="dialy-meal-group-title"><%= group.label %></div>
+            <div class="diary-meal-group">
+              <div class="diary-meal-group-title"><%= group.label %></div>
               <% if (!items || items.length === 0) { %>
-                <div class="dialy-empty">この日の<%= group.label %>はありません。</div>
+                <div class="diary-empty">この日の<%= group.label %>はありません。</div>
               <% } else { %>
-                <div class="dialy-meal-grid">
+                <div class="diary-meal-grid">
                   <% items.forEach(entry => { %>
-                    <div class="dialy-entry dialy-meal-card">
-                      <div class="dialy-meal-top-tags">
+                    <div class="diary-entry diary-meal-card">
+                      <div class="diary-meal-top-tags">
                         <% if (entry.junle) { %>
-                          <span class="dialy-tag dialy-tag-genre"><%= entry.junle %></span>
+                          <span class="diary-tag diary-tag-genre"><%= entry.junle %></span>
                         <% } %>
                         <% if (entry.kind) { %>
-                          <span class="dialy-tag dialy-tag-kind"><%= entry.kind %></span>
+                          <span class="diary-tag diary-tag-kind"><%= entry.kind %></span>
                         <% } %>
                       </div>
-                      <div class="dialy-meal-row">
+                      <div class="diary-meal-row">
                         <% if (entry.imageUrl) { %>
-                          <img class="dialy-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
+                          <img class="diary-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
                         <% } else { %>
-                          <div class="dialy-meal-thumb dialy-meal-thumb-empty">画像なし</div>
+                          <div class="diary-meal-thumb diary-meal-thumb-empty">画像なし</div>
                         <% } %>
-                        <div class="dialy-meal-name"><%= entry.name || '（メニュー名なし）' %></div>
+                        <div class="diary-meal-name"><%= entry.name || '（メニュー名なし）' %></div>
                       </div>
                     </div>
                   <% }) %>
@@ -101,29 +101,29 @@
         <% } %>
       </div>
 
-      <div class="dialy-section">
-      <div class="dialy-section-title">My Dialy</div>
+      <div class="diary-section">
+      <div class="diary-section-title">My Diary</div>
       <% if (!diaryEntries || diaryEntries.length === 0) { %>
-        <div class="dialy-empty">この日のMy Dialyはありません。</div>
+        <div class="diary-empty">この日のMy Diaryはありません。</div>
         <% } else { %>
           <% diaryEntries.forEach(entry => { %>
-            <div class="dialy-entry">
-              <div class="dialy-line-first">
-                <div class="dialy-tags">
-                  <span class="dialy-tag dialy-tag-event"><%= entry.event %></span>
+            <div class="diary-entry">
+              <div class="diary-line-first">
+                <div class="diary-tags">
+                  <span class="diary-tag diary-tag-event"><%= entry.event %></span>
                 </div>
-                <div class="dialy-rate">
+                <div class="diary-rate">
                   <% for (let i = 0; i < 5; i++) { %>
-                    <span class="dialy-star <%= i < entry.rate ? 'is-filled' : '' %>">&#9733;</span>
+                    <span class="diary-star <%= i < entry.rate ? 'is-filled' : '' %>">&#9733;</span>
                   <% } %>
                 </div>
               </div>
-              <div class="dialy-entry-body">
-                <button type="button" class="dialy-entry-content dialy-content-preview" data-full="<%- (entry.content || '（内容なし）').replace(/"/g, '&quot;') %>">
+              <div class="diary-entry-body">
+                <button type="button" class="diary-entry-content diary-content-preview" data-full="<%- (entry.content || '（内容なし）').replace(/"/g, '&quot;') %>">
                   <%= entry.content || '（内容なし）' %>
                 </button>
-                <div class="dialy-entry-actions">
-                  <button type="button" class="btn btn-sm btn-outline-secondary dialy-edit-btn" data-id="<%= entry.id %>">編集</button>
+                <div class="diary-entry-actions">
+                  <button type="button" class="btn btn-sm btn-outline-secondary diary-edit-btn" data-id="<%= entry.id %>">編集</button>
                   <form method="POST" action="/allaboutme/eventcal/delete/<%= entry.id %>" class="d-inline" onsubmit="return confirm('削除しますか？');">
                     <input type="hidden" name="redirectTo" value="/allaboutme/eventcal2?date=<%= selectedDate %>">
                     <button type="submit" class="btn btn-sm btn-outline-danger">削除</button>
@@ -138,27 +138,27 @@
   </div>
 </div>
 
-<button type="button" class="dialy-fab" id="dialyFab" aria-label="My日記を追加">+</button>
+<button type="button" class="diary-fab" id="diaryFab" aria-label="My日記を追加">+</button>
 
-<div class="modal fade dialy-modal" id="dialyEntryModal" tabindex="-1" aria-labelledby="dialyEntryModalLabel" aria-hidden="true">
+<div class="modal fade diary-modal" id="diaryEntryModal" tabindex="-1" aria-labelledby="diaryEntryModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="POST" enctype="multipart/form-data" action="/allaboutme/eventcal">
         <input type="hidden" name="redirectTo" value="/allaboutme/eventcal2?date=<%= selectedDate %>">
         <div class="modal-header">
-          <h5 class="modal-title" id="dialyEntryModalLabel">My日記登録</h5>
+          <h5 class="modal-title" id="diaryEntryModalLabel">My日記登録</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
         </div>
         <div class="modal-body">
           <input type="hidden" name="existingId" value="">
           <div class="mb-2">
-            <label for="dialyDate" class="form-label">年⽉⽇</label>
-            <input type="date" class="form-control" id="dialyDate" name="date" value="<%= selectedDate %>" required>
+            <label for="diaryDate" class="form-label">年⽉⽇</label>
+            <input type="date" class="form-control" id="diaryDate" name="date" value="<%= selectedDate %>" required>
           </div>
           <div class="mb-2">
-            <label for="dialyItem" class="form-label">項目</label>
-            <input class="form-control" id="dialyItem" name="item" list="dialyItemList" placeholder="選択または入力してください" required>
-            <datalist id="dialyItemList">
+            <label for="diaryItem" class="form-label">項目</label>
+            <input class="form-control" id="diaryItem" name="item" list="diaryItemList" placeholder="選択または入力してください" required>
+            <datalist id="diaryItemList">
               <option value="今日の気分・体調・睡眠"></option>
               <option value="今日のお食事"></option>
               <option value="生活サイクル"></option>
@@ -166,9 +166,9 @@
             </datalist>
           </div>
           <div class="mb-2">
-            <label for="dialyEvent" class="form-label">日記</label>
-            <input class="form-control" id="dialyEvent" name="event" list="dialyEventList" placeholder="選択または入力してください" required>
-            <datalist id="dialyEventList">
+            <label for="diaryEvent" class="form-label">日記</label>
+            <input class="form-control" id="diaryEvent" name="event" list="diaryEventList" placeholder="選択または入力してください" required>
+            <datalist id="diaryEventList">
               <% (events || []).forEach(ev => { %>
                 <option value="<%= ev.event %>" data-item="<%= ev.item %>"></option>
               <% }) %>
@@ -184,27 +184,27 @@
             </select>
           </div>
           <div class="mb-2">
-            <label for="dialyTitle" class="form-label">タイトル</label>
-            <textarea class="form-control" id="dialyTitle" name="title" rows="1"></textarea>
+            <label for="diaryTitle" class="form-label">タイトル</label>
+            <textarea class="form-control" id="diaryTitle" name="title" rows="1"></textarea>
           </div>
           <div class="mb-2">
-            <label for="dialyContent" class="form-label">内容</label>
-            <textarea class="form-control" id="dialyContent" name="content" rows="5"></textarea>
+            <label for="diaryContent" class="form-label">内容</label>
+            <textarea class="form-control" id="diaryContent" name="content" rows="5"></textarea>
           </div>
           <div class="mb-2">
-            <label for="dialySummary" class="form-label d-flex align-items-center gap-2">
+            <label for="diarySummary" class="form-label d-flex align-items-center gap-2">
               <span>サマリー</span>
-              <button type="button" id="dialySummarizeBtn" class="btn btn-sm btn-outline-success">AIで要約</button>
+              <button type="button" id="diarySummarizeBtn" class="btn btn-sm btn-outline-success">AIで要約</button>
             </label>
-            <textarea class="form-control" id="dialySummary" name="summary" rows="3"></textarea>
+            <textarea class="form-control" id="diarySummary" name="summary" rows="3"></textarea>
           </div>
           <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" name="share" id="dialyShare" checked>
-            <label class="form-check-label" for="dialyShare">共有する</label>
+            <input class="form-check-input" type="checkbox" name="share" id="diaryShare" checked>
+            <label class="form-check-label" for="diaryShare">共有する</label>
           </div>
           <div class="mb-3">
-            <label for="dialyPhotos" class="form-label">写真を追加</label>
-            <input type="file" class="form-control" name="photos" id="dialyPhotos" multiple accept="image/*">
+            <label for="diaryPhotos" class="form-label">写真を追加</label>
+            <input type="file" class="form-control" name="photos" id="diaryPhotos" multiple accept="image/*">
           </div>
           <div class="mb-3">
             <label class="form-label">Googleフォトから選択</label><br>
@@ -221,28 +221,28 @@
   </div>
 </div>
 
-<div class="modal fade dialy-modal" id="dialyContentModal" tabindex="-1" aria-labelledby="dialyContentModalLabel" aria-hidden="true">
+<div class="modal fade diary-modal" id="diaryContentModal" tabindex="-1" aria-labelledby="diaryContentModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="dialyContentModalLabel">My Dialy 内容</h5>
+        <h5 class="modal-title" id="diaryContentModalLabel">My Diary 内容</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
       </div>
-      <div class="modal-body" id="dialyContentModalBody" style="white-space: pre-wrap;"></div>
+      <div class="modal-body" id="diaryContentModalBody" style="white-space: pre-wrap;"></div>
     </div>
   </div>
 </div>
 
 <script>
   (() => {
-    const selectedDateEl = document.getElementById('dialySelectedDate');
+    const selectedDateEl = document.getElementById('diarySelectedDate');
     const selectedDateStr = selectedDateEl?.dataset?.date;
     const selectedDate = selectedDateStr ? new Date(`${selectedDateStr}T00:00:00`) : new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const monthLabel = document.getElementById('dialyMonthLabel');
-    const grid = document.getElementById('dialyGrid');
+    const monthLabel = document.getElementById('diaryMonthLabel');
+    const grid = document.getElementById('diaryGrid');
     const weekdayLabels = ['月', '火', '水', '木', '金', '土', '日'];
 
     let currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -283,7 +283,7 @@
 
       for (let i = 0; i < startOffset; i++) {
         const emptyCell = document.createElement('div');
-        emptyCell.className = 'dialy-empty-cell';
+        emptyCell.className = 'diary-empty-cell';
         grid.appendChild(emptyCell);
       }
 
@@ -291,7 +291,7 @@
         const cellDate = new Date(year, month, day);
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'dialy-day';
+        button.className = 'diary-day';
         button.textContent = day;
 
         if (isSameDay(cellDate, today)) {
@@ -309,7 +309,7 @@
       }
     };
 
-    document.querySelectorAll('.dialy-nav-btn').forEach((btn) => {
+    document.querySelectorAll('.diary-nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const delta = Number(btn.dataset.nav || 0);
         currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
@@ -324,33 +324,33 @@
 
 <script>
   (() => {
-    const fab = document.getElementById('dialyFab');
+    const fab = document.getElementById('diaryFab');
     if (!fab) return;
 
     fab.addEventListener('click', () => {
-      const modalEl = document.getElementById('dialyEntryModal');
+      const modalEl = document.getElementById('diaryEntryModal');
       if (!modalEl) return;
       if (window.bootstrap && window.bootstrap.Modal) {
         const form = modalEl.querySelector('form');
-        const modalTitle = document.getElementById('dialyEntryModalLabel');
+        const modalTitle = document.getElementById('diaryEntryModalLabel');
         if (form) {
           form.action = '/allaboutme/eventcal';
-          const dateInput = document.getElementById('dialyDate');
+          const dateInput = document.getElementById('diaryDate');
           if (dateInput) dateInput.value = '<%= selectedDate %>';
-          const itemInput = document.getElementById('dialyItem');
+          const itemInput = document.getElementById('diaryItem');
           if (itemInput) itemInput.value = '';
           if (itemInput) itemInput.dispatchEvent(new Event('input'));
-          const eventInput = document.getElementById('dialyEvent');
+          const eventInput = document.getElementById('diaryEvent');
           if (eventInput) eventInput.value = '';
           const rateSelect = form.querySelector('select[name=\"rate\"]');
           if (rateSelect) rateSelect.value = '3';
-          const titleInput = document.getElementById('dialyTitle');
+          const titleInput = document.getElementById('diaryTitle');
           if (titleInput) titleInput.value = '';
-          const contentInput = document.getElementById('dialyContent');
+          const contentInput = document.getElementById('diaryContent');
           if (contentInput) contentInput.value = '';
-          const summaryInput = document.getElementById('dialySummary');
+          const summaryInput = document.getElementById('diarySummary');
           if (summaryInput) summaryInput.value = '';
-          const shareCheckbox = document.getElementById('dialyShare');
+          const shareCheckbox = document.getElementById('diaryShare');
           if (shareCheckbox) shareCheckbox.checked = true;
           const photoPreview = document.getElementById('googlePhotoPreview');
           if (photoPreview) photoPreview.innerHTML = '';
@@ -361,7 +361,7 @@
       }
     });
 
-    const storageKey = 'dialyFabPosition';
+    const storageKey = 'diaryFabPosition';
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
@@ -421,9 +421,9 @@
   })();
 
   (() => {
-    const itemInput = document.getElementById('dialyItem');
-    const eventInput = document.getElementById('dialyEvent');
-    const eventList = document.getElementById('dialyEventList');
+    const itemInput = document.getElementById('diaryItem');
+    const eventInput = document.getElementById('diaryEvent');
+    const eventList = document.getElementById('diaryEventList');
     if (!itemInput || !eventInput || !eventList) return;
 
     const events = <%- JSON.stringify((events || []).map(ev => ({ item: ev.item, event: ev.event }))) %>;
@@ -448,14 +448,14 @@
       renderEventOptions(itemInput.value);
     });
 
-    const form = document.querySelector('#dialyEntryModal form');
-    const modalTitle = document.getElementById('dialyEntryModalLabel');
-    const dateInput = document.getElementById('dialyDate');
+    const form = document.querySelector('#diaryEntryModal form');
+    const modalTitle = document.getElementById('diaryEntryModalLabel');
+    const dateInput = document.getElementById('diaryDate');
     const rateSelect = form?.querySelector('select[name=\"rate\"]');
-    const titleInput = document.getElementById('dialyTitle');
-    const contentInput = document.getElementById('dialyContent');
-    const summaryInput = document.getElementById('dialySummary');
-    const shareCheckbox = document.getElementById('dialyShare');
+    const titleInput = document.getElementById('diaryTitle');
+    const contentInput = document.getElementById('diaryContent');
+    const summaryInput = document.getElementById('diarySummary');
+    const shareCheckbox = document.getElementById('diaryShare');
     const photoPreview = document.getElementById('googlePhotoPreview');
 
     const fillFormForEdit = (entry) => {
@@ -474,12 +474,12 @@
       if (photoPreview) photoPreview.innerHTML = '';
     };
 
-    document.querySelectorAll('.dialy-edit-btn').forEach((btn) => {
+    document.querySelectorAll('.diary-edit-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const entryId = btn.dataset.id;
         const entry = diaryEntries.find(e => e.id === entryId);
         fillFormForEdit(entry);
-        const modalEl = document.getElementById('dialyEntryModal');
+        const modalEl = document.getElementById('diaryEntryModal');
         if (modalEl && window.bootstrap && window.bootstrap.Modal) {
           const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
           modal.show();
@@ -489,14 +489,14 @@
   })();
 
   (() => {
-    const contentModalEl = document.getElementById('dialyContentModal');
-    const modalBody = document.getElementById('dialyContentModalBody');
+    const contentModalEl = document.getElementById('diaryContentModal');
+    const modalBody = document.getElementById('diaryContentModalBody');
     if (!contentModalEl || !modalBody) return;
 
     document.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
-      const btn = target.closest('.dialy-content-preview');
+      const btn = target.closest('.diary-content-preview');
       if (!btn) return;
       if (!window.bootstrap || !window.bootstrap.Modal) return;
       modalBody.textContent = btn.dataset.full || '';
@@ -506,10 +506,10 @@
   })();
 
   document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('#dialySummarizeBtn');
+    const btn = e.target.closest('#diarySummarizeBtn');
     if (!btn) return;
-    const contentEl = document.getElementById('dialyContent');
-    const summaryEl = document.getElementById('dialySummary');
+    const contentEl = document.getElementById('diaryContent');
+    const summaryEl = document.getElementById('diarySummary');
     if (!contentEl || !summaryEl) return;
 
     const text = (contentEl.value || '').trim();
@@ -595,7 +595,7 @@
         container.appendChild(div);
       });
 
-      const modalEl = document.getElementById('dialyEntryModal');
+      const modalEl = document.getElementById('diaryEntryModal');
       if (modalEl && window.bootstrap && window.bootstrap.Modal) {
         const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();

@@ -2119,40 +2119,40 @@ padding-left: 10px;
     }
 }
 
-/* MyDialy calendar */
-.dialy-layout {
+/* MyDiary calendar */
+.diary-layout {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
 
-.dialy-calendar-card,
-.dialy-list-card {
+.diary-calendar-card,
+.diary-list-card {
   background: #ffffff;
   border-radius: 22px;
   box-shadow: 0 18px 40px rgba(31, 56, 86, 0.08);
   padding: 20px;
 }
 
-.dialy-calendar-card {
+.diary-calendar-card {
   background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
 }
 
-.dialy-calendar-header {
+.diary-calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.dialy-month {
+.diary-month {
   font-weight: 600;
   color: #273b5c;
   font-size: 1.1rem;
 }
 
-.dialy-nav-btn {
+.diary-nav-btn {
   border: none;
   background: #eef2f7;
   color: #6b7c93;
@@ -2166,12 +2166,12 @@ padding-left: 10px;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.dialy-nav-btn:hover {
+.diary-nav-btn:hover {
   background: #e1e8f2;
   transform: translateY(-1px);
 }
 
-.dialy-weekdays {
+.diary-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
@@ -2182,17 +2182,17 @@ padding-left: 10px;
   letter-spacing: 0.04em;
 }
 
-.dialy-grid {
+.diary-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
 
-.dialy-empty-cell {
+.diary-empty-cell {
   height: 36px;
 }
 
-.dialy-day {
+.diary-day {
   border: none;
   background: transparent;
   color: #334a6d;
@@ -2204,56 +2204,56 @@ padding-left: 10px;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.dialy-day:hover {
+.diary-day:hover {
   background: #e8eff8;
 }
 
-.dialy-day.is-today {
+.diary-day.is-today {
   border: 1px solid #93a8c7;
 }
 
-.dialy-day.is-selected {
+.diary-day.is-selected {
   background: #2f6ad9;
   color: #ffffff;
 }
 
-.dialy-selected-date {
+.diary-selected-date {
   font-weight: 600;
   color: #273b5c;
   margin-bottom: 12px;
 }
 
-.dialy-section {
+.diary-section {
   padding: 12px 0 6px;
   border-top: 1px solid #edf1f6;
 }
 
-.dialy-section:first-of-type {
+.diary-section:first-of-type {
   border-top: none;
 }
 
-.dialy-section-title {
+.diary-section-title {
   font-size: 0.95rem;
   font-weight: 600;
   color: #4a5b74;
   margin-bottom: 10px;
 }
 
-.dialy-entry {
+.diary-entry {
   padding: 10px 12px;
   border-radius: 14px;
   background: #f7f9fc;
   margin-bottom: 10px;
 }
 
-.dialy-tags {
+.diary-tags {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
   margin-bottom: 6px;
 }
 
-.dialy-line-first {
+.diary-line-first {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -2262,11 +2262,11 @@ padding-left: 10px;
   margin-bottom: 6px;
 }
 
-.dialy-line-first .dialy-tags {
+.diary-line-first .diary-tags {
   margin-bottom: 0;
 }
 
-.dialy-tag {
+.diary-tag {
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -2274,50 +2274,50 @@ padding-left: 10px;
   color: #2f4a6d;
 }
 
-.dialy-tag-event {
+.diary-tag-event {
   background: #e7f2ff;
   color: #2f6ad9;
 }
 
-.dialy-tag-category {
+.diary-tag-category {
   background: #f0f2f6;
   color: #556377;
 }
 
-.dialy-entry-body {
+.diary-entry-body {
   display: grid;
   gap: 4px;
 }
 
-.dialy-meal-group {
+.diary-meal-group {
   margin-bottom: 16px;
 }
 
-.dialy-meal-group-title {
+.diary-meal-group-title {
   font-size: 0.85rem;
   font-weight: 600;
   color: #4a5b74;
   margin-bottom: 8px;
 }
 
-.dialy-meal-grid {
+.diary-meal-grid {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.dialy-meal-card {
+.diary-meal-card {
   height: 100%;
 }
 
-.dialy-meal-top-tags {
+.diary-meal-top-tags {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
 
-.dialy-meal-thumb {
+.diary-meal-thumb {
   width: 64px;
   height: 64px;
   border-radius: 12px;
@@ -2330,56 +2330,56 @@ padding-left: 10px;
   color: #7b8798;
 }
 
-.dialy-meal-thumb-empty {
+.diary-meal-thumb-empty {
   border: 1px dashed #d1d8e2;
 }
 
-.dialy-meal-name {
+.diary-meal-name {
   font-weight: 600;
   color: #2c3e57;
   font-size: 0.95rem;
 }
 
-.dialy-meal-row {
+.diary-meal-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.dialy-tag-genre {
+.diary-tag-genre {
   background: #e7f2ff;
   color: #2f6ad9;
 }
 
-.dialy-tag-kind {
+.diary-tag-kind {
   background: #f0f2f6;
   color: #556377;
 }
 
 @media (max-width: 1100px) {
-  .dialy-meal-grid {
+  .diary-meal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
-  .dialy-meal-grid {
+  .diary-meal-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.dialy-entry-actions {
+.diary-entry-actions {
   display: flex;
   gap: 8px;
   margin-top: 6px;
 }
 
-.dialy-entry-content {
+.diary-entry-content {
   color: #2c3e57;
   font-size: 0.9rem;
 }
 
-.dialy-content-preview {
+.diary-content-preview {
   text-align: left;
   border: none;
   background: transparent;
@@ -2392,37 +2392,37 @@ padding-left: 10px;
   overflow: hidden;
 }
 
-.dialy-content-preview:focus {
+.diary-content-preview:focus {
   outline: 2px solid rgba(47, 106, 217, 0.35);
   outline-offset: 2px;
 }
 
-.dialy-entry-meta {
+.diary-entry-meta {
   color: #6c7a8f;
   font-size: 0.78rem;
 }
 
-.dialy-rate {
+.diary-rate {
   display: flex;
   gap: 3px;
 }
 
-.dialy-star {
+.diary-star {
   color: #ccd5e2;
   font-size: 0.95rem;
 }
 
-.dialy-star.is-filled {
+.diary-star.is-filled {
   color: #f2b544;
 }
 
-.dialy-empty {
+.diary-empty {
   padding: 10px 0 6px;
   color: #8a97a8;
   font-size: 0.85rem;
 }
 
-.dialy-fab {
+.diary-fab {
   position: fixed;
   right: 28px;
   bottom: 28px;
@@ -2442,27 +2442,27 @@ padding-left: 10px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.dialy-fab:active {
+.diary-fab:active {
   cursor: grabbing;
   transform: scale(0.98);
 }
 
-.dialy-modal .modal-content {
+.diary-modal .modal-content {
   border-radius: 18px;
   border: none;
   box-shadow: 0 22px 40px rgba(31, 56, 86, 0.18);
 }
 
-.dialy-modal .modal-header {
+.diary-modal .modal-header {
   border-bottom: 1px solid #eef2f7;
 }
 
-.dialy-modal .modal-footer {
+.diary-modal .modal-footer {
   border-top: 1px solid #eef2f7;
 }
 
 @media (max-width: 992px) {
-  .dialy-layout {
+  .diary-layout {
     grid-template-columns: 1fr;
   }
 }

@@ -123,8 +123,8 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       events
     });
   } catch (error) {
-    console.error('MyDialy取得エラー:', error);
-    req.flash('error', 'MyDialyの取得に失敗しました');
+    console.error('MyDiary取得エラー:', error);
+    req.flash('error', 'MyDiaryの取得に失敗しました');
     return res.redirect('/myTop/top');
   }
 });
