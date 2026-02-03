@@ -6,6 +6,8 @@ const { isLoggedIn } = require('../middleware');
 const Finance = require('../models/finance');
 const Eventcal = require('../models/eventcal');
 const Eventcal_events = require('../models/eventcal_events');
+require('../models/menu/menu');
+const MenuDo = require('../models/menu/menuDo');
 
 const getSelectedDate = (rawDate) => {
   if (!rawDate) return new Date();
@@ -60,6 +62,14 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       date: { $gte: start, $lte: end }
     }).sort({ entry_date: 1 });
 
+    const menuDoDocs = await MenuDo.find({
+      group: groupId,
+      recordedBy: req.user._id,
+      date: { $gte: start, $lte: end }
+    })
+      .populate('menu')
+      .sort({ mealType: 1, createdAt: 1 });
+
     const events = await Eventcal_events.find({
       user: req.user._id,
       group: groupId
@@ -87,10 +97,30 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       share: Boolean(entry.share)
     }));
 
+    const mealLabelMap = {
+      breakfast: '朝食',
+      lunch: '昼食',
+      dinner: '夕飯'
+    };
+
+    const mealEntries = menuDoDocs.map((entry) => {
+      const menu = entry.menu || {};
+      return {
+        id: entry._id,
+        mealType: entry.mealType,
+        mealLabel: mealLabelMap[entry.mealType] || entry.mealType,
+        name: menu.name || '',
+        junle: menu.junle || '',
+        kind: menu.kind || '',
+        imageUrl: menu.imageUrl || ''
+      };
+    });
+
     return res.render('allaboutme/eventcal2', {
       selectedDate: dayjs(start).format('YYYY-MM-DD'),
       financeEntries,
       diaryEntries,
+      mealEntries,
       events
     });
   } catch (error) {

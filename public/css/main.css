@@ -2289,6 +2289,85 @@ padding-left: 10px;
   gap: 4px;
 }
 
+.dialy-meal-group {
+  margin-bottom: 16px;
+}
+
+.dialy-meal-group-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5b74;
+  margin-bottom: 8px;
+}
+
+.dialy-meal-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dialy-meal-card {
+  height: 100%;
+}
+
+.dialy-meal-top-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.dialy-meal-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #e8edf5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #7b8798;
+}
+
+.dialy-meal-thumb-empty {
+  border: 1px dashed #d1d8e2;
+}
+
+.dialy-meal-name {
+  font-weight: 600;
+  color: #2c3e57;
+  font-size: 0.95rem;
+}
+
+.dialy-meal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialy-tag-genre {
+  background: #e7f2ff;
+  color: #2f6ad9;
+}
+
+.dialy-tag-kind {
+  background: #f0f2f6;
+  color: #556377;
+}
+
+@media (max-width: 1100px) {
+  .dialy-meal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .dialy-meal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .dialy-entry-actions {
   display: flex;
   gap: 8px;

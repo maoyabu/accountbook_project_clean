@@ -12,6 +12,9 @@ const menuSchema = new mongoose.Schema({
     menu: {
         type: String
     },
+    yomi:{
+        type: String
+    },
     junle: {
         type: String,
         required: true
@@ -22,7 +25,11 @@ const menuSchema = new mongoose.Schema({
     },
     url: {
         type: String,
-        required: true
+        default: ''
+    },
+    imageUrl: {
+        type: String,
+        default: ''
     },
     time: {
         type: String,
@@ -32,25 +39,52 @@ const menuSchema = new mongoose.Schema({
         required: true
     },
     ingredients: [
-        {
-            name: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Ingredients'
-            },
-            amount: String,
-            unit: String
-        }
+    {
+        name: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Ingredient' // 正しいモデル名
+        },
+        amount: Number,
+        unit: String
+    }
     ],
     seasoning: [
-        {
-            name: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Seasoning'
-            },
-            amount: String,
-            unit: String
-        }
+    {
+        name: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Seasoning' // 正しいモデル名
+        },
+        amount: Number,
+        unit: String
+    }
     ],
+    material:{
+        type: Boolean,
+        default: false
+    },
+    isPrivate: {
+        type: Boolean,
+        default: false
+    },
+    makeAhead: {
+        type: Boolean,
+        default: false
+    },
+    basicMenu: {
+        type: Boolean,
+        default: false
+    },
+    comment: {
+        type: String
+    },
+    instructionText: {
+        type: String,
+        default: ''
+    },
+    season: {
+        type: [String],
+        default: []
+    },
     share: {
         type: Boolean,
         default: false
@@ -70,5 +104,9 @@ menuSchema.pre('findOneAndUpdate', function (next) {
     next();
 });
 
-const Menu = mongoose.model('Menu',menuSchema);
+const existingModel = mongoose.models.Menu;
+if (existingModel) {
+    mongoose.deleteModel('Menu');
+}
+const Menu = mongoose.model('Menu', menuSchema);
 module.exports = Menu;

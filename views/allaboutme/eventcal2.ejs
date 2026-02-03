@@ -51,6 +51,57 @@
       </div>
 
       <div class="dialy-section">
+        <div class="dialy-section-title">My Meal</div>
+        <% if (!mealEntries || mealEntries.length === 0) { %>
+          <div class="dialy-empty">この日のMy Mealはありません。</div>
+        <% } else { %>
+          <% const mealGroups = { breakfast: [], lunch: [], dinner: [] }; %>
+          <% mealEntries.forEach(entry => { %>
+            <% if (mealGroups[entry.mealType]) { mealGroups[entry.mealType].push(entry); } %>
+          <% }) %>
+
+          <% const mealOrder = [
+            { key: 'breakfast', label: '朝食' },
+            { key: 'lunch', label: '昼食' },
+            { key: 'dinner', label: '夕食' }
+          ]; %>
+
+          <% mealOrder.forEach(group => { %>
+            <% const items = mealGroups[group.key]; %>
+            <div class="dialy-meal-group">
+              <div class="dialy-meal-group-title"><%= group.label %></div>
+              <% if (!items || items.length === 0) { %>
+                <div class="dialy-empty">この日の<%= group.label %>はありません。</div>
+              <% } else { %>
+                <div class="dialy-meal-grid">
+                  <% items.forEach(entry => { %>
+                    <div class="dialy-entry dialy-meal-card">
+                      <div class="dialy-meal-top-tags">
+                        <% if (entry.junle) { %>
+                          <span class="dialy-tag dialy-tag-genre"><%= entry.junle %></span>
+                        <% } %>
+                        <% if (entry.kind) { %>
+                          <span class="dialy-tag dialy-tag-kind"><%= entry.kind %></span>
+                        <% } %>
+                      </div>
+                      <div class="dialy-meal-row">
+                        <% if (entry.imageUrl) { %>
+                          <img class="dialy-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
+                        <% } else { %>
+                          <div class="dialy-meal-thumb dialy-meal-thumb-empty">画像なし</div>
+                        <% } %>
+                        <div class="dialy-meal-name"><%= entry.name || '（メニュー名なし）' %></div>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              <% } %>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <div class="dialy-section">
       <div class="dialy-section-title">My Dialy</div>
       <% if (!diaryEntries || diaryEntries.length === 0) { %>
         <div class="dialy-empty">この日のMy Dialyはありません。</div>
