@@ -78,6 +78,7 @@ const manageRoutes = require('./routes/manage');
 const matometeRoutes = require('./routes/matomete');
 const assetRoutes = require('./routes/asset');
 const allaboutmeRoutes = require('./routes/allaboutme');
+const eventcal2Routes = require('./routes/eventcal2');
 const myTopRoutes = require('./routes/myTop');
 const myselfRoutes = require('./routes/myself');
 const adminRoutes = require('./routes/admin');
@@ -353,6 +354,7 @@ app.use('/manage', manageRoutes);
 
 //All About meへのルート
 app.use('/allaboutme', allaboutmeRoutes);
+app.use('/allaboutme', eventcal2Routes);
 
 //my historyへのルート
 app.use('/history', historyRoutes);

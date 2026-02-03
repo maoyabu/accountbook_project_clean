@@ -5,6 +5,7 @@
   <select id="myselfMenuSelect" class="form-select myself-nav-select" onchange="if (this.value) { window.location.href = this.value; }">
     <option value="/allaboutme/wantolist" data-match="/allaboutme/wantolist" <%= activePage === 'wantolist' ? 'selected' : '' %>>Myリスト</option>
     <option value="/allaboutme/eventcal" data-match="/allaboutme/eventcal" <%= activePage === 'eventcal' ? 'selected' : '' %>>My日記</option>
+    <option value="/allaboutme/eventcal2" data-match="/allaboutme/eventcal2" <%= activePage === 'eventcal2' ? 'selected' : '' %>>MyDialy</option>
     <option value="/history/list" data-match="/history" <%= activePage === 'history' ? 'selected' : '' %>>My History</option>
     <option value="/relation" data-match="/relation" <%= activePage === 'relation' ? 'selected' : '' %>>My Relation</option>
     <option value="/resume/myresume" data-match="/resume" <%= activePage === 'myresume' ? 'selected' : '' %>>My 履歴書</option>

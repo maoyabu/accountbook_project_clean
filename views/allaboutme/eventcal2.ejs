@@ -1,0 +1,168 @@
+<% layout('layouts/boilerplate') -%>
+<% page = 'eventcal2' %>
+
+<div class="nav-guide-row d-flex justify-content-between align-items-center gap-2 flex-wrap">
+  <%- include('../partials/allaboutme_tabs_nav') %>
+</div>
+
+<div class="container mt-3">
+  <div class="dialy-layout">
+    <div class="dialy-calendar-card">
+      <div class="dialy-calendar-header">
+        <button type="button" class="dialy-nav-btn" data-nav="-1" aria-label="前の月">&#x2039;</button>
+        <div class="dialy-month" id="dialyMonthLabel"></div>
+        <button type="button" class="dialy-nav-btn" data-nav="1" aria-label="次の月">&#x203A;</button>
+      </div>
+      <div class="dialy-weekdays">
+        <span>月</span>
+        <span>火</span>
+        <span>水</span>
+        <span>木</span>
+        <span>金</span>
+        <span>土</span>
+        <span>日</span>
+      </div>
+      <div id="dialyGrid" class="dialy-grid"></div>
+    </div>
+
+    <div class="dialy-list-card">
+      <div class="dialy-selected-date" id="dialySelectedDate" data-date="<%= selectedDate %>"></div>
+
+      <div class="dialy-section">
+        <div class="dialy-section-title">Finance</div>
+        <% if (!financeEntries || financeEntries.length === 0) { %>
+          <div class="dialy-empty">この日のFinanceデータはありません。</div>
+        <% } else { %>
+          <% financeEntries.forEach(entry => { %>
+            <div class="dialy-entry">
+              <div class="dialy-tags">
+                <span class="dialy-tag dialy-tag-cf"><%= entry.cf %></span>
+                <% if (entry.category) { %>
+                  <span class="dialy-tag dialy-tag-category"><%= entry.category %></span>
+                <% } %>
+              </div>
+              <div class="dialy-entry-body">
+                <div class="dialy-entry-content"><%= entry.content || '（内容なし）' %></div>
+                <div class="dialy-entry-meta">金額: <%= entry.amountFormatted %> / 支払い種別: <%= entry.payment_type || '未設定' %></div>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <div class="dialy-section">
+        <div class="dialy-section-title">My日記</div>
+        <% if (!diaryEntries || diaryEntries.length === 0) { %>
+          <div class="dialy-empty">この日のMy日記はありません。</div>
+        <% } else { %>
+          <% diaryEntries.forEach(entry => { %>
+            <div class="dialy-entry">
+              <div class="dialy-line-first">
+                <div class="dialy-tags">
+                  <span class="dialy-tag dialy-tag-event"><%= entry.event %></span>
+                </div>
+                <div class="dialy-rate">
+                  <% for (let i = 0; i < 5; i++) { %>
+                    <span class="dialy-star <%= i < entry.rate ? 'is-filled' : '' %>">&#9733;</span>
+                  <% } %>
+                </div>
+              </div>
+              <div class="dialy-entry-body">
+                <div class="dialy-entry-content"><%= entry.content || '（内容なし）' %></div>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const selectedDateEl = document.getElementById('dialySelectedDate');
+    const selectedDateStr = selectedDateEl?.dataset?.date;
+    const selectedDate = selectedDateStr ? new Date(`${selectedDateStr}T00:00:00`) : new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const monthLabel = document.getElementById('dialyMonthLabel');
+    const grid = document.getElementById('dialyGrid');
+    const weekdayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+
+    let currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+
+    const pad = (num) => String(num).padStart(2, '0');
+    const toYmd = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+    const isSameDay = (a, b) => (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+
+    const renderSelectedDate = () => {
+      if (!selectedDateEl) return;
+      const formatter = new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short'
+      });
+      selectedDateEl.textContent = formatter.format(selectedDate);
+    };
+
+    const renderCalendar = () => {
+      if (!grid || !monthLabel) return;
+      grid.innerHTML = '';
+
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startOffset = (firstDay.getDay() + 6) % 7; // Monday start
+
+      const monthFormatter = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long' });
+      monthLabel.textContent = monthFormatter.format(currentMonth);
+
+      for (let i = 0; i < startOffset; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'dialy-empty-cell';
+        grid.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cellDate = new Date(year, month, day);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dialy-day';
+        button.textContent = day;
+
+        if (isSameDay(cellDate, today)) {
+          button.classList.add('is-today');
+        }
+        if (isSameDay(cellDate, selectedDate)) {
+          button.classList.add('is-selected');
+        }
+
+        button.addEventListener('click', () => {
+          window.location.href = `/allaboutme/eventcal2?date=${toYmd(cellDate)}`;
+        });
+
+        grid.appendChild(button);
+      }
+    };
+
+    document.querySelectorAll('.dialy-nav-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const delta = Number(btn.dataset.nav || 0);
+        currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
+        renderCalendar();
+      });
+    });
+
+    renderSelectedDate();
+    renderCalendar();
+  })();
+</script>
