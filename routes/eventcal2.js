@@ -63,7 +63,6 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     }).sort({ entry_date: 1 });
 
     const menuDoDocs = await MenuDo.find({
-      group: groupId,
       recordedBy: req.user._id,
       date: { $gte: start, $lte: end }
     })
