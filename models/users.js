@@ -86,6 +86,10 @@ const userSchema = new Schema({
     matometeReminderEnabled: {
         type: Boolean,
         default: true
+    },
+    inactivityReminderDays: {
+        type: Number,
+        default: 3
     }
 });
 

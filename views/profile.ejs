@@ -130,6 +130,10 @@
           <input type="checkbox" class="form-check-input" id="matometeReminderEnabled" name="matometeReminderEnabled" value="true" <%= user.matometeReminderEnabled !== false ? 'checked' : '' %>>
           <label class="form-check-label" for="matometeReminderEnabled">まとめて入力の催促メールを受け取る</label>
         </div>
+        <div class="mb-3">
+          <label class="form-label">家計簿未入力のリマインド日数（1〜31日）</label>
+          <input type="number" class="form-control" name="inactivityReminderDays" min="1" max="31" value="<%= Number.isInteger(user.inactivityReminderDays) ? user.inactivityReminderDays : 3 %>">
+        </div>
         <hr>
         <div class="mb-3">
           <label class="form-label">【利用するサービス】</label>

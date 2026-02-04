@@ -462,6 +462,10 @@ router.put('/profile/:id', isLoggedIn, (req, res, next) => {
         user.update_date = new Date();
         user.isMail = req.body.isMail === 'true' || req.body.isMail === 'on';
         user.matometeReminderEnabled = req.body.matometeReminderEnabled === 'true' || req.body.matometeReminderEnabled === 'on';
+        const inactivityDays = Number(req.body.inactivityReminderDays);
+        user.inactivityReminderDays = Number.isInteger(inactivityDays) && inactivityDays >= 1 && inactivityDays <= 31
+          ? inactivityDays
+          : 3;
 
         // 利用サービスの設定を保存
         user.services = {

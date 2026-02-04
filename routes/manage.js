@@ -29,8 +29,9 @@ async function sendInactivityReminders() {
     const lastDate = latestEntry?.date;
     const today = dayjs();
     const diff = lastDate ? today.diff(dayjs(lastDate), 'day') : Infinity;
+    const reminderDays = Number.isInteger(user.inactivityReminderDays) ? user.inactivityReminderDays : 3;
 
-    if (diff >= 7) {
+    if (diff >= reminderDays) {
       await sendMail({
         to: user.email,
         subject: `【家計簿入力のご案内】${user.displayname}さん、最近の入力はお済みですか？`,
