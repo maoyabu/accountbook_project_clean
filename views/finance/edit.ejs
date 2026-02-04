@@ -10,7 +10,13 @@
         <% if (typeof duplicateMessage !== 'undefined' && duplicateMessage) { %>
           <div class="alert alert-success text-center" role="alert"><%= duplicateMessage %></div>
         <% } %>
+        <% if (typeof duplicateWarning !== 'undefined' && duplicateWarning) { %>
+          <div class="alert alert-warning text-center" role="alert">
+            同じ内容の入力が見つかりました。内容を確認してください。
+          </div>
+        <% } %>
         <form action="/finance/<%= finance._id %>?_method=PUT" method="POST">
+          <input type="hidden" name="confirmDuplicate" id="confirmDuplicate" value="0">
           <input type="hidden" name="nextAction" id="nextActionInput" value="update">
           <div class="form-group">
             <label for="date">年月日</label>
@@ -431,6 +437,24 @@
     subtotalList.innerHTML = '';
     for (const [category, total] of Object.entries(categoryTotals)) {
       subtotalList.innerHTML += `<div>・${category}: ¥${total.toLocaleString()}</div>`;
+    }
+  }
+
+  const hasDuplicateWarning = <%- JSON.stringify(Boolean(duplicateWarning)) %>;
+  if (hasDuplicateWarning) {
+    const editForm = document.querySelector('form[action^="/finance/"][method="POST"]');
+    if (editForm) {
+      editForm.addEventListener('submit', (e) => {
+        const confirmInput = document.getElementById('confirmDuplicate');
+        if (confirmInput && confirmInput.value !== '1') {
+          const ok = window.confirm('同じ内容の入力が既にあります。続けて操作しますか？');
+          if (!ok) {
+            e.preventDefault();
+            return;
+          }
+          confirmInput.value = '1';
+        }
+      });
     }
   }
 </script>

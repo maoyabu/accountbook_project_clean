@@ -209,6 +209,48 @@ const validatefinance = (req, res, next) => {
     }
 };
 
+const resolveItemKeyForDuplicate = (financeData) => {
+    switch (financeData?.cf) {
+        case '支出':
+            return 'expense_item';
+        case '収入':
+            return 'income_item';
+        case '控除':
+            return 'dedu_item';
+        case '貯蓄':
+            return 'saving_item';
+        default:
+            return null;
+    }
+};
+
+const buildDuplicateQuery = (financeData) => {
+    const dateObj = new Date(financeData.date);
+    const startOfDay = new Date(dateObj);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(dateObj);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const itemKey = resolveItemKeyForDuplicate(financeData);
+    const itemValue = itemKey ? (financeData[itemKey] || '') : '';
+
+    const userId = financeData.user?._id || financeData.user;
+    const groupId = financeData.group?._id || financeData.group;
+
+    const query = {
+        user: userId,
+        group: groupId,
+        date: { $gte: startOfDay, $lte: endOfDay },
+        cf: financeData.cf,
+        amount: Number(financeData.amount),
+        payment_type: financeData.payment_type
+    };
+    if (itemKey && itemValue) {
+        query[itemKey] = itemValue;
+    }
+    return query;
+};
+
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
 router.use(express.urlencoded({ extended: true }));
 router.use(methodOverride('_method'));
@@ -237,7 +279,8 @@ router.get('/entry', isLoggedIn, async(req, res) => {
         whos,
         allUsers,
         formData: {},   // 初期値として空のオブジェクトを渡す
-        errors: {}      // 初期値として空のオブジェクトを渡す
+        errors: {},     // 初期値として空のオブジェクトを渡す
+        duplicateWarning: false
     });
 });
 
@@ -306,7 +349,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             pay_cfs: global.pay_cfs,
             whos,
             allUsers,
-            ocrAmount: extractedAmount || ''
+            ocrAmount: extractedAmount || '',
+            duplicateWarning: false
         });
     }
 
@@ -335,6 +379,39 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     let registerAmount = amount;
     if ((!registerAmount || registerAmount === '') && extractedAmount) {
       registerAmount = extractedAmount;
+    }
+
+    const confirmDuplicate = req.body.confirmDuplicate === '1';
+    const duplicateQuery = buildDuplicateQuery({
+      ...finance,
+      user: loggedInUserId,
+      group: activeGroupId,
+      amount: registerAmount
+    });
+    const duplicateEntry = await Finance.findOne(duplicateQuery);
+    if (duplicateEntry && !confirmDuplicate) {
+      let formData = req.body.finance || {};
+      if (formData?.tags && Array.isArray(formData.tags)) {
+        formData.tags = formData.tags.map(tag => (typeof tag === 'string' ? { name: tag } : tag));
+      }
+      if (formData?.['finance[tags]'] && Array.isArray(formData['finance[tags]'])) {
+        formData.tags = formData['finance[tags]'].map(tag => (typeof tag === 'string' ? { name: tag } : tag));
+      }
+      return res.render('finance/entry', {
+        page: 'entry',
+        errors,
+        formData,
+        la_cfs,
+        ex_cfs,
+        in_items,
+        dedu_cfs,
+        saving_cfs,
+        pay_cfs: global.pay_cfs,
+        whos,
+        allUsers,
+        ocrAmount: extractedAmount || '',
+        duplicateWarning: true
+      });
     }
 
     const newFinance = new Finance({
@@ -397,6 +474,32 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         cloneData.expense_item = '';
         cloneData.dedu_item = '';
         cloneData.saving_item = '';
+
+        const duplicateCloneQuery = buildDuplicateQuery(cloneData);
+        const duplicateCloneEntry = await Finance.findOne(duplicateCloneQuery);
+        if (duplicateCloneEntry && req.body.confirmDuplicate !== '1') {
+            const formattedDate = duplicateCloneEntry.date.toISOString().split('T')[0];
+            const formattedEntryDate = toJST(new Date(duplicateCloneEntry.entry_date)).toLocaleString('ja-JP');
+            const formattedUpdateDate = toJST(new Date(duplicateCloneEntry.update_date || duplicateCloneEntry.entry_date)).toLocaleString('ja-JP');
+            return res.render('finance/edit', {
+                page: 'entry',
+                errors: {},
+                finance: duplicateCloneEntry,
+                formattedDate,
+                formattedEntryDate,
+                formattedUpdateDate,
+                duplicateMessage,
+                duplicateWarning: true,
+                la_cfs,
+                ex_cfs,
+                in_items,
+                dedu_cfs,
+                saving_cfs,
+                pay_cfs,
+                whos,
+                allUsers
+            });
+        }
 
         const duplicatedFinance = new Finance(cloneData);
 
@@ -928,7 +1031,8 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         pay_cfs: global.pay_cfs,
         whos,
         allUsers,
-        currentUser: req.user
+        currentUser: req.user,
+        duplicateWarning: req.query.duplicateWarning === '1'
     });
 }));
 
@@ -1066,6 +1170,33 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         clone.expense_item = '';
         clone.dedu_item = '';
         clone.saving_item = '';
+
+        const duplicateCloneQuery = buildDuplicateQuery(clone);
+        const duplicateCloneEntry = await Finance.findOne(duplicateCloneQuery);
+        if (duplicateCloneEntry && req.body.confirmDuplicate !== '1') {
+            const formattedDate = duplicateCloneEntry.date.toISOString().split('T')[0];
+            const currentUser = await FinanceUser.findById(req.user._id).populate('groups');
+            const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
+            return res.render('finance/edit', {
+                page: 'entry',
+                errors: {},
+                finance: { ...duplicateCloneEntry.toObject(), tags: duplicateCloneEntry.tags || [] },
+                formattedDate,
+                formattedEntryDate: duplicateCloneEntry.entry_date.toLocaleString('ja-JP'),
+                formattedUpdateDate: (duplicateCloneEntry.update_date || duplicateCloneEntry.entry_date).toLocaleString('ja-JP'),
+                duplicateMessage,
+                duplicateWarning: true,
+                la_cfs,
+                ex_cfs,
+                in_items,
+                dedu_cfs,
+                saving_cfs,
+                pay_cfs,
+                whos,
+                allUsers,
+                currentUser
+            });
+        }
         const newFinance = new Finance(clone);
         await newFinance.save();
         const formattedDate = newFinance.date.toISOString().split('T')[0];
@@ -1126,6 +1257,12 @@ router.post('/:id/duplicate', isLoggedIn, catchAsync(async (req, res) => {
         if (newFinance.income_item === 'Please Choice') newFinance.income_item = '';
         if (newFinance.expense_item === 'Please Choice') newFinance.expense_item = '';
         if (newFinance.dedu_item === 'Please Choice') newFinance.dedu_item = '';
+
+        const duplicateCloneQuery = buildDuplicateQuery(newFinance);
+        const duplicateCloneEntry = await Finance.findOne(duplicateCloneQuery);
+        if (duplicateCloneEntry && req.body.confirmDuplicate !== '1') {
+            return res.redirect(`/finance/${duplicateCloneEntry._id}/edit?duplicateWarning=1`);
+        }
 
         await newFinance.save();
         await logAction({ req, action: '複製', target: '家計簿' });
