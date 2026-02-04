@@ -52,15 +52,17 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
 
     const financeDocs = await Finance.find({
       user: req.user._id,
-      group: groupId,
       date: { $gte: start, $lte: end }
-    }).sort({ entry_date: 1 });
+    })
+      .populate('group')
+      .sort({ entry_date: 1 });
 
     const diaryDocs = await Eventcal.find({
       user: req.user._id,
-      group: groupId,
       date: { $gte: start, $lte: end }
-    }).sort({ entry_date: 1 });
+    })
+      .populate('group')
+      .sort({ entry_date: 1 });
 
     const menuDoDocs = await MenuDo.find({
       recordedBy: req.user._id,
@@ -74,27 +76,46 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       group: groupId
     }).sort({ entry_date: 1 });
 
-    const financeEntries = financeDocs.map((entry) => ({
-      id: entry._id,
-      cf: entry.cf,
-      category: resolveFinanceCategory(entry),
-      content: entry.content || '',
-      amount: entry.amount || 0,
-      amountFormatted: Number(entry.amount || 0).toLocaleString('ja-JP'),
-      payment_type: entry.payment_type || ''
-    }));
+    const financeGroupsMap = new Map();
+    financeDocs.forEach((entry) => {
+      const groupId = entry.group?._id?.toString() || 'unknown';
+      const groupName = entry.group?.group_name || 'グループ未設定';
+      if (!financeGroupsMap.has(groupId)) {
+        financeGroupsMap.set(groupId, { groupId, groupName, entries: [] });
+      }
+      financeGroupsMap.get(groupId).entries.push({
+        id: entry._id,
+        cf: entry.cf,
+        category: resolveFinanceCategory(entry),
+        content: entry.content || '',
+        amount: entry.amount || 0,
+        amountFormatted: Number(entry.amount || 0).toLocaleString('ja-JP'),
+        payment_type: entry.payment_type || ''
+      });
+    });
 
-    const diaryEntries = diaryDocs.map((entry) => ({
-      id: entry._id,
-      date: dayjs(entry.date).format('YYYY-MM-DD'),
-      item: entry.item || '',
-      event: entry.event || '',
-      rate: entry.rate || 0,
-      title: entry.title || '',
-      content: entry.content || '',
-      summary: entry.summary || '',
-      share: Boolean(entry.share)
-    }));
+    const diaryGroupsMap = new Map();
+    const diaryEntries = [];
+    diaryDocs.forEach((entry) => {
+      const groupId = entry.group?._id?.toString() || 'unknown';
+      const groupName = entry.group?.group_name || 'グループ未設定';
+      if (!diaryGroupsMap.has(groupId)) {
+        diaryGroupsMap.set(groupId, { groupId, groupName, entries: [] });
+      }
+      const diaryEntry = {
+        id: entry._id,
+        date: dayjs(entry.date).format('YYYY-MM-DD'),
+        item: entry.item || '',
+        event: entry.event || '',
+        rate: entry.rate || 0,
+        title: entry.title || '',
+        content: entry.content || '',
+        summary: entry.summary || '',
+        share: Boolean(entry.share)
+      };
+      diaryGroupsMap.get(groupId).entries.push(diaryEntry);
+      diaryEntries.push(diaryEntry);
+    });
 
     const mealLabelMap = {
       breakfast: '朝食',
@@ -117,7 +138,8 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
 
     return res.render('allaboutme/eventcal2', {
       selectedDate: dayjs(start).format('YYYY-MM-DD'),
-      financeEntries,
+      financeGroups: Array.from(financeGroupsMap.values()),
+      diaryGroups: Array.from(diaryGroupsMap.values()),
       diaryEntries,
       mealEntries,
       events

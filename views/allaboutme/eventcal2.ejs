@@ -30,22 +30,31 @@
 
       <div class="diary-section">
         <div class="diary-section-title">Finance</div>
-        <% if (!financeEntries || financeEntries.length === 0) { %>
+        <% if (!financeGroups || financeGroups.length === 0) { %>
           <div class="diary-empty">この日のFinanceデータはありません。</div>
         <% } else { %>
-          <% financeEntries.forEach(entry => { %>
-            <div class="diary-entry">
-              <div class="diary-tags">
-                <span class="diary-tag diary-tag-cf"><%= entry.cf %></span>
-                <% if (entry.category) { %>
-                  <span class="diary-tag diary-tag-category"><%= entry.category %></span>
-                <% } %>
+          <% financeGroups.forEach(group => { %>
+            <% if (group.entries && group.entries.length > 0) { %>
+              <div class="diary-group">
+                <div class="diary-group-title">
+                  <span class="diary-tag diary-tag-group"><%= group.groupName %></span>
+                </div>
+                <% group.entries.forEach(entry => { %>
+                  <div class="diary-entry">
+                    <div class="diary-tags">
+                      <span class="diary-tag diary-tag-cf"><%= entry.cf %></span>
+                      <% if (entry.category) { %>
+                        <span class="diary-tag diary-tag-category"><%= entry.category %></span>
+                      <% } %>
+                    </div>
+                    <div class="diary-entry-body">
+                      <div class="diary-entry-content"><%= entry.content || '（内容なし）' %></div>
+                      <div class="diary-entry-meta">金額: <%= entry.amountFormatted %> / 支払い種別: <%= entry.payment_type || '未設定' %></div>
+                    </div>
+                  </div>
+                <% }) %>
               </div>
-              <div class="diary-entry-body">
-                <div class="diary-entry-content"><%= entry.content || '（内容なし）' %></div>
-                <div class="diary-entry-meta">金額: <%= entry.amountFormatted %> / 支払い種別: <%= entry.payment_type || '未設定' %></div>
-              </div>
-            </div>
+            <% } %>
           <% }) %>
         <% } %>
       </div>
@@ -103,34 +112,43 @@
 
       <div class="diary-section">
       <div class="diary-section-title">My Diary</div>
-      <% if (!diaryEntries || diaryEntries.length === 0) { %>
+      <% if (!diaryGroups || diaryGroups.length === 0) { %>
         <div class="diary-empty">この日のMy Diaryはありません。</div>
         <% } else { %>
-          <% diaryEntries.forEach(entry => { %>
-            <div class="diary-entry">
-              <div class="diary-line-first">
-                <div class="diary-tags">
-                  <span class="diary-tag diary-tag-event"><%= entry.event %></span>
+          <% diaryGroups.forEach(group => { %>
+            <% if (group.entries && group.entries.length > 0) { %>
+              <div class="diary-group">
+                <div class="diary-group-title">
+                  <span class="diary-tag diary-tag-group"><%= group.groupName %></span>
                 </div>
-                <div class="diary-rate">
-                  <% for (let i = 0; i < 5; i++) { %>
-                    <span class="diary-star <%= i < entry.rate ? 'is-filled' : '' %>">&#9733;</span>
-                  <% } %>
-                </div>
+                <% group.entries.forEach(entry => { %>
+                  <div class="diary-entry">
+                    <div class="diary-line-first">
+                      <div class="diary-tags">
+                        <span class="diary-tag diary-tag-event"><%= entry.event %></span>
+                      </div>
+                      <div class="diary-rate">
+                        <% for (let i = 0; i < 5; i++) { %>
+                          <span class="diary-star <%= i < entry.rate ? 'is-filled' : '' %>">&#9733;</span>
+                        <% } %>
+                      </div>
+                    </div>
+                    <div class="diary-entry-body">
+                      <button type="button" class="diary-entry-content diary-content-preview" data-full="<%- (entry.content || '（内容なし）').replace(/"/g, '&quot;') %>">
+                        <%= entry.content || '（内容なし）' %>
+                      </button>
+                      <div class="diary-entry-actions">
+                        <button type="button" class="btn btn-sm btn-outline-secondary diary-edit-btn" data-id="<%= entry.id %>">編集</button>
+                        <form method="POST" action="/allaboutme/eventcal/delete/<%= entry.id %>" class="d-inline" onsubmit="return confirm('削除しますか？');">
+                          <input type="hidden" name="redirectTo" value="/allaboutme/eventcal2?date=<%= selectedDate %>">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">削除</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
               </div>
-              <div class="diary-entry-body">
-                <button type="button" class="diary-entry-content diary-content-preview" data-full="<%- (entry.content || '（内容なし）').replace(/"/g, '&quot;') %>">
-                  <%= entry.content || '（内容なし）' %>
-                </button>
-                <div class="diary-entry-actions">
-                  <button type="button" class="btn btn-sm btn-outline-secondary diary-edit-btn" data-id="<%= entry.id %>">編集</button>
-                  <form method="POST" action="/allaboutme/eventcal/delete/<%= entry.id %>" class="d-inline" onsubmit="return confirm('削除しますか？');">
-                    <input type="hidden" name="redirectTo" value="/allaboutme/eventcal2?date=<%= selectedDate %>">
-                    <button type="submit" class="btn btn-sm btn-outline-danger">削除</button>
-                  </form>
-                </div>
-              </div>
-            </div>
+            <% } %>
           <% }) %>
         <% } %>
       </div>
