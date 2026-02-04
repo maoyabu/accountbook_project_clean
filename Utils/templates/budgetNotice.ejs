@@ -1,0 +1,26 @@
+<%- include('_mailHeader') %>
+<div class="email-container">
+  <div class="email-header">
+    <h1>予算の到達状況</h1>
+  </div>
+  <p><%= name %> さん</p>
+  <p><strong><%= month %></strong> の予算に対する到達状況をお知らせします。</p>
+  <p>月の日数到達率: <strong><%= dayRate %>%</strong></p>
+  <% groups.forEach(group => { %>
+    <hr>
+    <h3><%= group.groupName %></h3>
+    <ul>
+      <% group.alerts.forEach(alert => { %>
+        <li>
+          <strong><%= alert.targetLabel %></strong> / しきい値: <%= alert.threshold %>%<br>
+          実績到達率: <strong><%= alert.actualRate %>%</strong>
+          （実績: <%= Number(alert.actual).toLocaleString('ja-JP') %> / 予算: <%= Number(alert.budget).toLocaleString('ja-JP') %>）
+        </li>
+      <% }) %>
+    </ul>
+  <% }) %>
+  <p>
+    予算設定の確認はこちら: <a href="<%= budgetUrl %>"><%= budgetUrl %></a>
+  </p>
+</div>
+<%- include('_mailFooter') %>

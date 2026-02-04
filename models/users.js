@@ -70,6 +70,22 @@ const userSchema = new Schema({
         finance: { type: Boolean, default: true },
         assets: { type: Boolean, default: true },
         message: { type: Boolean, default: true }
+    },
+    financeBudgetNoticeEnabled: {
+        type: Boolean,
+        default: true
+    },
+    financeBudgetNoticeThresholds: {
+        type: [Number],
+        default: [50, 80, 90]
+    },
+    matometeReminderDays: {
+        type: Number,
+        default: 7
+    },
+    matometeReminderEnabled: {
+        type: Boolean,
+        default: true
     }
 });
 

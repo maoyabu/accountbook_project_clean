@@ -17,5 +17,43 @@
     </form>
 </div>
 <div class="p-3 border rounded bg-light mb-4">
+    <h5><i class="fa-regular fa-bell"></i> 予算到達メール通知</h5>
+    <form action="/finance/budget/notice-settings" method="POST" class="mb-2">
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="noticeEnabled" name="notice_enabled" <%= noticeSettings?.enabled ? 'checked' : '' %>>
+            <label class="form-check-label" for="noticeEnabled">通知を受け取る</label>
+        </div>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label">到達率1（%）</label>
+                <input type="number" class="form-control" name="notice_threshold1" min="0" max="100" value="<%= noticeSettings?.thresholds?.[0] ?? 50 %>">
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">到達率2（%）</label>
+                <input type="number" class="form-control" name="notice_threshold2" min="0" max="100" value="<%= noticeSettings?.thresholds?.[1] ?? 80 %>">
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">到達率3（%）</label>
+                <input type="number" class="form-control" name="notice_threshold3" min="0" max="100" value="<%= noticeSettings?.thresholds?.[2] ?? 90 %>">
+            </div>
+        </div>
+        <div class="text-muted small mt-2">※ 100%は設定しなくても通知されます。</div>
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-3">保存</button>
+    </form>
+</div>
+<div class="p-3 border rounded bg-light mb-4">
+    <h5><i class="fa-regular fa-envelope"></i> まとめて入力 催促メール</h5>
+    <form action="/finance/budget/matomete-settings" method="POST" class="mb-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label">催促までの日数（1〜31日）</label>
+                <input type="number" class="form-control" name="matomete_reminder_days" min="1" max="31" value="<%= noticeSettings?.matometeReminderDays ?? 7 %>">
+            </div>
+        </div>
+        <div class="text-muted small mt-2">※ 毎月1日に前月分の案内を送信後、指定日数が経過しても完了していない場合に催促メールを送信します。</div>
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-3">保存</button>
+    </form>
+</div>
+<div class="p-3 border rounded bg-light mb-4">
     <h5><i class="fa-regular fa-credit-card"></i> <a href="/finance/payment-items">支払い方法の設定</a></h5>
 </div>

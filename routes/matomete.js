@@ -8,6 +8,7 @@ const RegularEntry = require('../models/finance_regularEntry');
 const mongoose = require('mongoose');
 const Items = require('../models/finance_items');
 const PaymentItem = require('../models/paymentItems');
+const MatometeStatus = require('../models/matomete_status');
 
 //selectedの選択肢をここで定義
 const la_cfs = ['Please Choice','支出','収入','控除','貯蓄'];
@@ -329,6 +330,12 @@ router.post('/regular-entry/update', isLoggedIn, async (req, res) => {
     });
   
     await Finance.insertMany(newEntries);
+    const monthKey = `${yearStr}-${monthStr}`;
+    await MatometeStatus.findOneAndUpdate(
+      { user: userId, group: groupId, month: monthKey },
+      { completed: true, completedAt: new Date() },
+      { upsert: true, new: true }
+    );
     await logAction({ req, action: 'まとめて入力実行', target: '家計簿' });
     req.flash('success', 'まとめて入力を完了しました');
     res.redirect('/finance/list');
@@ -437,6 +444,13 @@ router.post('/regular-entry/update/confirm', isLoggedIn, async (req, res) => {
     if (inserts.length > 0) {
       await Finance.insertMany(inserts);
     }
+
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    await MatometeStatus.findOneAndUpdate(
+      { user: userId, group: groupId, month: monthKey },
+      { completed: true, completedAt: new Date() },
+      { upsert: true, new: true }
+    );
 
     await logAction({ req, action: 'まとめて入力を実行', target: '家計簿' });
     req.flash('success', 'まとめて入力を完了しました');

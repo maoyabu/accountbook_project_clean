@@ -461,6 +461,7 @@ router.put('/profile/:id', isLoggedIn, (req, res, next) => {
         user.rh = req.body.rh;
         user.update_date = new Date();
         user.isMail = req.body.isMail === 'true' || req.body.isMail === 'on';
+        user.matometeReminderEnabled = req.body.matometeReminderEnabled === 'true' || req.body.matometeReminderEnabled === 'on';
 
         // 利用サービスの設定を保存
         user.services = {

@@ -7,6 +7,9 @@ const Finance = require('../models/finance');
 const moment = require('moment');
 const path = require('path');
 const { sendMail } = require('../Utils/mailer');
+const MatometeStatus = require('../models/matomete_status');
+const Group = require('../models/groups');
+const MatometeSetting = require('../models/matomete_setting');
 
 //　メール送信者の定義
 const url = process.env.BASE_URL;
@@ -84,6 +87,60 @@ const sendReminders = async () => {
   }, {
     timezone: 'Asia/Tokyo'
   });
+
+// まとめて入力 催促メール（毎日8時、前月分の未完了をチェック）
+cron.schedule('0 8 * * *', async () => {
+  try {
+    const today = new Date();
+    const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const monthKey = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const users = await FinanceUser.find({ isMail: { $ne: false } }).populate('groups');
+
+    for (const user of users) {
+      if (!user.email) continue;
+      if (user.services && user.services.finance === false) continue;
+      if (user.matometeReminderEnabled === false) continue;
+
+      for (const group of user.groups || []) {
+        const setting = await MatometeSetting.findOne({ group: group._id });
+        const reminderDays = Number.isInteger(setting?.reminderDays) ? setting.reminderDays : 7;
+        if (today.getDate() < reminderDays + 1) continue;
+
+        const status = await MatometeStatus.findOne({
+          user: user._id,
+          group: group._id,
+          month: monthKey
+        });
+
+        if (status?.completed) continue;
+        if (status?.reminderSentAt) continue;
+
+        await sendMail({
+          to: user.email,
+          subject: '【至急】前月のまとめ入力を至急実施してください。',
+          templateName: 'matometeNag',
+          templateData: {
+            displayname: user.displayname || user.username,
+            month: monthKey,
+            groupName: group.group_name || 'グループ未設定',
+            url
+          }
+        });
+
+        await MatometeStatus.findOneAndUpdate(
+          { user: user._id, group: group._id, month: monthKey },
+          { reminderSentAt: new Date() },
+          { upsert: true }
+        );
+      }
+    }
+  } catch (err) {
+    console.error('❌ まとめて入力催促メール送信エラー:', err);
+  }
+}, {
+  timezone: 'Asia/Tokyo'
+});
 
 const enableDriveBackup = process.env.ENABLE_DRIVE_BACKUP === 'true';
 const folderId = '1-V9mDw7x_186mMT2RxWAkxJVFACRfgnT';

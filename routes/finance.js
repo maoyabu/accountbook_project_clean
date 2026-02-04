@@ -13,6 +13,11 @@ const Items = require('../models/finance_items');
 const PaymentItem = require('../models/paymentItems');
 const { correctOcrText } = require('../Utils/gptCorrection');
 const { convertHeicToJpeg } = require('../Utils/imageUtils');
+const cron = require('node-cron');
+const Group = require('../models/groups');
+const FinanceBudgetNotice = require('../models/finance_budget_notice');
+const { sendMail } = require('../Utils/mailer');
+const MatometeSetting = require('../models/matomete_setting');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -1288,6 +1293,161 @@ router.delete('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
 //その他のルート
 
+// 予算到達率メール通知（毎朝8時、前日までの実績で判定）
+cron.schedule('0 8 * * *', async () => {
+  try {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const monthStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(yesterday.getFullYear(), yesterday.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfYesterday = new Date(yesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+    const daysInMonth = monthEnd.getDate();
+    const dayRate = Math.round((yesterday.getDate() / daysInMonth) * 1000) / 10;
+    const monthKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}`;
+    const yearStr = String(yesterday.getFullYear());
+
+    const users = await FinanceUser.find({
+      financeBudgetNoticeEnabled: true,
+      isMail: { $ne: false }
+    }).populate('groups');
+
+    for (const user of users) {
+      if (!user.email) continue;
+      if (user.services && user.services.finance === false) continue;
+
+      const thresholdsBase = Array.isArray(user.financeBudgetNoticeThresholds)
+        ? user.financeBudgetNoticeThresholds
+        : [50, 80, 90];
+      const thresholds = Array.from(new Set(
+        thresholdsBase
+          .map(v => Number(v))
+          .filter(v => Number.isInteger(v) && v >= 0 && v <= 100)
+          .concat([100])
+      ));
+
+      const alertsByGroup = new Map();
+
+      for (const group of user.groups || []) {
+        const groupId = group._id;
+        const budgets = await Budget.find({ group: groupId, year: yearStr }).lean();
+        if (!budgets || budgets.length === 0) continue;
+
+        const totalBudget = budgets.reduce((sum, b) => sum + (Number(b.budget) || 0), 0);
+
+        const expenseAgg = await Finance.aggregate([
+          {
+            $match: {
+              group: groupId,
+              cf: '支出',
+              date: { $gte: monthStart, $lte: endOfYesterday }
+            }
+          },
+          {
+            $group: {
+              _id: '$expense_item',
+              total: { $sum: '$amount' }
+            }
+          }
+        ]);
+        const itemTotals = new Map(expenseAgg.map(r => [r._id || '未分類', Number(r.total) || 0]));
+        const totalActual = Array.from(itemTotals.values()).reduce((sum, v) => sum + v, 0);
+
+        const existingNotices = await FinanceBudgetNotice.find({
+          user: user._id,
+          group: groupId,
+          month: monthKey
+        }).lean();
+        const existingSet = new Set(
+          existingNotices.map(n => `${n.targetType}|${n.targetKey}|${n.threshold}`)
+        );
+
+        const groupAlerts = [];
+
+        if (totalBudget > 0) {
+          const totalRate = Math.round((totalActual / totalBudget) * 1000) / 10;
+          thresholds.forEach(threshold => {
+            const key = `total|TOTAL|${threshold}`;
+            if (totalRate >= threshold && !existingSet.has(key)) {
+              groupAlerts.push({
+                targetLabel: '支出合計',
+                threshold,
+                actualRate: totalRate,
+                budget: totalBudget,
+                actual: totalActual,
+                targetKey: 'TOTAL',
+                targetType: 'total'
+              });
+            }
+          });
+        }
+
+        budgets.forEach((b) => {
+          const budgetValue = Number(b.budget) || 0;
+          if (budgetValue <= 0) return;
+          const itemName = b.expense_item || '未分類';
+          const actualValue = itemTotals.get(itemName) || 0;
+          const itemRate = Math.round((actualValue / budgetValue) * 1000) / 10;
+          thresholds.forEach(threshold => {
+            const key = `item|${itemName}|${threshold}`;
+            if (itemRate >= threshold && !existingSet.has(key)) {
+              groupAlerts.push({
+                targetLabel: itemName,
+                threshold,
+                actualRate: itemRate,
+                budget: budgetValue,
+                actual: actualValue,
+                targetKey: itemName,
+                targetType: 'item'
+              });
+            }
+          });
+        });
+
+        if (groupAlerts.length === 0) continue;
+
+        const groupName = group.group_name || 'グループ未設定';
+        alertsByGroup.set(groupId.toString(), { groupName, alerts: groupAlerts });
+
+        const insertDocs = groupAlerts.map(a => ({
+          user: user._id,
+          group: groupId,
+          month: monthKey,
+          targetType: a.targetType,
+          targetKey: a.targetKey,
+          threshold: a.threshold
+        }));
+        if (insertDocs.length > 0) {
+          try {
+            await FinanceBudgetNotice.insertMany(insertDocs, { ordered: false });
+          } catch (err) {
+            // unique制約の重複は無視
+          }
+        }
+      }
+
+      if (alertsByGroup.size === 0) continue;
+
+      const baseUrl = process.env.NODE_ENV === 'production' ? process.env.BASE_URL : 'http://localhost:3000';
+      await sendMail({
+        to: user.email,
+        subject: `【家計簿】予算の到達状況（${monthKey}）`,
+        templateName: 'budgetNotice',
+        templateData: {
+          name: user.displayname || user.username,
+          month: monthKey,
+          dayRate,
+          groups: Array.from(alertsByGroup.values()),
+          budgetUrl: `${baseUrl}/finance/budget`
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Budget notice cron error:', error);
+  }
+});
+
 
 
 //予算関連ルート
@@ -1295,11 +1455,56 @@ router.delete('/:id', isLoggedIn, catchAsync(async (req, res) => {
 router.get('/budget', isLoggedIn, (req, res) => {
   const activeGroupId = req.session.activeGroupId;
   const selectedYear = new Date().getFullYear(); // 現在の年を初期値に
-  res.render('finance/budgetTop', {
-    activeGroupId,
-    selectedYear,
-    page: 'budget'
+  MatometeSetting.findOne({ group: activeGroupId }).then(setting => {
+    res.render('finance/budgetTop', {
+      activeGroupId,
+      selectedYear,
+      page: 'budget',
+      noticeSettings: {
+        enabled: req.user?.financeBudgetNoticeEnabled !== false,
+        thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
+          ? req.user.financeBudgetNoticeThresholds
+          : [50, 80, 90],
+        matometeReminderDays: Number.isInteger(setting?.reminderDays)
+          ? setting.reminderDays
+          : 7
+      }
+    });
   });
+});
+
+// 予算通知設定の保存
+router.post('/budget/notice-settings', isLoggedIn, async (req, res) => {
+  const enabled = req.body.notice_enabled === 'on';
+  const raw = [req.body.notice_threshold1, req.body.notice_threshold2, req.body.notice_threshold3];
+  const thresholds = raw
+    .map(v => Number(v))
+    .filter(v => Number.isInteger(v) && v >= 0 && v <= 100);
+  const unique = Array.from(new Set(thresholds)).slice(0, 3);
+
+  await FinanceUser.findByIdAndUpdate(req.user._id, {
+    financeBudgetNoticeEnabled: enabled,
+    financeBudgetNoticeThresholds: unique.length > 0 ? unique : [50, 80, 90]
+  });
+
+  req.flash('success', '予算通知の設定を更新しました');
+  res.redirect('/finance/budget');
+});
+
+// まとめて入力 催促メール設定の保存
+router.post('/budget/matomete-settings', isLoggedIn, async (req, res) => {
+  const days = Number(req.body.matomete_reminder_days);
+  const validDays = Number.isInteger(days) && days >= 1 && days <= 31 ? days : 7;
+
+  const groupId = req.session.activeGroupId;
+  await MatometeSetting.findOneAndUpdate(
+    { group: groupId },
+    { reminderDays: validDays },
+    { upsert: true, new: true }
+  );
+
+  req.flash('success', 'まとめて入力の催促設定を更新しました');
+  res.redirect('/finance/budget');
 });
 
 // 年度別の区分候補を取得（新規登録/編集のプルダウン更新用）
@@ -1466,10 +1671,20 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
 
   req.flash('success', '予算を保存しました');
   await logAction({ req, action: '保存', target: '年度予算' });
+  const matometeSetting = await MatometeSetting.findOne({ group: groupId });
   res.render('finance/budgetTop', {
       activeGroupId: groupId,
       selectedYear: year,
-      page: 'budget'
+      page: 'budget',
+      noticeSettings: {
+        enabled: req.user?.financeBudgetNoticeEnabled !== false,
+        thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
+          ? req.user.financeBudgetNoticeThresholds
+          : [50, 80, 90],
+        matometeReminderDays: Number.isInteger(matometeSetting?.reminderDays)
+          ? matometeSetting.reminderDays
+          : 7
+      }
   });
 });
 

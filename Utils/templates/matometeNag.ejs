@@ -1,0 +1,13 @@
+<%- include('_mailHeader') %>
+<div class="email-container">
+  <div class="email-header">
+    <h1>まとめて入力の催促</h1>
+  </div>
+  <p><%= displayname %>さん</p>
+  <p><strong><%= month %></strong> 分のまとめて入力がまだ完了していないようです。</p>
+  <p>対象グループ: <strong><%= groupName %></strong></p>
+  <p>
+    まとめて入力はこちらから: <a href="<%= url %>/matomete/regular-entry/push"><%= url %>/matomete/regular-entry/push</a>
+  </p>
+</div>
+<%- include('_mailFooter') %>

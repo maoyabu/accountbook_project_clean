@@ -126,6 +126,10 @@
           <input type="checkbox" class="form-check-input" id="isMail" name="isMail" value="true" <%= user.isMail ? 'checked' : '' %>>
           <label class="form-check-label" for="isMail">メールでのお知らせを受け取る</label>
         </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="matometeReminderEnabled" name="matometeReminderEnabled" value="true" <%= user.matometeReminderEnabled !== false ? 'checked' : '' %>>
+          <label class="form-check-label" for="matometeReminderEnabled">まとめて入力の催促メールを受け取る</label>
+        </div>
         <hr>
         <div class="mb-3">
           <label class="form-label">【利用するサービス】</label>
