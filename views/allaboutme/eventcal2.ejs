@@ -61,50 +61,53 @@
 
       <div class="diary-section">
         <div class="diary-section-title">My Meal</div>
-        <% if (!mealEntries || mealEntries.length === 0) { %>
+        <% if (!mealGroups || mealGroups.length === 0) { %>
           <div class="diary-empty">この日のMy Mealはありません。</div>
         <% } else { %>
-          <% const mealGroups = { breakfast: [], lunch: [], dinner: [] }; %>
-          <% mealEntries.forEach(entry => { %>
-            <% if (mealGroups[entry.mealType]) { mealGroups[entry.mealType].push(entry); } %>
-          <% }) %>
-
           <% const mealOrder = [
             { key: 'breakfast', label: '朝食' },
             { key: 'lunch', label: '昼食' },
             { key: 'dinner', label: '夕食' }
           ]; %>
 
-          <% mealOrder.forEach(group => { %>
-            <% const items = mealGroups[group.key]; %>
-            <div class="diary-meal-group">
-              <div class="diary-meal-group-title"><%= group.label %></div>
-              <% if (!items || items.length === 0) { %>
-                <div class="diary-empty">この日の<%= group.label %>はありません。</div>
-              <% } else { %>
-                <div class="diary-meal-grid">
-                  <% items.forEach(entry => { %>
-                    <div class="diary-entry diary-meal-card">
-                      <div class="diary-meal-top-tags">
-                        <% if (entry.junle) { %>
-                          <span class="diary-tag diary-tag-genre"><%= entry.junle %></span>
-                        <% } %>
-                        <% if (entry.kind) { %>
-                          <span class="diary-tag diary-tag-kind"><%= entry.kind %></span>
-                        <% } %>
-                      </div>
-                      <div class="diary-meal-row">
-                        <% if (entry.imageUrl) { %>
-                          <img class="diary-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
-                        <% } else { %>
-                          <div class="diary-meal-thumb diary-meal-thumb-empty">画像なし</div>
-                        <% } %>
-                        <div class="diary-meal-name"><%= entry.name || '（メニュー名なし）' %></div>
-                      </div>
+          <% mealGroups.forEach(mealGroup => { %>
+            <% const meals = mealGroup.meals || {}; %>
+            <div class="diary-group">
+              <div class="diary-group-title">
+                <span class="diary-tag diary-tag-group"><%= mealGroup.groupName %></span>
+              </div>
+              <% mealOrder.forEach(group => { %>
+                <% const items = meals[group.key] || []; %>
+                <div class="diary-meal-group">
+                  <div class="diary-meal-group-title"><%= group.label %></div>
+                  <% if (!items || items.length === 0) { %>
+                    <div class="diary-empty">この日の<%= group.label %>はありません。</div>
+                  <% } else { %>
+                    <div class="diary-meal-grid">
+                      <% items.forEach(entry => { %>
+                        <div class="diary-entry diary-meal-card">
+                          <div class="diary-meal-top-tags">
+                            <% if (entry.junle) { %>
+                              <span class="diary-tag diary-tag-genre"><%= entry.junle %></span>
+                            <% } %>
+                            <% if (entry.kind) { %>
+                              <span class="diary-tag diary-tag-kind"><%= entry.kind %></span>
+                            <% } %>
+                          </div>
+                          <div class="diary-meal-row">
+                            <% if (entry.imageUrl) { %>
+                              <img class="diary-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
+                            <% } else { %>
+                              <div class="diary-meal-thumb diary-meal-thumb-empty">画像なし</div>
+                            <% } %>
+                            <div class="diary-meal-name"><%= entry.name || '（メニュー名なし）' %></div>
+                          </div>
+                        </div>
+                      <% }) %>
                     </div>
-                  <% }) %>
+                  <% } %>
                 </div>
-              <% } %>
+              <% }) %>
             </div>
           <% }) %>
         <% } %>

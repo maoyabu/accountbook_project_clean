@@ -69,6 +69,7 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       date: { $gte: start, $lte: end }
     })
       .populate('menu')
+      .populate('group')
       .sort({ mealType: 1, createdAt: 1 });
 
     const events = await Eventcal_events.find({
@@ -123,9 +124,19 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       dinner: '夕飯'
     };
 
-    const mealEntries = menuDoDocs.map((entry) => {
+    const mealGroupsMap = new Map();
+    menuDoDocs.forEach((entry) => {
       const menu = entry.menu || {};
-      return {
+      const groupId = entry.group?._id?.toString() || 'unknown';
+      const groupName = entry.group?.group_name || 'グループ未設定';
+      if (!mealGroupsMap.has(groupId)) {
+        mealGroupsMap.set(groupId, {
+          groupId,
+          groupName,
+          meals: { breakfast: [], lunch: [], dinner: [] }
+        });
+      }
+      const mealEntry = {
         id: entry._id,
         mealType: entry.mealType,
         mealLabel: mealLabelMap[entry.mealType] || entry.mealType,
@@ -134,6 +145,8 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         kind: menu.kind || '',
         imageUrl: menu.imageUrl || ''
       };
+      const bucket = mealGroupsMap.get(groupId).meals[entry.mealType];
+      if (bucket) bucket.push(mealEntry);
     });
 
     return res.render('allaboutme/eventcal2', {
@@ -141,7 +154,7 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       financeGroups: Array.from(financeGroupsMap.values()),
       diaryGroups: Array.from(diaryGroupsMap.values()),
       diaryEntries,
-      mealEntries,
+      mealGroups: Array.from(mealGroupsMap.values()),
       events
     });
   } catch (error) {
