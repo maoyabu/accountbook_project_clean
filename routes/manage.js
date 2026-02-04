@@ -90,7 +90,7 @@ const sendReminders = async () => {
   });
 
 // まとめて入力 催促メール（毎日8時、前月分の未完了をチェック）
-cron.schedule('0 8 * * *', async () => {
+cron.schedule('0 * * * *', async () => {
   try {
     const today = new Date();
     const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -106,6 +106,8 @@ cron.schedule('0 8 * * *', async () => {
       for (const group of user.groups || []) {
         const setting = await MatometeSetting.findOne({ group: group._id });
         const reminderDays = Number.isInteger(setting?.reminderDays) ? setting.reminderDays : 7;
+        const reminderHour = Number.isInteger(setting?.reminderHour) ? setting.reminderHour : 8;
+        if (today.getHours() !== reminderHour) continue;
         if (today.getDate() < reminderDays + 1) continue;
 
         const status = await MatometeStatus.findOne({

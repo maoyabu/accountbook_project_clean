@@ -18,6 +18,7 @@ const Group = require('../models/groups');
 const FinanceBudgetNotice = require('../models/finance_budget_notice');
 const { sendMail } = require('../Utils/mailer');
 const MatometeSetting = require('../models/matomete_setting');
+const FinanceBudgetNoticeSetting = require('../models/finance_budget_notice_setting');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -1293,8 +1294,8 @@ router.delete('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
 //その他のルート
 
-// 予算到達率メール通知（毎朝8時、前日までの実績で判定）
-cron.schedule('0 8 * * *', async () => {
+// 予算到達率メール通知（毎時、前日までの実績で判定）
+cron.schedule('0 * * * *', async () => {
   try {
     const today = new Date();
     const yesterday = new Date(today);
@@ -1331,6 +1332,10 @@ cron.schedule('0 8 * * *', async () => {
 
       for (const group of user.groups || []) {
         const groupId = group._id;
+        const noticeSetting = await FinanceBudgetNoticeSetting.findOne({ group: groupId });
+        const noticeHour = Number.isInteger(noticeSetting?.noticeHour) ? noticeSetting.noticeHour : 8;
+        if (today.getHours() !== noticeHour) continue;
+
         const budgets = await Budget.find({ group: groupId, year: yearStr }).lean();
         if (!budgets || budgets.length === 0) continue;
 
@@ -1365,8 +1370,9 @@ cron.schedule('0 8 * * *', async () => {
 
         const groupAlerts = [];
 
+        let totalRate = 0;
         if (totalBudget > 0) {
-          const totalRate = Math.round((totalActual / totalBudget) * 1000) / 10;
+          totalRate = Math.round((totalActual / totalBudget) * 1000) / 10;
           thresholds.forEach(threshold => {
             const key = `total|TOTAL|${threshold}`;
             if (totalRate >= threshold && !existingSet.has(key)) {
@@ -1389,26 +1395,27 @@ cron.schedule('0 8 * * *', async () => {
           const itemName = b.expense_item || '未分類';
           const actualValue = itemTotals.get(itemName) || 0;
           const itemRate = Math.round((actualValue / budgetValue) * 1000) / 10;
-          thresholds.forEach(threshold => {
-            const key = `item|${itemName}|${threshold}`;
-            if (itemRate >= threshold && !existingSet.has(key)) {
-              groupAlerts.push({
-                targetLabel: itemName,
-                threshold,
-                actualRate: itemRate,
-                budget: budgetValue,
-                actual: actualValue,
-                targetKey: itemName,
-                targetType: 'item'
-              });
-            }
-          });
+          const satisfied = thresholds.filter(t => itemRate >= t);
+          if (satisfied.length === 0) return;
+          const threshold = Math.max(...satisfied);
+          const key = `item|${itemName}|${threshold}`;
+          if (!existingSet.has(key)) {
+            groupAlerts.push({
+              targetLabel: itemName,
+              threshold,
+              actualRate: itemRate,
+              budget: budgetValue,
+              actual: actualValue,
+              targetKey: itemName,
+              targetType: 'item'
+            });
+          }
         });
 
         if (groupAlerts.length === 0) continue;
 
         const groupName = group.group_name || 'グループ未設定';
-        alertsByGroup.set(groupId.toString(), { groupName, alerts: groupAlerts });
+        alertsByGroup.set(groupId.toString(), { groupName, alerts: groupAlerts, totalRate });
 
         const insertDocs = groupAlerts.map(a => ({
           user: user._id,
@@ -1446,6 +1453,8 @@ cron.schedule('0 8 * * *', async () => {
   } catch (error) {
     console.error('Budget notice cron error:', error);
   }
+}, {
+  timezone: 'Asia/Tokyo'
 });
 
 
@@ -1455,7 +1464,10 @@ cron.schedule('0 8 * * *', async () => {
 router.get('/budget', isLoggedIn, (req, res) => {
   const activeGroupId = req.session.activeGroupId;
   const selectedYear = new Date().getFullYear(); // 現在の年を初期値に
-  MatometeSetting.findOne({ group: activeGroupId }).then(setting => {
+  Promise.all([
+    MatometeSetting.findOne({ group: activeGroupId }),
+    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId })
+  ]).then(([matometeSetting, noticeSetting]) => {
     res.render('finance/budgetTop', {
       activeGroupId,
       selectedYear,
@@ -1465,9 +1477,15 @@ router.get('/budget', isLoggedIn, (req, res) => {
         thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
           ? req.user.financeBudgetNoticeThresholds
           : [50, 80, 90],
-        matometeReminderDays: Number.isInteger(setting?.reminderDays)
-          ? setting.reminderDays
-          : 7
+        matometeReminderDays: Number.isInteger(matometeSetting?.reminderDays)
+          ? matometeSetting.reminderDays
+          : 7,
+        matometeReminderHour: Number.isInteger(matometeSetting?.reminderHour)
+          ? matometeSetting.reminderHour
+          : 8,
+        budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
+          ? noticeSetting.noticeHour
+          : 8
       }
     });
   });
@@ -1495,15 +1513,31 @@ router.post('/budget/notice-settings', isLoggedIn, async (req, res) => {
 router.post('/budget/matomete-settings', isLoggedIn, async (req, res) => {
   const days = Number(req.body.matomete_reminder_days);
   const validDays = Number.isInteger(days) && days >= 1 && days <= 31 ? days : 7;
+  const hour = Number(req.body.matomete_reminder_hour);
+  const validHour = Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 8;
 
   const groupId = req.session.activeGroupId;
   await MatometeSetting.findOneAndUpdate(
     { group: groupId },
-    { reminderDays: validDays },
+    { reminderDays: validDays, reminderHour: validHour },
     { upsert: true, new: true }
   );
 
   req.flash('success', 'まとめて入力の催促設定を更新しました');
+  res.redirect('/finance/budget');
+});
+
+// 予算到達メールの送信時間設定
+router.post('/budget/notice-time', isLoggedIn, async (req, res) => {
+  const hour = Number(req.body.budget_notice_hour);
+  const validHour = Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 8;
+  const groupId = req.session.activeGroupId;
+  await FinanceBudgetNoticeSetting.findOneAndUpdate(
+    { group: groupId },
+    { noticeHour: validHour },
+    { upsert: true, new: true }
+  );
+  req.flash('success', '予算到達メールの送信時間を更新しました');
   res.redirect('/finance/budget');
 });
 
@@ -1671,7 +1705,10 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
 
   req.flash('success', '予算を保存しました');
   await logAction({ req, action: '保存', target: '年度予算' });
-  const matometeSetting = await MatometeSetting.findOne({ group: groupId });
+  const [matometeSetting, noticeSetting] = await Promise.all([
+    MatometeSetting.findOne({ group: groupId }),
+    FinanceBudgetNoticeSetting.findOne({ group: groupId })
+  ]);
   res.render('finance/budgetTop', {
       activeGroupId: groupId,
       selectedYear: year,
@@ -1683,7 +1720,13 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
           : [50, 80, 90],
         matometeReminderDays: Number.isInteger(matometeSetting?.reminderDays)
           ? matometeSetting.reminderDays
-          : 7
+          : 7,
+        matometeReminderHour: Number.isInteger(matometeSetting?.reminderHour)
+          ? matometeSetting.reminderHour
+          : 8,
+        budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
+          ? noticeSetting.noticeHour
+          : 8
       }
   });
 });

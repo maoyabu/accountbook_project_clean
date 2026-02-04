@@ -3,7 +3,8 @@ const { Schema } = mongoose;
 
 const matometeSettingSchema = new Schema({
   group: { type: Schema.Types.ObjectId, ref: 'Group', required: true, index: true },
-  reminderDays: { type: Number, default: 7 }
+  reminderDays: { type: Number, default: 7 },
+  reminderHour: { type: Number, default: 8 }
 });
 
 matometeSettingSchema.index({ group: 1 }, { unique: true });

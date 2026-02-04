@@ -75,7 +75,7 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     const events = await Eventcal_events.find({
       user: req.user._id,
       group: groupId
-    }).sort({ entry_date: 1 });
+    }).sort({ display_order: 1, entry_date: 1 });
 
     const financeGroupsMap = new Map();
     financeDocs.forEach((entry) => {
@@ -93,6 +93,25 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         amountFormatted: Number(entry.amount || 0).toLocaleString('ja-JP'),
         payment_type: entry.payment_type || ''
       });
+    });
+
+    const financeOrder = ['収入', '貯蓄', '控除', '支出'];
+    const financeOrderIndex = new Map(financeOrder.map((cf, idx) => [cf, idx]));
+    financeGroupsMap.forEach((group) => {
+      group.entries.sort((a, b) => {
+        const ai = financeOrderIndex.has(a.cf) ? financeOrderIndex.get(a.cf) : financeOrder.length;
+        const bi = financeOrderIndex.has(b.cf) ? financeOrderIndex.get(b.cf) : financeOrder.length;
+        if (ai !== bi) return ai - bi;
+        return 0;
+      });
+    });
+
+    const eventOrderIndex = new Map();
+    events.forEach((ev, idx) => {
+      const key = ev.event || '';
+      if (!eventOrderIndex.has(key)) {
+        eventOrderIndex.set(key, Number.isInteger(ev.display_order) ? ev.display_order : idx + 1);
+      }
     });
 
     const diaryGroupsMap = new Map();
@@ -116,6 +135,15 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       };
       diaryGroupsMap.get(groupId).entries.push(diaryEntry);
       diaryEntries.push(diaryEntry);
+    });
+
+    diaryGroupsMap.forEach((group) => {
+      group.entries.sort((a, b) => {
+        const ai = eventOrderIndex.has(a.event) ? eventOrderIndex.get(a.event) : Number.MAX_SAFE_INTEGER;
+        const bi = eventOrderIndex.has(b.event) ? eventOrderIndex.get(b.event) : Number.MAX_SAFE_INTEGER;
+        if (ai !== bi) return ai - bi;
+        return 0;
+      });
     });
 
     const mealLabelMap = {

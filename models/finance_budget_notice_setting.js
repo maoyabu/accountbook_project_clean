@@ -1,0 +1,11 @@
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
+
+const financeBudgetNoticeSettingSchema = new Schema({
+  group: { type: Schema.Types.ObjectId, ref: 'Group', required: true, index: true },
+  noticeHour: { type: Number, default: 8 }
+});
+
+financeBudgetNoticeSettingSchema.index({ group: 1 }, { unique: true });
+
+module.exports = mongoose.model('FinanceBudgetNoticeSetting', financeBudgetNoticeSettingSchema);

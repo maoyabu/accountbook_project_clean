@@ -5,10 +5,10 @@
   </div>
   <p><%= name %> さん</p>
   <p><strong><%= month %></strong> の予算に対する到達状況をお知らせします。</p>
-  <p>月の日数到達率: <strong><%= dayRate %>%</strong></p>
   <% groups.forEach(group => { %>
     <hr>
     <h3><%= group.groupName %></h3>
+    <p>支出予算の到達率: <strong><%= group.totalRate %>%</strong> / 月の日数到達率: <strong><%= dayRate %>%</strong></p>
     <ul>
       <% group.alerts.forEach(alert => { %>
         <li>
