@@ -71,6 +71,16 @@ const userSchema = new Schema({
         assets: { type: Boolean, default: true },
         message: { type: Boolean, default: true }
     },
+    servicesByGroup: {
+        type: Map,
+        of: new Schema({
+            allaboutme: { type: Boolean },
+            finance: { type: Boolean },
+            assets: { type: Boolean },
+            message: { type: Boolean }
+        }, { _id: false }),
+        default: {}
+    },
     financeBudgetNoticeEnabled: {
         type: Boolean,
         default: true

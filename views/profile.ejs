@@ -136,19 +136,46 @@
         </div>
         <hr>
         <div class="mb-3">
-          <label class="form-label">【利用するサービス】</label>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="service_allaboutme" name="services_allaboutme" value="true" <%= user.services?.allaboutme ? 'checked' : '' %>>            <label class="form-check-label" for="service_allaboutme">All About me</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="service_finance" name="services_finance" value="true" <%= user.services?.finance ? 'checked' : '' %>>            <label class="form-check-label" for="service_finance">家計簿 / Dashboard</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="service_assets" name="services_assets" value="true" <%= user.services?.assets ? 'checked' : '' %>>            <label class="form-check-label" for="service_assets">資産管理</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="service_message" name="services_message" value="true" <%= user.services?.message ? 'checked' : '' %>>            <label class="form-check-label" for="service_message">Message</label>
-          </div>
+          <label class="form-label">【グループ別 利用サービス】</label>
+          <% const serviceRows = [
+            { key: 'allaboutme', label: 'All About me' },
+            { key: 'finance', label: '家計簿 / Dashboard' },
+            { key: 'assets', label: '資産管理' },
+            { key: 'message', label: 'Message' }
+          ]; %>
+          <% const groupServices = user.servicesByGroup || {}; %>
+          <% const groupServiceEnabled = (gid, key) => { %>
+          <%   let groupEntry = null; %>
+          <%   if (groupServices) { %>
+          <%     if (typeof groupServices.get === 'function') { %>
+          <%       groupEntry = groupServices.get(gid.toString()); %>
+          <%     } else { %>
+          <%       groupEntry = groupServices[gid.toString()]; %>
+          <%     } %>
+          <%   } %>
+          <%   if (groupEntry && typeof groupEntry[key] === 'boolean') return groupEntry[key]; %>
+          <%   return true; %>
+          <% }; %>
+
+          <% if (user.groups && user.groups.length > 0) { %>
+            <div class="service-group-grid">
+              <% serviceRows.forEach(row => { %>
+                <div class="service-group-row">
+                  <div class="service-group-title"><%= row.label %></div>
+                  <div class="service-group-options">
+                    <% user.groups.forEach(g => { %>
+                      <label class="form-check service-group-check">
+                        <input class="form-check-input" type="checkbox" name="services_by_group[<%= g._id %>][<%= row.key %>]" value="true" <%= groupServiceEnabled(g._id, row.key) ? 'checked' : '' %>>
+                        <span class="form-check-label"><%= g.group_name %></span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="text-muted">所属グループがありません。</div>
+          <% } %>
         </div>
         <hr>
         <button type="submit" class="c-button">ユーザー情報を更新する</button>

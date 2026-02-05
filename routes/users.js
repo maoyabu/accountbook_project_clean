@@ -467,13 +467,20 @@ router.put('/profile/:id', isLoggedIn, (req, res, next) => {
           ? inactivityDays
           : 3;
 
-        // 利用サービスの設定を保存
-        user.services = {
-          allaboutme: req.body.services_allaboutme === 'true',
-          finance: req.body.services_finance === 'true',
-          assets: req.body.services_assets === 'true',
-          message: req.body.services_message === 'true'
-        };
+        // 利用サービスの設定を保存（グループ別）
+        const rawGroupServices = req.body.services_by_group || {};
+        const servicesByGroup = {};
+        (user.groups || []).forEach((gid) => {
+          const key = gid.toString();
+          const entry = rawGroupServices[key] || {};
+          servicesByGroup[key] = {
+            allaboutme: entry.allaboutme === 'true' || entry.allaboutme === 'on',
+            finance: entry.finance === 'true' || entry.finance === 'on',
+            assets: entry.assets === 'true' || entry.assets === 'on',
+            message: entry.message === 'true' || entry.message === 'on'
+          };
+        });
+        user.servicesByGroup = servicesByGroup;
 
         if (req.file) {
           user.avatar = req.file.path;

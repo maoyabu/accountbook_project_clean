@@ -19,6 +19,8 @@ const FinanceBudgetNotice = require('../models/finance_budget_notice');
 const { sendMail } = require('../Utils/mailer');
 const MatometeSetting = require('../models/matomete_setting');
 const FinanceBudgetNoticeSetting = require('../models/finance_budget_notice_setting');
+const FinanceCloseStatus = require('../models/finance_close_status');
+const FinanceCloseGroup = require('../models/finance_close_group');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -48,6 +50,26 @@ const pathLib = require('path');
 
 const { isLoggedIn, logAction } = require('../middleware');
 const getListRedirect = (req) => req.session?.financeListReturn || '/finance/list';
+const getPreviousMonthMeta = (baseDate = new Date()) => {
+  const target = new Date(baseDate.getFullYear(), baseDate.getMonth() - 1, 1);
+  const monthKey = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = `${target.getFullYear()}年${target.getMonth() + 1}月度`;
+  const start = new Date(target.getFullYear(), target.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(target.getFullYear(), target.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { monthKey, monthLabel, start, end, year: String(target.getFullYear()) };
+};
+const isGroupServiceEnabled = (user, groupId, serviceKey) => {
+  if (!user) return false;
+  const gid = groupId ? groupId.toString() : null;
+  if (gid && user.servicesByGroup) {
+    const map = user.servicesByGroup;
+    const groupServices = typeof map.get === 'function' ? map.get(gid) : map[gid];
+    if (groupServices && typeof groupServices[serviceKey] === 'boolean') {
+      return groupServices[serviceKey];
+    }
+  }
+  return true;
+};
 
 //selectedの選択肢をここで定義
 const la_cfs = ['Please Choice','支出','収入','控除','貯蓄'];
@@ -131,6 +153,53 @@ router.get('/top', isLoggedIn, async (req, res) => {
       .limit(5)
       .populate('user');
 
+    const { monthKey: closeMonthKey, monthLabel: closeMonthLabel } = getPreviousMonthMeta(today);
+    const closeGroup = await Group.findById(objectId).populate('members').populate('createdBy');
+    const closeNormalizeId = (value) => {
+      if (!value) return null;
+      if (typeof value === 'string') return value;
+      if (value._id) return value._id.toString();
+      return null;
+    };
+    const closeMemberMap = new Map();
+    (closeGroup?.members || []).forEach((member) => {
+      if (!isGroupServiceEnabled(member, objectId, 'finance')) return;
+      const id = closeNormalizeId(member);
+      if (!id) return;
+      closeMemberMap.set(id, {
+        id,
+        name: member.displayname || member.username || '未設定'
+      });
+    });
+    if (isGroupServiceEnabled(closeGroup?.createdBy, objectId, 'finance')) {
+      const id = closeNormalizeId(closeGroup.createdBy);
+      if (id && !closeMemberMap.has(id)) {
+        closeMemberMap.set(id, {
+          id,
+          name: closeGroup.createdBy.displayname || closeGroup.createdBy.username || '未設定'
+        });
+      }
+    }
+    const closeMemberIds = Array.from(closeMemberMap.keys())
+      .filter(id => mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+    const closeStatuses = closeMemberIds.length > 0
+      ? await FinanceCloseStatus.find({
+        group: objectId,
+        month: closeMonthKey,
+        user: { $in: closeMemberIds }
+      }).lean()
+      : [];
+    const closeStatusMap = new Map(
+      closeStatuses.map(s => [s.user.toString(), s.completed === true])
+    );
+    const closeMembers = Array.from(closeMemberMap.values()).map(m => ({
+      id: m.id,
+      name: m.name,
+      completed: closeStatusMap.get(m.id) === true,
+      isSelf: req.user && m.id === req.user._id.toString()
+    }));
+
     const AssetInventory = require('../models/assetInventory');
     const latestInventory = await AssetInventory.findOne({ group: objectId }).sort({ inventoryMonth: -1 });
     let totalYen = 0;
@@ -159,6 +228,10 @@ router.get('/top', isLoggedIn, async (req, res) => {
         totalRate,
         dayRate,
         items: budgetItems
+      },
+      closeStatus: {
+        monthLabel: closeMonthLabel,
+        members: closeMembers
       },
       recentFinances,
       totalYen,
@@ -1362,7 +1435,6 @@ cron.schedule('0 * * * *', async () => {
 
     for (const user of users) {
       if (!user.email) continue;
-      if (user.services && user.services.finance === false) continue;
 
       const thresholdsBase = Array.isArray(user.financeBudgetNoticeThresholds)
         ? user.financeBudgetNoticeThresholds
@@ -1378,6 +1450,7 @@ cron.schedule('0 * * * *', async () => {
 
       for (const group of user.groups || []) {
         const groupId = group._id;
+        if (!isGroupServiceEnabled(user, groupId, 'finance')) continue;
         const noticeSetting = await FinanceBudgetNoticeSetting.findOne({ group: groupId });
         const noticeHour = Number.isInteger(noticeSetting?.noticeHour) ? noticeSetting.noticeHour : 8;
         if (today.getHours() !== noticeHour) continue;
@@ -1505,6 +1578,218 @@ cron.schedule('0 * * * *', async () => {
   timezone: 'Asia/Tokyo'
 });
 
+
+// 前月の締め完了（ユーザーがボタンで完了）
+router.post('/month-close/complete', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/finance/top');
+    }
+
+    const now = new Date();
+    const { monthKey, monthLabel, start, end, year } = getPreviousMonthMeta(now);
+
+    await FinanceCloseStatus.findOneAndUpdate(
+      { user: req.user._id, group: groupId, month: monthKey },
+      { completed: true, completedAt: now },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const group = await Group.findById(groupId).populate('members').populate('createdBy');
+    if (!group) {
+      req.flash('error', 'グループ情報が見つかりませんでした');
+      return res.redirect(req.body.redirectTo || '/finance/top');
+    }
+
+    const normalizeId = (value) => {
+      if (!value) return null;
+      if (typeof value === 'string') return value;
+      if (value._id) return value._id.toString();
+      return null;
+    };
+    const memberIds = new Set(
+      (group.members || [])
+        .filter(m => isGroupServiceEnabled(m, groupId, 'finance'))
+        .map(m => normalizeId(m))
+        .filter(Boolean)
+    );
+    if (isGroupServiceEnabled(group.createdBy, groupId, 'finance')) {
+      const createdById = normalizeId(group.createdBy);
+      if (createdById) {
+        memberIds.add(createdById);
+      }
+    }
+    const memberIdList = Array.from(memberIds)
+      .filter(id => mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+
+    const completedCount = await FinanceCloseStatus.countDocuments({
+      group: groupId,
+      month: monthKey,
+      completed: true,
+      user: { $in: memberIdList }
+    });
+
+    if (completedCount === memberIdList.length && memberIdList.length > 0) {
+      const existingClose = await FinanceCloseGroup.findOne({ group: groupId, month: monthKey });
+      let shouldNotify = false;
+      if (!existingClose || !existingClose.closed) {
+        await FinanceCloseGroup.findOneAndUpdate(
+          { group: groupId, month: monthKey },
+          { closed: true, closedAt: now },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        shouldNotify = true;
+      } else if (!existingClose.notifiedAt) {
+        shouldNotify = true;
+      }
+
+      if (shouldNotify) {
+        const objectId = typeof groupId === 'string'
+          ? new mongoose.Types.ObjectId(groupId)
+          : groupId;
+
+        const totalsAgg = await Finance.aggregate([
+          {
+            $match: {
+              group: objectId,
+              date: { $gte: start, $lte: end }
+            }
+          },
+          {
+            $group: {
+              _id: '$cf',
+              total: { $sum: '$amount' }
+            }
+          }
+        ]);
+        const totalsMap = new Map(totalsAgg.map(r => [r._id, Number(r.total) || 0]));
+        const totals = {
+          income: totalsMap.get('収入') || 0,
+          deduction: totalsMap.get('控除') || 0,
+          expense: totalsMap.get('支出') || 0,
+          saving: totalsMap.get('貯蓄') || 0
+        };
+        totals.balance = totals.income - totals.expense - totals.saving - totals.deduction;
+
+        const budgets = await Budget.find({ group: objectId, year }).lean();
+        const expenseAgg = await Finance.aggregate([
+          {
+            $match: {
+              group: objectId,
+              cf: '支出',
+              date: { $gte: start, $lte: end }
+            }
+          },
+          {
+            $group: {
+              _id: '$expense_item',
+              total: { $sum: '$amount' }
+            }
+          }
+        ]);
+        const actualMap = new Map(expenseAgg.map(r => [r._id || '未分類', Number(r.total) || 0]));
+
+        const overItems = budgets
+          .map((b) => {
+            const budgetValue = Number(b.budget) || 0;
+            if (budgetValue <= 0) return null;
+            const name = b.expense_item || '未分類';
+            const actual = actualMap.get(name) || 0;
+            if (actual <= budgetValue) return null;
+            const overAmount = actual - budgetValue;
+            const overRate = Math.round((actual / budgetValue) * 1000) / 10;
+            return {
+              name,
+              budget: budgetValue,
+              actual,
+              overAmount,
+              overRate
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => b.overAmount - a.overAmount);
+
+        const recipientSet = new Set();
+        (group.members || []).forEach((m) => {
+          if (m && m.email && m.isMail !== false && isGroupServiceEnabled(m, groupId, 'finance')) {
+            recipientSet.add(m.email);
+          }
+        });
+        if (group.createdBy && group.createdBy.email && group.createdBy.isMail !== false) {
+          if (isGroupServiceEnabled(group.createdBy, groupId, 'finance')) {
+            recipientSet.add(group.createdBy.email);
+          }
+        }
+        const recipients = Array.from(recipientSet);
+        if (recipients.length > 0) {
+          const baseUrl = process.env.NODE_ENV === 'production'
+            ? process.env.BASE_URL
+            : 'http://localhost:3000';
+          const dashboardUrl = `${baseUrl}/export/dashboard/monthly-g?ym=${monthKey}`;
+          await sendMail({
+            to: recipients,
+            subject: `【家計簿】${monthKey} 月度の家計簿登録完了`,
+            templateName: 'financeCloseNotice',
+            templateData: {
+              name: req.user.displayname || req.user.username,
+              month: monthLabel,
+              groupName: group.group_name || 'グループ未設定',
+              totals,
+              overItems,
+              dashboardUrl
+            }
+          });
+          await FinanceCloseGroup.findOneAndUpdate(
+            { group: groupId, month: monthKey },
+            { notifiedAt: new Date() }
+          );
+        }
+      }
+    }
+
+    req.flash('success', `${monthLabel}の入力完了を登録しました`);
+    res.redirect(req.body.redirectTo || req.headers.referer || '/finance/top');
+  } catch (err) {
+    console.error('月度入力完了エラー:', err);
+    req.flash('error', '入力完了の登録に失敗しました');
+    res.redirect(req.body.redirectTo || req.headers.referer || '/finance/top');
+  }
+});
+
+// 前月の締めを未完了に戻す（本人のみ）
+router.post('/month-close/undo', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/finance/top');
+    }
+    const now = new Date();
+    const { monthKey, monthLabel } = getPreviousMonthMeta(now);
+
+    await FinanceCloseStatus.findOneAndUpdate(
+      { user: req.user._id, group: groupId, month: monthKey },
+      { completed: false, completedAt: null },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await FinanceCloseGroup.findOneAndUpdate(
+      { group: groupId, month: monthKey },
+      { closed: false },
+      { new: true }
+    );
+
+    req.flash('success', `${monthLabel}の入力完了を未完了に戻しました`);
+    res.redirect(req.body.redirectTo || req.headers.referer || '/finance/top');
+  } catch (err) {
+    console.error('月度入力完了の取り消しエラー:', err);
+    req.flash('error', '未完了への戻しに失敗しました');
+    res.redirect(req.body.redirectTo || req.headers.referer || '/finance/top');
+  }
+});
 
 
 //予算関連ルート

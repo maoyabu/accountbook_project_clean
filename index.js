@@ -66,6 +66,7 @@ const flash = require('express-flash');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const FinanceUser = require('./models/users');
+const FinanceCloseStatus = require('./models/finance_close_status');
 
 const googlePhotosRouter = require('./routes/googlePhotos');
 const ocrRoutes = require('./routes/ocr');
@@ -218,6 +219,40 @@ app.use(flash());
 // ✅ setActiveGroup を先に適用（req.user を populate する）
 app.use(setActiveGroup);
 
+// Finance 月度入力完了ボタンの表示制御
+app.use(async (req, res, next) => {
+  res.locals.financeClose = { show: false };
+  try {
+    if (!req.user || !req.session?.activeGroupId) return next();
+    const activeService = req.session?.activeService || 'finance';
+    if (activeService !== 'finance') return next();
+    const path = req.path || '';
+    if (!path.startsWith('/finance') && !path.startsWith('/matomete') && !path.startsWith('/export')) {
+      return next();
+    }
+
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthKey = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = `${target.getFullYear()}年${target.getMonth() + 1}月度`;
+
+    const status = await FinanceCloseStatus.findOne({
+      user: req.user._id,
+      group: req.session.activeGroupId,
+      month: monthKey
+    }).lean();
+
+    res.locals.financeClose = {
+      show: !(status?.completed),
+      monthKey,
+      monthLabel
+    };
+  } catch (err) {
+    console.error('Finance close locals error:', err);
+  }
+  next();
+});
+
 // Alive自動確認（対象サービス利用時）
 app.use(async (req, res, next) => {
   try {
@@ -284,19 +319,20 @@ app.use((req, res, next) => {
     res.locals.userGroups = (req.user && Array.isArray(req.user.groups)) ? req.user.groups : [];
 
     // 🔽 利用可能サービス（ナビメニュー出し分け用）
-    if (req.user && req.user.services) {
-        res.locals.services = Object.assign(
-          { allaboutme: true, finance: true, assets: true, message: true },
-          req.user.services
-        );
-    } else {
-        res.locals.services = {
-            allaboutme: true,
-            finance: true,
-            assets: true,
-            message: true
-        };
+    const baseServices = { allaboutme: true, finance: true, assets: true, message: true };
+    if (req.user && req.session?.activeGroupId && req.user.servicesByGroup) {
+        const gid = req.session.activeGroupId.toString();
+        const map = req.user.servicesByGroup;
+        const groupServices = typeof map.get === 'function' ? map.get(gid) : map[gid];
+        if (groupServices) {
+            ['allaboutme', 'finance', 'assets', 'message'].forEach((key) => {
+                if (typeof groupServices[key] === 'boolean') {
+                    baseServices[key] = groupServices[key];
+                }
+            });
+        }
     }
+    res.locals.services = baseServices;
 
     next();
 });

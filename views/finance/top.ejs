@@ -113,6 +113,30 @@
           <% } else { %>
             <div class="text-muted">直近の入力はありません。</div>
           <% } %>
+
+          <div class="finance-close-status mt-3">
+            <div class="fw-bold mb-2"><%= closeStatus?.monthLabel %>の入力完了状況（前月分）</div>
+            <% if (closeStatus?.members && closeStatus.members.length > 0) { %>
+              <div class="finance-close-tags">
+                <% closeStatus.members.forEach(member => { %>
+                  <% if (member.completed && member.isSelf) { %>
+                    <form action="/finance/month-close/undo" method="POST" class="d-inline" onsubmit="return confirm('未完了に戻しますか？');">
+                      <input type="hidden" name="redirectTo" value="/finance/top">
+                      <button type="submit" class="finance-close-tag is-done is-clickable" title="クリックで未完了に戻す">
+                        <%= member.name %> 完了
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <span class="finance-close-tag <%= member.completed ? 'is-done' : 'is-pending' %>">
+                      <%= member.name %> <%= member.completed ? '完了' : '未完了' %>
+                    </span>
+                  <% } %>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <div class="text-muted">対象メンバーがいません。</div>
+            <% } %>
+          </div>
         </div>
         <div class="finance-action-group">
           <a class="btn btn-sm finance-btn-rounded finance-action-btn" href="/finance/entry">

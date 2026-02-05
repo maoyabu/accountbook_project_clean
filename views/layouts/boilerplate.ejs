@@ -46,6 +46,23 @@
         </span>
       </a>
     <% } %>
+    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && financeClose?.show) { %>
+      <form
+        action="/finance/month-close/complete"
+        method="POST"
+        class="finance-close-fab"
+        id="finance-close-fab"
+        onsubmit="return confirm('本当に完了しましたか？');"
+      >
+        <input type="hidden" name="redirectTo" value="<%= currentPath || '/finance/top' %>">
+        <button type="submit" class="finance-close-button" title="<%= financeClose.monthLabel %>の入力完了">
+          <span class="finance-close-handle" aria-hidden="true">
+            <i class="fa-solid fa-up-down-left-right"></i>
+          </span>
+          <span class="finance-close-label"><%= financeClose.monthLabel %>の入力完了</span>
+        </button>
+      </form>
+    <% } %>
     <%- include('../partials/footer') %>
     <!-- Bootstrap 5.1 Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>

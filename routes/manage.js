@@ -11,6 +11,19 @@ const MatometeStatus = require('../models/matomete_status');
 const Group = require('../models/groups');
 const MatometeSetting = require('../models/matomete_setting');
 
+const isGroupServiceEnabled = (user, groupId, serviceKey) => {
+  if (!user) return false;
+  const gid = groupId ? groupId.toString() : null;
+  if (gid && user.servicesByGroup) {
+    const map = user.servicesByGroup;
+    const groupServices = typeof map.get === 'function' ? map.get(gid) : map[gid];
+    if (groupServices && typeof groupServices[serviceKey] === 'boolean') {
+      return groupServices[serviceKey];
+    }
+  }
+  return true;
+};
+
 //　メール送信者の定義
 const url = process.env.BASE_URL;
 
@@ -100,10 +113,10 @@ cron.schedule('0 * * * *', async () => {
 
     for (const user of users) {
       if (!user.email) continue;
-      if (user.services && user.services.finance === false) continue;
       if (user.matometeReminderEnabled === false) continue;
 
       for (const group of user.groups || []) {
+        if (!isGroupServiceEnabled(user, group._id, 'finance')) continue;
         const setting = await MatometeSetting.findOne({ group: group._id });
         const reminderDays = Number.isInteger(setting?.reminderDays) ? setting.reminderDays : 7;
         const reminderHour = Number.isInteger(setting?.reminderHour) ? setting.reminderHour : 8;

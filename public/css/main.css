@@ -306,6 +306,63 @@ main {
     }
 }
 
+/* Finance month close button */
+.finance-close-fab {
+    position: fixed;
+    right: 20px;
+    bottom: 120px;
+    z-index: 1055;
+    user-select: none;
+    touch-action: none;
+}
+.finance-close-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px 10px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(217, 48, 37, 0.35);
+    background: #fff4f3;
+    color: #b3261e;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 8px 18px rgba(217, 48, 37, 0.16), 0 2px 6px rgba(0, 0, 0, 0.1);
+    cursor: grab;
+}
+.finance-close-button:hover {
+    background: #ffe7e5;
+    color: #8c1d16;
+}
+.finance-close-button:active {
+    cursor: grabbing;
+    transform: scale(0.99);
+}
+.finance-close-handle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #d93025;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    box-shadow: 0 2px 4px rgba(217, 48, 37, 0.3);
+}
+.finance-close-label {
+    white-space: nowrap;
+}
+@media (max-width: 576px) {
+    .finance-close-fab {
+        right: 16px;
+        bottom: 100px;
+    }
+    .finance-close-button {
+        font-size: 0.8rem;
+        padding: 8px 12px;
+    }
+}
+
 /* 初期状態では非表示 */
 #income_group, #expense_group, #deduction_group {
     display: none;
@@ -2613,6 +2670,84 @@ padding-left: 10px;
   border-radius: 16px;
   padding: 14px 16px;
   border: 1px solid #edf1f6;
+}
+.finance-close-status {
+  border-top: 1px dashed #d9e2f1;
+  padding-top: 12px;
+}
+.finance-close-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.finance-close-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid #d6dde9;
+  background: #f5f7fb;
+  color: #41506a;
+}
+.finance-close-tag.is-done {
+  border-color: rgba(20, 112, 67, 0.35);
+  background: #eaf6ef;
+  color: #0f6b3f;
+}
+.finance-close-tag.is-pending {
+  border-color: rgba(217, 48, 37, 0.25);
+  background: #fff4f3;
+  color: #b3261e;
+}
+.finance-close-tag.is-clickable {
+  cursor: pointer;
+  border: 1px solid rgba(20, 112, 67, 0.45);
+  background: #eaf6ef;
+}
+.finance-close-tag.is-clickable:hover {
+  filter: brightness(0.98);
+}
+.finance-close-tag.is-clickable:active {
+  transform: scale(0.98);
+}
+.finance-close-tag.is-clickable:focus-visible {
+  outline: 2px solid rgba(20, 112, 67, 0.35);
+  outline-offset: 2px;
+}
+
+.service-group-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.service-group-row {
+  border: 1px solid #eef1f6;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fafbff;
+}
+.service-group-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #374151;
+}
+.service-group-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.service-group-check {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e4e9f2;
 }
 
 .finance-tone-card {

@@ -36,6 +36,144 @@
     }
 })();
 
+// --- Finance month close button (draggable + persisted) ---
+(function () {
+    const closeFab = document.getElementById("finance-close-fab");
+    if (!closeFab) return;
+
+    const storageKey = "financeCloseFabPos";
+    const dragThreshold = 4;
+
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+    const applyPosition = (x, y) => {
+        const rect = closeFab.getBoundingClientRect();
+        const maxX = window.innerWidth - rect.width - 8;
+        const maxY = window.innerHeight - rect.height - 8;
+        const clampedX = clamp(x, 8, Math.max(8, maxX));
+        const clampedY = clamp(y, 8, Math.max(8, maxY));
+        closeFab.style.left = `${clampedX}px`;
+        closeFab.style.top = `${clampedY}px`;
+        closeFab.style.right = "auto";
+        closeFab.style.bottom = "auto";
+        return { x: clampedX, y: clampedY };
+    };
+
+    const loadPosition = () => {
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
+                applyPosition(parsed.x, parsed.y);
+            }
+        } catch (_) {
+            // ignore
+        }
+    };
+
+    const savePosition = (pos) => {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(pos));
+        } catch (_) {
+            // ignore
+        }
+    };
+
+    loadPosition();
+
+    let startX = 0;
+    let startY = 0;
+    let originX = 0;
+    let originY = 0;
+    let moved = false;
+    let dragging = false;
+
+    const beginDrag = (clientX, clientY) => {
+        const rect = closeFab.getBoundingClientRect();
+        startX = clientX;
+        startY = clientY;
+        originX = rect.left;
+        originY = rect.top;
+        moved = false;
+        dragging = true;
+    };
+
+    const moveDrag = (clientX, clientY, event) => {
+        if (!dragging) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        if (!moved && Math.hypot(dx, dy) > dragThreshold) {
+            moved = true;
+        }
+        if (moved) {
+            const pos = applyPosition(originX + dx, originY + dy);
+            savePosition(pos);
+            if (event) event.preventDefault();
+        }
+    };
+
+    const endDrag = () => {
+        dragging = false;
+    };
+
+    closeFab.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 && event.pointerType === "mouse") return;
+        beginDrag(event.clientX, event.clientY);
+    });
+
+    window.addEventListener("pointermove", (event) => {
+        moveDrag(event.clientX, event.clientY, event);
+    });
+
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+
+    closeFab.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) return;
+        beginDrag(event.clientX, event.clientY);
+    });
+
+    window.addEventListener("mousemove", (event) => {
+        moveDrag(event.clientX, event.clientY, event);
+    });
+
+    window.addEventListener("mouseup", endDrag);
+
+    closeFab.addEventListener("touchstart", (event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        beginDrag(touch.clientX, touch.clientY);
+    }, { passive: true });
+
+    window.addEventListener("touchmove", (event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        moveDrag(touch.clientX, touch.clientY, event);
+    }, { passive: false });
+
+    window.addEventListener("touchend", endDrag);
+    window.addEventListener("touchcancel", endDrag);
+
+    closeFab.addEventListener("dragstart", (event) => {
+        event.preventDefault();
+    });
+
+    closeFab.addEventListener("click", (event) => {
+        if (moved) {
+            event.preventDefault();
+        }
+    });
+
+    window.addEventListener("resize", () => {
+        const rect = closeFab.getBoundingClientRect();
+        if (closeFab.style.left && closeFab.style.top) {
+            const pos = applyPosition(rect.left, rect.top);
+            savePosition(pos);
+        }
+    });
+})();
+
 
 // --- 年・日付入力制御 ---
 const yearInput = document.getElementById("year");
