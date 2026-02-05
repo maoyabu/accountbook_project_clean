@@ -2368,6 +2368,26 @@ padding-left: 10px;
   color: #556377;
 }
 
+.diary-tag-cf.is-income {
+  background: #e7f6ee;
+  color: #1f7a4a;
+}
+
+.diary-tag-cf.is-saving {
+  background: #e7f1ff;
+  color: #2a5fa8;
+}
+
+.diary-tag-cf.is-deduction {
+  background: #fff2e3;
+  color: #a35a00;
+}
+
+.diary-tag-cf.is-expense {
+  background: #ffe9e9;
+  color: #b3261e;
+}
+
 .diary-entry-body {
   display: block;
   text-align: left !important;

@@ -42,7 +42,16 @@
                 <% group.entries.forEach(entry => { %>
                   <div class="diary-entry">
                     <div class="diary-tags">
-                      <span class="diary-tag diary-tag-cf"><%= entry.cf %></span>
+                      <% const cfClass = entry.cf === '収入'
+                        ? 'is-income'
+                        : entry.cf === '貯蓄'
+                          ? 'is-saving'
+                          : entry.cf === '控除'
+                            ? 'is-deduction'
+                            : entry.cf === '支出'
+                              ? 'is-expense'
+                              : ''; %>
+                      <span class="diary-tag diary-tag-cf <%= cfClass %>"><%= entry.cf %></span>
                       <% if (entry.category) { %>
                         <span class="diary-tag diary-tag-category"><%= entry.category %></span>
                       <% } %>
