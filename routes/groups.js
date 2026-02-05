@@ -335,8 +335,14 @@ router.post('/service-settings/:id', isLoggedIn, async (req, res) => {
         assets: entry.assets === 'true' || entry.assets === 'on',
         message: entry.message === 'true' || entry.message === 'on'
       };
-      currentMap[group._id.toString()] = groupEntry;
-      user.servicesByGroup = currentMap;
+      const gid = group._id.toString();
+      if (typeof currentMap.set === 'function') {
+        currentMap.set(gid, groupEntry);
+        user.servicesByGroup = currentMap;
+      } else {
+        currentMap[gid] = groupEntry;
+        user.servicesByGroup = currentMap;
+      }
       await user.save();
     }
 
