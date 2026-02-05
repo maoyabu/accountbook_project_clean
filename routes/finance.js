@@ -80,6 +80,46 @@ router.get('/top', isLoggedIn, async (req, res) => {
       ? new mongoose.Types.ObjectId(activeGroupId)
       : activeGroupId;
 
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    const daysInMonth = monthEnd.getDate();
+    const dayRate = Math.round((today.getDate() / daysInMonth) * 1000) / 10;
+    const yearStr = String(today.getFullYear());
+
+    const budgets = await Budget.find({ group: objectId, year: yearStr }).sort({ display_order: 1 }).lean();
+    const budgetMap = new Map(budgets.map(b => [b.expense_item || '未分類', Number(b.budget) || 0]));
+    const totalBudget = Array.from(budgetMap.values()).reduce((sum, v) => sum + v, 0);
+
+    const expenseAgg = await Finance.aggregate([
+      {
+        $match: {
+          group: objectId,
+          user: req.user._id,
+          cf: '支出',
+          date: { $gte: monthStart, $lte: monthEnd }
+        }
+      },
+      { $group: { _id: '$expense_item', total: { $sum: '$amount' } } }
+    ]);
+    const actualMap = new Map(expenseAgg.map(r => [r._id || '未分類', Number(r.total) || 0]));
+    const totalActual = Array.from(actualMap.values()).reduce((sum, v) => sum + v, 0);
+    const totalRate = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 1000) / 10 : 0;
+
+    const budgetItems = budgets.map(b => {
+      const name = b.expense_item || '未分類';
+      const budget = Number(b.budget) || 0;
+      const actual = actualMap.get(name) || 0;
+      const rate = budget > 0 ? Math.round((actual / budget) * 1000) / 10 : 0;
+      return {
+        name,
+        budget,
+        actual,
+        rate,
+        over: rate > dayRate
+      };
+    });
+
     const recentFinances = await Finance.find({
       group: objectId,
       user: req.user._id
@@ -110,6 +150,13 @@ router.get('/top', isLoggedIn, async (req, res) => {
     }
 
     res.render('finance/top', {
+      budgetSummary: {
+        totalBudget,
+        totalActual,
+        totalRate,
+        dayRate,
+        items: budgetItems
+      },
       recentFinances,
       totalYen,
       totalByCf,

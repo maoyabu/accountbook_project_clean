@@ -2471,6 +2471,97 @@ padding-left: 10px;
   font-size: 0.95rem;
 }
 
+.budget-summary-card {
+  background: #f7f9fc;
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1px solid #edf1f6;
+}
+
+.budget-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.budget-summary-title {
+  font-weight: 600;
+  color: #2c3e57;
+  font-size: 0.95rem;
+}
+
+.budget-summary-rate {
+  font-weight: 700;
+  color: #2c3e57;
+  font-size: 0.95rem;
+}
+
+.budget-summary-rate.is-over,
+.budget-item-rate.is-over {
+  color: #d93025;
+}
+
+.budget-summary-subtitle {
+  font-size: 0.78rem;
+  color: #6c7a8f;
+  margin-bottom: 8px;
+}
+
+.budget-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.budget-item-card {
+  background: #ffffff;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.budget-item-name {
+  color: #2c3e57;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.budget-item-rate {
+  font-weight: 600;
+  color: #2c3e57;
+}
+
+.budget-item-amount {
+  color: #6c7a8f;
+}
+
+.budget-item-card.is-over {
+  background: #fff1f1;
+  border-color: #f3c6c6;
+}
+
+.budget-item-card.is-over .budget-item-name,
+.budget-item-card.is-over .budget-item-rate {
+  color: #d93025;
+}
+
+@media (max-width: 1100px) {
+  .budget-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .budget-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
 .diary-star.is-filled {
   color: #f2b544;
 }

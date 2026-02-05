@@ -8,6 +8,36 @@
         <a class="btn btn-outline-light btn-sm finance-btn-rounded" href="/finance/budget"><i class="fa-solid fa-gear me-2"></i>家計簿設定</a>
       </div>
       <div class="card-body">
+        <div class="mb-4">
+          <div class="fw-bold mb-2">予算の到達状況（今月）</div>
+          <% if (budgetSummary && budgetSummary.totalBudget > 0) { %>
+            <div class="budget-summary-card">
+              <div class="budget-summary-header">
+                <div class="budget-summary-title">支出予算の到達率</div>
+                <div class="budget-summary-rate <%= budgetSummary.totalRate > budgetSummary.dayRate ? 'is-over' : '' %>">
+                  <%= budgetSummary.totalRate %>% / <%= budgetSummary.dayRate %>%
+                </div>
+              </div>
+              <div class="budget-summary-subtitle">支出項目別の予算到達率 / 日数到達率</div>
+              <div class="budget-cards">
+                <% budgetSummary.items.forEach(item => { %>
+                  <div class="budget-item-card <%= item.over ? 'is-over' : '' %>">
+                    <div class="budget-item-name"><%= item.name %></div>
+                    <div class="budget-item-rate <%= item.over ? 'is-over' : '' %>">
+                      予算到達率 / 日数到達率　<%= item.rate %>% / <%= budgetSummary.dayRate %>%
+                    </div>
+                    <div class="budget-item-amount">
+                      実績 / 予算　<%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            </div>
+          <% } else { %>
+            <div class="text-muted">予算が設定されていません。</div>
+          <% } %>
+        </div>
+
         <div class="mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="fw-bold">直近の入力（5件）</div>
