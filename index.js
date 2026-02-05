@@ -67,6 +67,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const FinanceUser = require('./models/users');
 const FinanceCloseStatus = require('./models/finance_close_status');
+const FinanceCloseYearStatus = require('./models/finance_close_year_status');
 
 const googlePhotosRouter = require('./routes/googlePhotos');
 const ocrRoutes = require('./routes/ocr');
@@ -242,10 +243,21 @@ app.use(async (req, res, next) => {
       month: monthKey
     }).lean();
 
+    const prevYear = now.getFullYear() - 1;
+    const yearLabel = `${prevYear}年度`;
+    const yearStatus = await FinanceCloseYearStatus.findOne({
+      user: req.user._id,
+      group: req.session.activeGroupId,
+      year: prevYear
+    }).lean();
+
     res.locals.financeClose = {
       show: !(status?.completed),
       monthKey,
-      monthLabel
+      monthLabel,
+      yearShow: !(yearStatus?.completed),
+      yearValue: prevYear,
+      yearLabel
     };
   } catch (err) {
     console.error('Finance close locals error:', err);

@@ -1,0 +1,60 @@
+<%- include('_mailHeader') %>
+<div class="email-container">
+  <div class="email-header">
+    <h1>年度家計簿登録完了のお知らせ</h1>
+  </div>
+  <p><%= name %> さん</p>
+  <p><strong><%= yearLabel %></strong> の家計簿入力が完了しました。</p>
+  <hr>
+  <h3><%= groupName %></h3>
+  <div style="border:1px solid #e6eef7;border-radius:12px;padding:12px;background:#f8fbff;">
+    <div style="font-weight:700;margin-bottom:8px;">年度サマリー</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr>
+        <th style="text-align:left;padding:6px 0;color:#4a5a75;">収入計</th>
+        <td style="text-align:right;padding:6px 0;">¥<%= Number(totals.income).toLocaleString('ja-JP') %></td>
+      </tr>
+      <tr>
+        <th style="text-align:left;padding:6px 0;color:#4a5a75;">控除計</th>
+        <td style="text-align:right;padding:6px 0;">¥<%= Number(totals.deduction).toLocaleString('ja-JP') %></td>
+      </tr>
+      <tr>
+        <th style="text-align:left;padding:6px 0;color:#4a5a75;">支出計</th>
+        <td style="text-align:right;padding:6px 0;">¥<%= Number(totals.expense).toLocaleString('ja-JP') %></td>
+      </tr>
+      <tr>
+        <th style="text-align:left;padding:6px 0;color:#4a5a75;">貯蓄計</th>
+        <td style="text-align:right;padding:6px 0;">¥<%= Number(totals.saving).toLocaleString('ja-JP') %></td>
+      </tr>
+      <tr>
+        <th style="text-align:left;padding:6px 0;color:#1b2d50;">収支</th>
+        <td style="text-align:right;padding:6px 0;font-weight:700;color:#1b2d50;">¥<%= Number(totals.balance).toLocaleString('ja-JP') %></td>
+      </tr>
+    </table>
+  </div>
+
+  <h4 style="margin-top:16px;">予算オーバーの支出項目</h4>
+  <% if (!overItems || overItems.length === 0) { %>
+    <p>※ 予算をオーバーした支出項目はありません。</p>
+  <% } else { %>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+      <% overItems.forEach(item => { %>
+        <div style="background:#fff1f1;border:1px solid #f3c6c6;border-radius:12px;padding:10px;">
+          <div style="font-weight:700;color:#d93025;font-size:14px;"><%= item.name %></div>
+          <div style="font-weight:600;color:#d93025;font-size:13px;margin-top:4px;">
+            予算: <%= Number(item.budget).toLocaleString('ja-JP') %> / 実績: <%= Number(item.actual).toLocaleString('ja-JP') %>
+          </div>
+          <div style="font-size:12px;color:#b3261e;margin-top:4px;">
+            超過: <%= Number(item.overAmount).toLocaleString('ja-JP') %>（<%= item.overRate %>%）
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <p style="margin-top:16px;">
+    年次集計（グループ）はこちら:
+    <a href="<%= dashboardUrl %>"><%= dashboardUrl %></a>
+  </p>
+</div>
+<%- include('_mailFooter') %>

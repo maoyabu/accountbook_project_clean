@@ -46,22 +46,43 @@
         </span>
       </a>
     <% } %>
-    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && financeClose?.show) { %>
-      <form
-        action="/finance/month-close/complete"
-        method="POST"
-        class="finance-close-fab"
-        id="finance-close-fab"
-        onsubmit="return confirm('本当に完了しましたか？');"
-      >
-        <input type="hidden" name="redirectTo" value="<%= currentPath || '/finance/top' %>">
-        <button type="submit" class="finance-close-button" title="<%= financeClose.monthLabel %>の入力完了">
-          <span class="finance-close-handle" aria-hidden="true">
-            <i class="fa-solid fa-up-down-left-right"></i>
-          </span>
-          <span class="finance-close-label"><%= financeClose.monthLabel %>の入力完了</span>
-        </button>
-      </form>
+    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && (financeClose?.show || financeClose?.yearShow)) { %>
+      <div class="finance-close-stack" id="finance-close-stack">
+        <% if (financeClose?.show) { %>
+          <form
+            action="/finance/month-close/complete"
+            method="POST"
+            class="finance-close-fab"
+            id="finance-close-fab"
+            onsubmit="return confirm('本当に完了しましたか？');"
+          >
+            <input type="hidden" name="redirectTo" value="<%= currentPath || '/finance/top' %>">
+            <button type="submit" class="finance-close-button" title="<%= financeClose.monthLabel %>の入力完了">
+              <span class="finance-close-handle" aria-hidden="true">
+                <i class="fa-solid fa-up-down-left-right"></i>
+              </span>
+              <span class="finance-close-label"><%= financeClose.monthLabel %>の入力完了</span>
+            </button>
+          </form>
+        <% } %>
+        <% if (financeClose?.yearShow) { %>
+          <form
+            action="/finance/year-close/complete"
+            method="POST"
+            class="finance-close-fab finance-close-fab-year"
+            id="finance-close-year-fab"
+            onsubmit="return confirm('本当に完了しましたか？');"
+          >
+            <input type="hidden" name="redirectTo" value="<%= currentPath || '/finance/top' %>">
+            <button type="submit" class="finance-close-button finance-close-year-button" title="<%= financeClose.yearLabel %>の入力完了">
+              <span class="finance-close-handle" aria-hidden="true">
+                <i class="fa-solid fa-up-down-left-right"></i>
+              </span>
+              <span class="finance-close-label"><%= financeClose.yearLabel %>の入力完了</span>
+            </button>
+          </form>
+        <% } %>
+      </div>
     <% } %>
     <%- include('../partials/footer') %>
     <!-- Bootstrap 5.1 Bundle -->

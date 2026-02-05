@@ -36,26 +36,28 @@
     }
 })();
 
-// --- Finance month close button (draggable + persisted) ---
+// --- Finance close buttons (draggable + persisted) ---
 (function () {
-    const closeFab = document.getElementById("finance-close-fab");
-    if (!closeFab) return;
+    const stack = document.getElementById("finance-close-stack");
+    const monthFab = document.getElementById("finance-close-fab");
+    const yearFab = document.getElementById("finance-close-year-fab");
+    if (!stack) return;
 
-    const storageKey = "financeCloseFabPos";
+    const storageKey = "financeCloseStackPos";
     const dragThreshold = 4;
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
     const applyPosition = (x, y) => {
-        const rect = closeFab.getBoundingClientRect();
+        const rect = stack.getBoundingClientRect();
         const maxX = window.innerWidth - rect.width - 8;
         const maxY = window.innerHeight - rect.height - 8;
         const clampedX = clamp(x, 8, Math.max(8, maxX));
         const clampedY = clamp(y, 8, Math.max(8, maxY));
-        closeFab.style.left = `${clampedX}px`;
-        closeFab.style.top = `${clampedY}px`;
-        closeFab.style.right = "auto";
-        closeFab.style.bottom = "auto";
+        stack.style.left = `${clampedX}px`;
+        stack.style.top = `${clampedY}px`;
+        stack.style.right = "auto";
+        stack.style.bottom = "auto";
         return { x: clampedX, y: clampedY };
     };
 
@@ -90,7 +92,7 @@
     let dragging = false;
 
     const beginDrag = (clientX, clientY) => {
-        const rect = closeFab.getBoundingClientRect();
+        const rect = stack.getBoundingClientRect();
         startX = clientX;
         startY = clientY;
         originX = rect.left;
@@ -117,57 +119,51 @@
         dragging = false;
     };
 
-    closeFab.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0 && event.pointerType === "mouse") return;
-        beginDrag(event.clientX, event.clientY);
+    [monthFab, yearFab].forEach((el) => {
+        if (!el) return;
+        el.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 && event.pointerType === "mouse") return;
+            beginDrag(event.clientX, event.clientY);
+        });
+        el.addEventListener("mousedown", (event) => {
+            if (event.button !== 0) return;
+            beginDrag(event.clientX, event.clientY);
+        });
+        el.addEventListener("touchstart", (event) => {
+            const touch = event.touches[0];
+            if (!touch) return;
+            beginDrag(touch.clientX, touch.clientY);
+        }, { passive: true });
+        el.addEventListener("dragstart", (event) => {
+            event.preventDefault();
+        });
+        el.addEventListener("click", (event) => {
+            if (moved) {
+                event.preventDefault();
+            }
+        });
     });
 
     window.addEventListener("pointermove", (event) => {
         moveDrag(event.clientX, event.clientY, event);
     });
-
     window.addEventListener("pointerup", endDrag);
     window.addEventListener("pointercancel", endDrag);
-
-    closeFab.addEventListener("mousedown", (event) => {
-        if (event.button !== 0) return;
-        beginDrag(event.clientX, event.clientY);
-    });
-
     window.addEventListener("mousemove", (event) => {
         moveDrag(event.clientX, event.clientY, event);
     });
-
     window.addEventListener("mouseup", endDrag);
-
-    closeFab.addEventListener("touchstart", (event) => {
-        const touch = event.touches[0];
-        if (!touch) return;
-        beginDrag(touch.clientX, touch.clientY);
-    }, { passive: true });
-
     window.addEventListener("touchmove", (event) => {
         const touch = event.touches[0];
         if (!touch) return;
         moveDrag(touch.clientX, touch.clientY, event);
     }, { passive: false });
-
     window.addEventListener("touchend", endDrag);
     window.addEventListener("touchcancel", endDrag);
 
-    closeFab.addEventListener("dragstart", (event) => {
-        event.preventDefault();
-    });
-
-    closeFab.addEventListener("click", (event) => {
-        if (moved) {
-            event.preventDefault();
-        }
-    });
-
     window.addEventListener("resize", () => {
-        const rect = closeFab.getBoundingClientRect();
-        if (closeFab.style.left && closeFab.style.top) {
+        const rect = stack.getBoundingClientRect();
+        if (stack.style.left && stack.style.top) {
             const pos = applyPosition(rect.left, rect.top);
             savePosition(pos);
         }
