@@ -9,19 +9,16 @@
     <hr>
     <h3><%= group.groupName %></h3>
     <p>支出予算の到達率: <strong><%= group.totalRate %>%</strong> / 月の日数到達率: <strong><%= dayRate %>%</strong></p>
-    <% const overItems = (group.alerts || []).filter(a => a.over); %>
-    <% if (overItems.length === 0) { %>
-      <p>※ 予算超過の支出項目はありません。</p>
+    <% const alertItems = group.alerts || []; %>
+    <% if (alertItems.length === 0) { %>
+      <p>※ しきい値を超えた支出項目はありません。</p>
     <% } else { %>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
-        <% overItems.forEach(alert => { %>
+        <% alertItems.forEach(alert => { %>
           <div style="background:#fff1f1;border:1px solid #f3c6c6;border-radius:12px;padding:10px;">
             <div style="font-weight:700;color:#d93025;font-size:14px;"><%= alert.targetLabel %></div>
             <div style="font-weight:600;color:#d93025;font-size:13px;margin-top:4px;">
-              予算到達率 / 日数到達率　<%= alert.actualRate %>% / <%= dayRate %>%
-            </div>
-            <div style="color:#6c7a8f;font-size:12px;margin-top:4px;">
-              実績 / 予算　<%= Number(alert.actual).toLocaleString('ja-JP') %> / <%= Number(alert.budget).toLocaleString('ja-JP') %>
+              実績到達率: <%= alert.actualRate %>% （実績: <%= Number(alert.actual).toLocaleString('ja-JP') %> / 予算: <%= Number(alert.budget).toLocaleString('ja-JP') %>）
             </div>
           </div>
         <% }) %>

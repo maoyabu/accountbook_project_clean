@@ -118,6 +118,9 @@ router.get('/top', isLoggedIn, async (req, res) => {
         rate,
         over: rate > dayRate
       };
+    }).sort((a, b) => {
+      if (a.over === b.over) return b.rate - a.rate;
+      return a.over ? -1 : 1;
     });
 
     const recentFinances = await Finance.find({
@@ -1341,20 +1344,16 @@ router.delete('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
 //その他のルート
 
-// 予算到達率メール通知（毎時、前日までの実績で判定）
+// 予算到達率メール通知（毎時、当月実績で判定）
 cron.schedule('0 * * * *', async () => {
   try {
     const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const monthStart = new Date(yesterday.getFullYear(), yesterday.getMonth(), 1, 0, 0, 0, 0);
-    const monthEnd = new Date(yesterday.getFullYear(), yesterday.getMonth() + 1, 0, 23, 59, 59, 999);
-    const endOfYesterday = new Date(yesterday);
-    endOfYesterday.setHours(23, 59, 59, 999);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
     const daysInMonth = monthEnd.getDate();
-    const dayRate = Math.round((yesterday.getDate() / daysInMonth) * 1000) / 10;
-    const monthKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}`;
-    const yearStr = String(yesterday.getFullYear());
+    const dayRate = Math.round((today.getDate() / daysInMonth) * 1000) / 10;
+    const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const yearStr = String(today.getFullYear());
 
     const users = await FinanceUser.find({
       financeBudgetNoticeEnabled: true,
@@ -1393,7 +1392,8 @@ cron.schedule('0 * * * *', async () => {
             $match: {
               group: groupId,
               cf: '支出',
-              date: { $gte: monthStart, $lte: endOfYesterday }
+              user: user._id,
+              date: { $gte: monthStart, $lte: monthEnd }
             }
           },
           {
@@ -1442,8 +1442,9 @@ cron.schedule('0 * * * *', async () => {
           const itemName = b.expense_item || '未分類';
           const actualValue = itemTotals.get(itemName) || 0;
           const itemRate = Math.round((actualValue / budgetValue) * 1000) / 10;
-          if (actualValue <= budgetValue) return;
-          const threshold = 100;
+          const satisfied = thresholds.filter(t => itemRate >= t);
+          if (satisfied.length === 0) return;
+          const threshold = Math.max(...satisfied);
           const key = `item|${itemName}|${threshold}`;
           if (!existingSet.has(key)) {
             groupAlerts.push({
@@ -1591,32 +1592,81 @@ router.post('/budget/notice-time', isLoggedIn, async (req, res) => {
 // 予算到達メールのテスト送信
 router.post('/budget/notice-test', isLoggedIn, async (req, res) => {
   try {
-    const to = req.body.test_email;
-    if (!to) {
-      req.flash('error', '送信先メールアドレスを入力してください');
+    if (process.env.NODE_ENV === 'production') {
       return res.redirect('/finance/budget');
     }
+    const groupId = req.session.activeGroupId;
+    const objectId = typeof groupId === 'string'
+      ? new mongoose.Types.ObjectId(groupId)
+      : groupId;
+    const group = await Group.findById(objectId).populate('members');
+    const memberEmails = (group?.members || [])
+      .map(m => m.email)
+      .filter(Boolean);
+    if (memberEmails.length === 0) {
+      req.flash('error', '送信先が見つかりませんでした');
+      return res.redirect('/finance/budget');
+    }
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    const daysInMonth = monthEnd.getDate();
+    const dayRate = Math.round((today.getDate() / daysInMonth) * 1000) / 10;
+    const yearStr = String(today.getFullYear());
+
+    const budgets = await Budget.find({ group: objectId, year: yearStr }).sort({ display_order: 1 }).lean();
+    const budgetMap = new Map(budgets.map(b => [b.expense_item || '未分類', Number(b.budget) || 0]));
+    const totalBudget = Array.from(budgetMap.values()).reduce((sum, v) => sum + v, 0);
+    const expenseAgg = await Finance.aggregate([
+      { $match: { group: objectId, user: req.user._id, cf: '支出', date: { $gte: monthStart, $lte: monthEnd } } },
+      { $group: { _id: '$expense_item', total: { $sum: '$amount' } } }
+    ]);
+    const actualMap = new Map(expenseAgg.map(r => [r._id || '未分類', Number(r.total) || 0]));
+    const totalActual = Array.from(actualMap.values()).reduce((sum, v) => sum + v, 0);
+    const totalRate = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 1000) / 10 : 0;
+
+    const thresholdsBase = Array.isArray(req.user?.financeBudgetNoticeThresholds)
+      ? req.user.financeBudgetNoticeThresholds
+      : [50, 80, 90];
+    const thresholds = Array.from(new Set(
+      thresholdsBase
+        .map(v => Number(v))
+        .filter(v => Number.isInteger(v) && v >= 0 && v <= 100)
+        .concat([100])
+    ));
+
+    const alerts = budgets
+      .map(b => {
+        const name = b.expense_item || '未分類';
+        const budget = Number(b.budget) || 0;
+        const actual = actualMap.get(name) || 0;
+        const rate = budget > 0 ? Math.round((actual / budget) * 1000) / 10 : 0;
+        const satisfied = thresholds.filter(t => rate >= t);
+        if (satisfied.length === 0) return null;
+        return {
+          targetLabel: name,
+          actualRate: rate,
+          budget,
+          actual,
+          over: true,
+          threshold: Math.max(...satisfied)
+        };
+      })
+      .filter(Boolean);
+
     await sendMail({
-      to,
+      to: memberEmails,
       subject: '【家計簿】予算の到達状況（テスト送信）',
       templateName: 'budgetNotice',
       templateData: {
         name: req.user.displayname || req.user.username,
         month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
-        dayRate: 50,
+        dayRate,
         groups: [
           {
-            groupName: 'テストグループ',
-            totalRate: 75,
-            alerts: [
-              {
-                targetLabel: '副食物費',
-                actualRate: 120,
-                budget: 5000,
-                actual: 6000,
-                over: true
-              }
-            ]
+            groupName: group?.group_name || 'テストグループ',
+            totalRate,
+            alerts
           }
         ],
         budgetUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/finance/budget`

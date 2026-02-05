@@ -2,7 +2,7 @@
 
 <div class="row g-3">
   <div class="col-12">
-    <div class="card">
+    <div class="card finance-top-card">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #4A6A7A;">
         <span>家計簿</span>
         <a class="btn btn-outline-light btn-sm finance-btn-rounded" href="/finance/budget"><i class="fa-solid fa-gear me-2"></i>家計簿設定</a>
@@ -15,30 +15,53 @@
               <div class="budget-summary-header">
                 <div class="budget-summary-title">支出予算の到達率</div>
                 <div class="budget-summary-rate <%= budgetSummary.totalRate > budgetSummary.dayRate ? 'is-over' : '' %>">
-                  <%= budgetSummary.totalRate %>% / <%= budgetSummary.dayRate %>%
+                  <span class="budget-summary-tag <%= budgetSummary.totalRate > budgetSummary.dayRate ? 'is-over' : '' %>"><%= budgetSummary.totalRate %>% / <%= budgetSummary.dayRate %>%</span>
                 </div>
               </div>
               <div class="budget-summary-subtitle">支出項目別の予算到達率 / 日数到達率</div>
-              <div class="budget-cards">
-                <% budgetSummary.items.forEach(item => { %>
-                  <div class="budget-item-card <%= item.over ? 'is-over' : '' %>">
-                    <div class="budget-item-name"><%= item.name %></div>
-                    <div class="budget-item-rate <%= item.over ? 'is-over' : '' %>">
-                      予算到達率 / 日数到達率　<%= item.rate %>% / <%= budgetSummary.dayRate %>%
+              <% const overItems = (budgetSummary.items || []).filter(i => i.over); %>
+              <% const normalItems = (budgetSummary.items || []).filter(i => !i.over); %>
+
+              <% if (overItems.length > 0) { %>
+                <div class="budget-section-title">超過</div>
+                <div class="budget-cards budget-cards-over">
+                  <% overItems.forEach(item => { %>
+                    <div class="budget-item-card is-over">
+                      <div class="budget-item-name"><%= item.name %></div>
+                      <div class="budget-item-rate is-over">
+                        予算到達率 / 日数到達率　<%= item.rate %>% / <%= budgetSummary.dayRate %>%
+                      </div>
+                      <div class="budget-item-amount">
+                        実績 / 予算　<%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %>
+                      </div>
                     </div>
-                    <div class="budget-item-amount">
-                      実績 / 予算　<%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %>
+                  <% }) %>
+                </div>
+              <% } %>
+
+              <% if (normalItems.length > 0) { %>
+                <div class="budget-section-title">未超過</div>
+                <div class="budget-cards budget-cards-normal">
+                  <% normalItems.forEach(item => { %>
+                    <div class="budget-item-card is-normal">
+                      <div class="budget-item-name"><%= item.name %></div>
+                      <div class="budget-item-rate">
+                        予算到達率 / 日数到達率　<%= item.rate %>% / <%= budgetSummary.dayRate %>%
+                      </div>
+                      <div class="budget-item-amount">
+                        実績 / 予算　<%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %>
+                      </div>
                     </div>
-                  </div>
-                <% }) %>
-              </div>
+                  <% }) %>
+                </div>
+              <% } %>
             </div>
           <% } else { %>
             <div class="text-muted">予算が設定されていません。</div>
           <% } %>
         </div>
 
-        <div class="mb-3">
+        <div class="mb-3 recent-finance-card">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="fw-bold">直近の入力（5件）</div>
             <div class="d-flex gap-2">
@@ -116,8 +139,8 @@
   <div class="col-12">
     <div class="row g-3">
       <div class="col-12 col-lg-6">
-        <div class="card h-100">
-          <div class="card-header text-white" style="background-color: #4A6A7A;">
+        <div class="card h-100 finance-tone-card">
+          <div class="card-header text-white finance-tone-header">
             Dashboard
           </div>
           <div class="card-body dashboard-body">
@@ -170,8 +193,8 @@
       </div>
 
       <div class="col-12 col-lg-6">
-        <div class="card h-100">
-          <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #4A6A7A;">
+        <div class="card h-100 finance-tone-card">
+          <div class="card-header text-white d-flex justify-content-between align-items-center finance-tone-header">
             <span>資産管理</span>
             <a class="btn btn-outline-light btn-sm" href="/asset/display">資産管理トップへ</a>
           </div>

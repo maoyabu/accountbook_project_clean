@@ -2481,7 +2481,7 @@ padding-left: 10px;
 .budget-summary-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   margin-bottom: 8px;
 }
@@ -2498,6 +2498,36 @@ padding-left: 10px;
   font-size: 0.95rem;
 }
 
+.budget-summary-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  background: #e6edf7;
+  color: #2f4a6d;
+}
+
+.budget-summary-tag.is-over {
+  background: #ffe6e6;
+  color: #d93025;
+}
+
+.finance-tone-card {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #edf1f6;
+  box-shadow: 0 14px 28px rgba(31, 56, 86, 0.08);
+}
+
+.finance-tone-header {
+  background-color: #4A6A7A;
+}
+
+.finance-top-card {
+  border-radius: 18px;
+  overflow: hidden;
+}
 .budget-summary-rate.is-over,
 .budget-item-rate.is-over {
   color: #d93025;
@@ -2509,10 +2539,22 @@ padding-left: 10px;
   margin-bottom: 8px;
 }
 
+.budget-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4a5b74;
+  margin: 6px 0;
+}
+
 .budget-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.budget-cards-normal {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .budget-item-card {
@@ -2523,6 +2565,22 @@ padding-left: 10px;
   display: grid;
   gap: 4px;
   font-size: 0.8rem;
+}
+
+.budget-item-card.is-normal {
+  padding: 5px 7px;
+  font-size: 0.72rem;
+  border-radius: 10px;
+}
+
+.budget-item-card.is-normal .budget-item-name {
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.budget-item-card.is-normal .budget-item-rate,
+.budget-item-card.is-normal .budget-item-amount {
+  font-size: 0.68rem;
 }
 
 .budget-item-name {
@@ -2548,6 +2606,24 @@ padding-left: 10px;
 .budget-item-card.is-over .budget-item-name,
 .budget-item-card.is-over .budget-item-rate {
   color: #d93025;
+}
+
+.recent-finance-card {
+  background: #f7f9fc;
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1px solid #edf1f6;
+}
+
+.finance-tone-card {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid #edf1f6;
+  box-shadow: 0 14px 28px rgba(31, 56, 86, 0.08);
+}
+
+.finance-tone-header {
+  background-color: #4A6A7A;
 }
 
 @media (max-width: 1100px) {
