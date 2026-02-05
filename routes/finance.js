@@ -634,32 +634,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         cloneData.expense_item = '';
         cloneData.dedu_item = '';
         cloneData.saving_item = '';
-
-        const duplicateCloneQuery = buildDuplicateQuery(cloneData);
-        const duplicateCloneEntry = await Finance.findOne(duplicateCloneQuery);
-        if (duplicateCloneEntry && req.body.confirmDuplicate !== '1') {
-            const formattedDate = duplicateCloneEntry.date.toISOString().split('T')[0];
-            const formattedEntryDate = toJST(new Date(duplicateCloneEntry.entry_date)).toLocaleString('ja-JP');
-            const formattedUpdateDate = toJST(new Date(duplicateCloneEntry.update_date || duplicateCloneEntry.entry_date)).toLocaleString('ja-JP');
-            return res.render('finance/edit', {
-                page: 'entry',
-                errors: {},
-                finance: duplicateCloneEntry,
-                formattedDate,
-                formattedEntryDate,
-                formattedUpdateDate,
-                duplicateMessage,
-                duplicateWarning: true,
-                la_cfs,
-                ex_cfs,
-                in_items,
-                dedu_cfs,
-                saving_cfs,
-                pay_cfs,
-                whos,
-                allUsers
-            });
-        }
+        cloneData.amount = 0;
 
         const duplicatedFinance = new Finance(cloneData);
 
@@ -678,6 +653,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             formattedEntryDate,
             formattedUpdateDate,
             duplicateMessage,
+            duplicateWarning: false,
+            continueEntry: true,
             la_cfs,
             ex_cfs,
             in_items,
@@ -1192,7 +1169,8 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         whos,
         allUsers,
         currentUser: req.user,
-        duplicateWarning: req.query.duplicateWarning === '1'
+        duplicateWarning: req.query.duplicateWarning === '1',
+        continueEntry: req.query.continueEntry === '1'
     });
 }));
 
@@ -1330,33 +1308,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         clone.expense_item = '';
         clone.dedu_item = '';
         clone.saving_item = '';
+        clone.amount = 0;
 
-        const duplicateCloneQuery = buildDuplicateQuery(clone);
-        const duplicateCloneEntry = await Finance.findOne(duplicateCloneQuery);
-        if (duplicateCloneEntry && req.body.confirmDuplicate !== '1') {
-            const formattedDate = duplicateCloneEntry.date.toISOString().split('T')[0];
-            const currentUser = await FinanceUser.findById(req.user._id).populate('groups');
-            const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
-            return res.render('finance/edit', {
-                page: 'entry',
-                errors: {},
-                finance: { ...duplicateCloneEntry.toObject(), tags: duplicateCloneEntry.tags || [] },
-                formattedDate,
-                formattedEntryDate: duplicateCloneEntry.entry_date.toLocaleString('ja-JP'),
-                formattedUpdateDate: (duplicateCloneEntry.update_date || duplicateCloneEntry.entry_date).toLocaleString('ja-JP'),
-                duplicateMessage,
-                duplicateWarning: true,
-                la_cfs,
-                ex_cfs,
-                in_items,
-                dedu_cfs,
-                saving_cfs,
-                pay_cfs,
-                whos,
-                allUsers,
-                currentUser
-            });
-        }
         const newFinance = new Finance(clone);
         await newFinance.save();
         const formattedDate = newFinance.date.toISOString().split('T')[0];
@@ -1370,6 +1323,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             formattedEntryDate: newFinance.entry_date.toLocaleString('ja-JP'),
             formattedUpdateDate: newFinance.update_date.toLocaleString('ja-JP'),
             duplicateMessage,
+            duplicateWarning: false,
+            continueEntry: true,
             la_cfs,
             ex_cfs,
             in_items,
@@ -1407,7 +1362,8 @@ router.post('/:id/duplicate', isLoggedIn, catchAsync(async (req, res) => {
             income_item: '',
             expense_item: '',
             dedu_item: '',
-            saving_item: ''
+            saving_item: '',
+            amount: 0
         };
         const newFinance = new Finance(duplicatedData);
 
@@ -1426,7 +1382,7 @@ router.post('/:id/duplicate', isLoggedIn, catchAsync(async (req, res) => {
 
         await newFinance.save();
         await logAction({ req, action: '複製', target: '家計簿' });
-        res.redirect(`/finance/${newFinance._id}/edit`);
+        res.redirect(`/finance/${newFinance._id}/edit?continueEntry=1`);
     } catch (error) {
         res.status(500).json({ message: "サーバーエラーが発生しました" });
     }
