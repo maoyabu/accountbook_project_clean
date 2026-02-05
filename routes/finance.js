@@ -117,6 +117,17 @@ router.get('/top', isLoggedIn, async (req, res) => {
     const monthEndStr = monthEnd.toISOString().split('T')[0];
     const daysInMonth = monthEnd.getDate();
     const dayRate = Math.round((today.getDate() / daysInMonth) * 1000) / 10;
+    const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+    const prevDayCount = Math.max(today.getDate() - 1, 0);
+    const dayRatePrev = Math.round((prevDayCount / daysInMonth) * 1000) / 10;
+    const todayMeta = {
+      year: today.getFullYear(),
+      month: today.getMonth() + 1,
+      day: today.getDate(),
+      weekday: weekdayLabels[today.getDay()],
+      dayRate,
+      dayRatePrev
+    };
     const yearStr = String(today.getFullYear());
 
     const budgets = await Budget.find({ group: objectId, year: yearStr }).sort({ display_order: 1 }).lean();
@@ -269,6 +280,7 @@ router.get('/top', isLoggedIn, async (req, res) => {
         yearValue: closeYearValue,
         members: closeYearMembers
       },
+      todayMeta,
       recentFinances,
       totalYen,
       totalByCf,
