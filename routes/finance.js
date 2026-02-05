@@ -1442,9 +1442,8 @@ cron.schedule('0 * * * *', async () => {
           const itemName = b.expense_item || '未分類';
           const actualValue = itemTotals.get(itemName) || 0;
           const itemRate = Math.round((actualValue / budgetValue) * 1000) / 10;
-          const satisfied = thresholds.filter(t => itemRate >= t);
-          if (satisfied.length === 0) return;
-          const threshold = Math.max(...satisfied);
+          if (actualValue <= budgetValue) return;
+          const threshold = 100;
           const key = `item|${itemName}|${threshold}`;
           if (!existingSet.has(key)) {
             groupAlerts.push({
@@ -1454,7 +1453,8 @@ cron.schedule('0 * * * *', async () => {
               budget: budgetValue,
               actual: actualValue,
               targetKey: itemName,
-              targetType: 'item'
+              targetType: 'item',
+              over: true
             });
           }
         });
@@ -1586,6 +1586,49 @@ router.post('/budget/notice-time', isLoggedIn, async (req, res) => {
   );
   req.flash('success', '予算到達メールの送信時間を更新しました');
   res.redirect('/finance/budget');
+});
+
+// 予算到達メールのテスト送信
+router.post('/budget/notice-test', isLoggedIn, async (req, res) => {
+  try {
+    const to = req.body.test_email;
+    if (!to) {
+      req.flash('error', '送信先メールアドレスを入力してください');
+      return res.redirect('/finance/budget');
+    }
+    await sendMail({
+      to,
+      subject: '【家計簿】予算の到達状況（テスト送信）',
+      templateName: 'budgetNotice',
+      templateData: {
+        name: req.user.displayname || req.user.username,
+        month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+        dayRate: 50,
+        groups: [
+          {
+            groupName: 'テストグループ',
+            totalRate: 75,
+            alerts: [
+              {
+                targetLabel: '副食物費',
+                actualRate: 120,
+                budget: 5000,
+                actual: 6000,
+                over: true
+              }
+            ]
+          }
+        ],
+        budgetUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/finance/budget`
+      }
+    });
+    req.flash('success', 'テストメールを送信しました');
+    res.redirect('/finance/budget');
+  } catch (err) {
+    console.error('Budget notice test mail error:', err);
+    req.flash('error', 'テストメールの送信に失敗しました');
+    res.redirect('/finance/budget');
+  }
 });
 
 // 年度別の区分候補を取得（新規登録/編集のプルダウン更新用）
