@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const financeBudgetNoticeSettingSchema = new Schema({
-  group: { type: Schema.Types.ObjectId, ref: 'Group', required: true, index: true },
+  group: { type: Schema.Types.ObjectId, ref: 'Group', required: true },
   noticeHour: { type: Number, default: 8 }
 });
 

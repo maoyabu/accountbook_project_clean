@@ -389,8 +389,12 @@
       try {
         const { left, top } = JSON.parse(saved);
         if (typeof left === 'number' && typeof top === 'number') {
-          fab.style.left = `${left}px`;
-          fab.style.top = `${top}px`;
+          const maxLeft = window.innerWidth - 56;
+          const maxTop = window.innerHeight - 56;
+          const clampedLeft = Math.max(8, Math.min(maxLeft, left));
+          const clampedTop = Math.max(8, Math.min(maxTop, top));
+          fab.style.left = `${clampedLeft}px`;
+          fab.style.top = `${clampedTop}px`;
           fab.style.right = 'auto';
           fab.style.bottom = 'auto';
         }
