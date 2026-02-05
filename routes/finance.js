@@ -113,6 +113,8 @@ router.get('/top', isLoggedIn, async (req, res) => {
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+    const monthEndStr = monthEnd.toISOString().split('T')[0];
     const daysInMonth = monthEnd.getDate();
     const dayRate = Math.round((today.getDate() / daysInMonth) * 1000) / 10;
     const yearStr = String(today.getFullYear());
@@ -125,7 +127,6 @@ router.get('/top', isLoggedIn, async (req, res) => {
       {
         $match: {
           group: objectId,
-          user: req.user._id,
           cf: '支出',
           date: { $gte: monthStart, $lte: monthEnd }
         }
@@ -254,6 +255,10 @@ router.get('/top', isLoggedIn, async (req, res) => {
         totalRate,
         dayRate,
         items: budgetItems
+      },
+      budgetMonthRange: {
+        start: monthStartStr,
+        end: monthEndStr
       },
       closeStatus: {
         monthLabel: closeMonthLabel,
@@ -994,11 +999,16 @@ router.get('/list', isLoggedIn, async (req, res) => {
     const selectedCategory = req.query.category || '';
     const selectedPayment = req.query.payment_type || '';
     const selectedKeyword = req.query.keyword || '';
+    const selectedDateFrom = req.query.date_from || '';
+    const selectedDateTo = req.query.date_to || '';
+    const scope = req.query.scope === 'group' ? 'group' : 'user';
     const sortCriteria = sortOrder === 'update_date'
       ? { update_date: -1 }
       : { date: -1 };
 
-    const baseCondition = { group: objectId, user: req.user._id };
+    const baseCondition = scope === 'group'
+      ? { group: objectId }
+      : { group: objectId, user: req.user._id };
     const andConditions = [baseCondition];
 
     if (selectedCf) {
@@ -1019,6 +1029,24 @@ router.get('/list', isLoggedIn, async (req, res) => {
     }
     if (selectedKeyword && selectedKeyword.trim()) {
       andConditions.push({ content: { $regex: escapeRegExp(selectedKeyword.trim()), $options: 'i' } });
+    }
+    if (selectedDateFrom || selectedDateTo) {
+      const range = {};
+      if (selectedDateFrom) {
+        const from = new Date(selectedDateFrom);
+        if (!Number.isNaN(from.getTime())) {
+          range.$gte = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 0, 0, 0, 0);
+        }
+      }
+      if (selectedDateTo) {
+        const to = new Date(selectedDateTo);
+        if (!Number.isNaN(to.getTime())) {
+          range.$lte = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
+        }
+      }
+      if (Object.keys(range).length > 0) {
+        andConditions.push({ date: range });
+      }
     }
 
     const query = andConditions.length > 1 ? { $and: andConditions } : baseCondition;
@@ -1091,7 +1119,10 @@ router.get('/list', isLoggedIn, async (req, res) => {
         cf: selectedCf,
         category: selectedCategory,
         payment: selectedPayment,
-        keyword: selectedKeyword
+        keyword: selectedKeyword,
+        date_from: selectedDateFrom,
+        date_to: selectedDateTo,
+        scope
       },
       filterOptions: {
         cfs: cfOptions,

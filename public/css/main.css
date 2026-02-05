@@ -2670,6 +2670,15 @@ padding-left: 10px;
 .budget-item-card.is-over .budget-item-rate {
   color: #d93025;
 }
+.budget-item-card.is-clickable {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.budget-item-card.is-clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(24, 39, 75, 0.12);
+}
 
 .recent-finance-card {
   background: #f7f9fc;

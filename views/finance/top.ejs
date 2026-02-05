@@ -26,7 +26,7 @@
                 <div class="budget-section-title">超過</div>
                 <div class="budget-cards budget-cards-over">
                   <% overItems.forEach(item => { %>
-                    <div class="budget-item-card is-over">
+                    <a class="budget-item-card is-over is-clickable" href="/finance/list?scope=group&cf=支出&category=<%= encodeURIComponent(item.name) %>&date_from=<%= budgetMonthRange?.start %>&date_to=<%= budgetMonthRange?.end %>">
                       <div class="budget-item-name"><%= item.name %></div>
                       <div class="budget-item-rate is-over">
                         予算到達率 / 日数到達率　<%= item.rate %>% / <%= budgetSummary.dayRate %>%
@@ -34,7 +34,7 @@
                       <div class="budget-item-amount">
                         実績 / 予算　<%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %>
                       </div>
-                    </div>
+                    </a>
                   <% }) %>
                 </div>
               <% } %>
@@ -43,7 +43,7 @@
                 <div class="budget-section-title">未超過</div>
                 <div class="budget-cards budget-cards-normal">
                   <% normalItems.forEach(item => { %>
-                    <div class="budget-item-card is-normal">
+                    <a class="budget-item-card is-normal is-clickable" href="/finance/list?scope=group&cf=支出&category=<%= encodeURIComponent(item.name) %>&date_from=<%= budgetMonthRange?.start %>&date_to=<%= budgetMonthRange?.end %>">
                       <div class="budget-item-name"><%= item.name %></div>
                       <div class="budget-item-rate">
                         予算到達率 / 日数到達率　<%= item.rate %>% / <%= budgetSummary.dayRate %>%
@@ -51,7 +51,7 @@
                       <div class="budget-item-amount">
                         実績 / 予算　<%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %>
                       </div>
-                    </div>
+                    </a>
                   <% }) %>
                 </div>
               <% } %>
