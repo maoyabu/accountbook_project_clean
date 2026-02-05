@@ -2755,6 +2755,30 @@ padding-left: 10px;
   background: #ffffff;
   border: 1px solid #e4e9f2;
 }
+.service-member-grid {
+  display: grid;
+  gap: 12px;
+}
+.service-member-card {
+  border: 1px solid #e7ecf4;
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+}
+.service-member-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #374151;
+}
+.service-member-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef3ff;
+  color: #2a4e8a;
+}
 
 .finance-tone-card {
   border-radius: 18px;

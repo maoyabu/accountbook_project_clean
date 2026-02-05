@@ -305,6 +305,50 @@ router.get('/show/:id', isLoggedIn, async (req, res) => {
       });
   });
 
+// グループメンバーのサービス利用設定（管理者のみ）
+router.post('/service-settings/:id', isLoggedIn, async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      req.flash('error', 'グループが見つかりません');
+      return res.redirect('/group/group_list');
+    }
+    if (!group.createdBy.equals(req.user._id)) {
+      req.flash('error', '管理者のみ設定できます');
+      return res.redirect(`/group/show/${group._id}`);
+    }
+
+    const serviceRows = ['allaboutme', 'finance', 'assets', 'message'];
+    const payload = req.body.service_by_member || {};
+
+    const memberIds = new Set((group.members || []).map(id => id.toString()));
+    memberIds.add(group.createdBy.toString());
+
+    const users = await FinanceUser.find({ _id: { $in: Array.from(memberIds) } });
+    for (const user of users) {
+      const key = user._id.toString();
+      const entry = payload[key] || {};
+      const currentMap = user.servicesByGroup || {};
+      const groupEntry = {
+        allaboutme: entry.allaboutme === 'true' || entry.allaboutme === 'on',
+        finance: entry.finance === 'true' || entry.finance === 'on',
+        assets: entry.assets === 'true' || entry.assets === 'on',
+        message: entry.message === 'true' || entry.message === 'on'
+      };
+      currentMap[group._id.toString()] = groupEntry;
+      user.servicesByGroup = currentMap;
+      await user.save();
+    }
+
+    req.flash('success', 'サービス利用設定を更新しました');
+    res.redirect(`/group/show/${group._id}`);
+  } catch (err) {
+    console.error('サービス利用設定の更新エラー:', err);
+    req.flash('error', '設定の更新に失敗しました');
+    res.redirect(`/group/show/${req.params.id}`);
+  }
+});
+
 //グループからメンバーを退会させるルート
 router.delete('/group_remove_member/:groupId/:userId', isLoggedIn, async (req, res) => {
     const { groupId, userId } = req.params;

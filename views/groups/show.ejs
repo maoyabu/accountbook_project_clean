@@ -47,6 +47,50 @@
         </ul>
       </div>
 
+      <% if (currentUser._id.equals(group.createdBy._id)) { %>
+        <div class="p-3 border rounded bg-light mb-4">
+          <h5>メンバー別サービス利用設定</h5>
+          <form action="/group/service-settings/<%= group._id %>" method="POST">
+            <% const serviceRows = [
+              { key: 'allaboutme', label: 'All About me' },
+              { key: 'finance', label: '家計簿 / Dashboard' },
+              { key: 'assets', label: '資産管理' },
+              { key: 'message', label: 'Message' }
+            ]; %>
+            <% const groupServices = (member) => { %>
+            <%   const map = member.servicesByGroup || {}; %>
+            <%   if (typeof map.get === 'function') return map.get(group._id.toString()) || {}; %>
+            <%   return map[group._id.toString()] || {}; %>
+            <% }; %>
+            <div class="service-member-grid">
+              <% group.members.forEach(member => { %>
+                <div class="service-member-card">
+                  <div class="service-member-title">
+                    <strong><%= member.displayname || member.username %></strong>
+                    <% if (member._id.equals(group.createdBy._id)) { %>
+                      <span class="service-member-badge">管理者</span>
+                    <% } %>
+                  </div>
+                  <div class="service-group-options">
+                    <% serviceRows.forEach(row => { %>
+                      <% const entry = groupServices(member); %>
+                      <% const enabled = typeof entry[row.key] === 'boolean' ? entry[row.key] : true; %>
+                      <label class="form-check service-group-check">
+                        <input class="form-check-input" type="checkbox" name="service_by_member[<%= member._id %>][<%= row.key %>]" value="true" <%= enabled ? 'checked' : '' %>>
+                        <span class="form-check-label"><%= row.label %></span>
+                      </label>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary">設定を保存</button>
+            </div>
+          </form>
+        </div>
+      <% } %>
+
       <div class="p-3 border rounded bg-light mb-2">
           <h5 class="mt-4">招待中のユーザー</h5>
           <ul class="list-group">
