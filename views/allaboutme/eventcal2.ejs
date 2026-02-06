@@ -29,15 +29,32 @@
           <div class="diary-tags">
             <% monthlyTagSummary.forEach((tag, idx) => { %>
               <% if (idx < 10) { %>
-                <button type="button" class="diary-tag diary-tag-month-top diary-month-tag-btn" data-tag="<%= tag.name %>"><%= tag.name %> <span class="diary-tag-count">(<%= tag.count %>)</span></button>
+                <button type="button" class="diary-tag diary-tag-month-top diary-month-tag-btn" data-tag="<%= tag.name %>">
+                  <span><%= tag.name %></span>
+                  <span class="diary-tag-count">(<%= tag.count %>)</span>
+                  <span class="diary-tag-remove" role="button" tabindex="0" aria-label="除外ワードに追加" data-tag="<%= tag.name %>">×</span>
+                </button>
               <% } else { %>
-                <button type="button" class="diary-tag diary-tag-month-sub diary-month-tag-btn" data-tag="<%= tag.name %>"><%= tag.name %> <span class="diary-tag-count">(<%= tag.count %>)</span></button>
+                <button type="button" class="diary-tag diary-tag-month-sub diary-month-tag-btn" data-tag="<%= tag.name %>">
+                  <span><%= tag.name %></span>
+                  <span class="diary-tag-count">(<%= tag.count %>)</span>
+                  <span class="diary-tag-remove" role="button" tabindex="0" aria-label="除外ワードに追加" data-tag="<%= tag.name %>">×</span>
+                </button>
               <% } %>
             <% }) %>
           </div>
-          <div class="mt-2 d-flex flex-wrap gap-2">
-            <a href="/allaboutme/eventcal_events?tab=exclude" class="btn btn-sm btn-outline-secondary">タグ化しない除外ワード設定</a>
-            <a href="/allaboutme/eventcal_events?tab=event" class="btn btn-sm btn-outline-secondary">イベント項目の登録/編集</a>
+        </div>
+        <div class="mt-3 p-3 rounded border diary-keyword-link-box">
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <div class="fw-bold">MyDiaryランキング</div>
+            <a href="/allaboutme/diary-keywords" class="btn btn-sm btn-outline-primary">年間ランキング/マッピング</a>
+          </div>
+        </div>
+        <div class="mt-3 p-3 rounded border diary-keyword-link-box">
+          <div class="fw-bold mb-2">My Diary設定</div>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="/allaboutme/diary-settings?tab=exclude" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-gear me-1"></i>タグ化しない除外ワード設定</a>
+            <a href="/allaboutme/diary-settings?tab=event" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-gear me-1"></i>イベント項目の登録/編集</a>
           </div>
         </div>
       <% } %>
@@ -621,6 +638,7 @@
 
     document.querySelectorAll('.diary-month-tag-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
+        if (btn.dataset.ignore === 'true') return;
         const tag = btn.getAttribute('data-tag');
         const matches = (window.monthlyDiaryEntriesData || []).filter(e => (e.tags || []).includes(tag));
         const tagModalTitle = document.getElementById('diaryTagModalLabel');
@@ -646,6 +664,43 @@
           const tagModal = window.bootstrap.Modal.getOrCreateInstance(tagModalEl);
           tagModal.show();
         }
+      });
+    });
+  })();
+
+  (() => {
+    const addExcludeWord = async (tag) => {
+      if (!tag) return;
+      try {
+        const resp = await fetch('/allaboutme/eventcal_events/settings/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ excludeWord: tag })
+        });
+        if (resp.ok) {
+          location.href = '/allaboutme/diary-settings?tab=exclude';
+        } else {
+          const msg = await resp.text().catch(() => '');
+          alert(msg || '除外ワードの追加に失敗しました');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('除外ワードの追加に失敗しました');
+      }
+    };
+
+    document.querySelectorAll('.diary-tag-remove').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tag = btn.getAttribute('data-tag');
+        addExcludeWord(tag);
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        const tag = btn.getAttribute('data-tag');
+        addExcludeWord(tag);
       });
     });
   })();

@@ -2407,9 +2407,24 @@ padding-left: 10px;
   cursor: pointer;
 }
 
+.diary-tag-remove {
+  margin-left: 6px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.diary-tag-remove:hover {
+  opacity: 1;
+}
+
 .diary-month-tag-btn:focus-visible {
   outline: 2px solid rgba(46, 107, 63, 0.4);
   outline-offset: 2px;
+}
+
+.diary-keyword-link-box {
+  background: #f8fafc;
+  border: 1px solid #d7dde7;
 }
 
 .diary-tag-highlight {
@@ -2469,6 +2484,51 @@ padding-left: 10px;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 6px;
+}
+
+.diary-keyword-map {
+  position: relative;
+  min-height: 360px;
+  border-radius: 16px;
+  border: 1px dashed #cfd7e3;
+  background: radial-gradient(circle at top left, #f7fbf8 0%, #eef3f7 50%, #f8f9fb 100%);
+  overflow: hidden;
+}
+
+.diary-keyword-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(230, 244, 232, 0.9);
+  color: #2e6b3f;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(40, 60, 80, 0.08);
+}
+
+.diary-keyword-node.is-highlight {
+  background: #fff3a3;
+  color: #4c3b00;
+  box-shadow: 0 8px 18px rgba(120, 98, 0, 0.2);
+}
+
+.diary-keyword-remove {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.diary-rank-number {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #2f3b4a;
+  min-width: 2.2rem;
+  text-align: right;
+}
+
+.diary-rank-tag {
+  font-size: 1rem;
+  padding: 4px 12px;
 }
 
 .diary-tag-cf.is-income {

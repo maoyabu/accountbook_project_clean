@@ -1,0 +1,276 @@
+<% layout('layouts/boilerplate') -%>
+<% page = 'diary_keywords' %>
+
+<div class="nav-guide-row d-flex justify-content-between align-items-center gap-2 flex-wrap">
+  <%- include('../partials/allaboutme_tabs_nav') %>
+</div>
+
+<div class="container mt-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h4 class="mb-1">MyDiary キーワード</h4>
+      <div class="text-muted small">
+        <%= fiscalRange.start.getFullYear() %>年<%= fiscalRange.start.getMonth() + 1 %>月
+        〜
+        <%= fiscalRange.endInclusive.getFullYear() %>年<%= fiscalRange.endInclusive.getMonth() + 1 %>月
+      </div>
+    </div>
+    <form method="GET" action="/allaboutme/diary-keywords" class="d-flex align-items-center gap-2">
+      <label class="form-label mb-0">年度</label>
+      <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+        <% (yearOptions || []).forEach(y => { %>
+          <option value="<%= y %>" <%= Number(selectedYear) === Number(y) ? 'selected' : '' %>><%= y %>年度</option>
+        <% }) %>
+      </select>
+    </form>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header text-white" style="background-color: #4A6A7A;">
+          キーワードマッピング
+        </div>
+        <div class="card-body">
+          <% if (mapKeywords && mapKeywords.length > 0) { %>
+            <div class="diary-keyword-map" id="diaryKeywordMap"></div>
+          <% } else { %>
+            <div class="text-muted">キーワードがありません。</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header text-white" style="background-color: #4A6A7A;">
+          キーワードランキング
+        </div>
+        <div class="card-body">
+          <% if (keywordRanking && keywordRanking.length > 0) { %>
+            <div class="row g-3">
+              <% const top30 = keywordRanking.slice(0, 30); %>
+              <% const columns = [top30.slice(0, 10), top30.slice(10, 20), top30.slice(20, 30)]; %>
+              <% columns.forEach((col, colIdx) => { %>
+                <div class="col-12 col-md-4">
+                  <div class="list-group">
+                    <% col.forEach((item, idx) => { const rank = colIdx * 10 + idx + 1; %>
+                      <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span class="d-flex align-items-center gap-2">
+                          <span class="diary-rank-number"><%= rank %>位</span>
+                          <span class="diary-tag diary-tag-category diary-rank-tag"><%= item.name %></span>
+                          <button type="button" class="btn btn-sm p-0 text-muted diary-keyword-remove" data-tag="<%= item.name %>" aria-label="除外ワードに追加">×</button>
+                        </span>
+                        <button type="button" class="badge bg-secondary rounded-pill diary-keyword-count-btn" data-tag="<%= item.name %>"><%= item.count %></button>
+                      </div>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="text-muted">キーワードがありません。</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const data = <%- JSON.stringify(mapKeywords || []) %>;
+    const container = document.getElementById('diaryKeywordMap');
+    if (!container || data.length === 0) return;
+
+    const counts = data.map(d => d.count);
+    const max = Math.max(...counts);
+    const min = Math.min(...counts);
+    const range = Math.max(1, max - min);
+
+    const hash = (str) => {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = (h << 5) - h + str.charCodeAt(i);
+        h |= 0;
+      }
+      return Math.abs(h);
+    };
+
+    data.forEach((item, idx) => {
+      const node = document.createElement('span');
+      node.className = 'diary-keyword-node';
+      node.textContent = item.name;
+      node.dataset.keyword = item.name;
+
+      const scale = 0.85 + (item.count - min) / range * 0.9;
+      node.style.fontSize = `${0.75 + scale * 0.55}rem`;
+      node.style.opacity = `${0.65 + scale * 0.25}`;
+
+      const h = hash(item.name + idx);
+      const x = (typeof item.x === 'number') ? item.x : (8 + (h % 84));
+      const y = (typeof item.y === 'number') ? item.y : (10 + ((h >> 3) % 78));
+      node.style.left = `${x}%`;
+      node.style.top = `${y}%`;
+
+      container.appendChild(node);
+    });
+  })();
+</script>
+
+<script>
+  (() => {
+    const addExcludeWord = async (tag) => {
+      if (!tag) return;
+      try {
+        const resp = await fetch('/allaboutme/eventcal_events/settings/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ excludeWord: tag })
+        });
+        if (resp.ok) {
+          location.reload();
+        } else {
+          const msg = await resp.text().catch(() => '');
+          alert(msg || '除外ワードの追加に失敗しました');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('除外ワードの追加に失敗しました');
+      }
+    };
+
+    document.querySelectorAll('.diary-keyword-remove').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tag = btn.getAttribute('data-tag');
+        addExcludeWord(tag);
+      });
+    });
+  })();
+</script>
+
+<script>
+  (() => {
+    const mapNodes = Array.from(document.querySelectorAll('.diary-keyword-node'));
+    if (mapNodes.length === 0) return;
+
+    const clearHighlights = () => {
+      mapNodes.forEach(node => node.classList.remove('is-highlight'));
+    };
+
+    const highlightKeyword = (keyword) => {
+      clearHighlights();
+      if (!keyword) return;
+      mapNodes.forEach(node => {
+        if (node.dataset.keyword === keyword) {
+          node.classList.add('is-highlight');
+        }
+      });
+    };
+
+    document.querySelectorAll('.diary-tag-category').forEach((tagEl) => {
+      tagEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const keyword = tagEl.textContent.trim();
+        highlightKeyword(keyword);
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      if (target.closest('.diary-tag-category')) return;
+      clearHighlights();
+    });
+  })();
+</script>
+
+<div class="modal fade diary-modal" id="diaryKeywordModal" tabindex="-1" aria-labelledby="diaryKeywordModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="diaryKeywordModalLabel">キーワード検索</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body" id="diaryKeywordModalBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const entries = <%- JSON.stringify(entries || []) %>;
+    const modalEl = document.getElementById('diaryKeywordModal');
+    const modalBody = document.getElementById('diaryKeywordModalBody');
+    const modalTitle = document.getElementById('diaryKeywordModalLabel');
+    if (!modalEl || !modalBody) return;
+
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
+    const highlightTag = (text, tag) => {
+      if (!text || !tag) return escapeHtml(text);
+      const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedTag, 'gi');
+      let result = '';
+      let lastIndex = 0;
+      const raw = String(text);
+      for (const match of raw.matchAll(regex)) {
+        const start = match.index ?? 0;
+        const end = start + match[0].length;
+        result += escapeHtml(raw.slice(lastIndex, start));
+        result += `<mark class="diary-tag-highlight">${escapeHtml(match[0])}</mark>`;
+        lastIndex = end;
+      }
+      result += escapeHtml(raw.slice(lastIndex));
+      return result;
+    };
+
+    const openModalForKeyword = (keyword) => {
+      const matches = entries.filter(e => (e.tags || []).includes(keyword));
+      if (modalTitle) {
+        modalTitle.innerHTML = `<span class="diary-tag diary-tag-keyword">${escapeHtml(keyword)}</span>`;
+      }
+      modalBody.innerHTML = matches.length === 0
+        ? '<div class="text-muted">該当する日記はありません。</div>'
+        : matches.map(entry => {
+            const date = entry.date ? `<div class="diary-tag-modal-date">${escapeHtml(entry.date)}</div>` : '';
+            const itemTag = entry.item ? `<span class="diary-tag diary-tag-item">${escapeHtml(entry.item)}</span>` : '';
+            const eventTag = entry.event ? `<span class="diary-tag diary-tag-event">${escapeHtml(entry.event)}</span>` : '';
+            const headerTags = (itemTag || eventTag) ? `<div class="diary-tag-modal-tags">${itemTag}${eventTag}</div>` : '';
+            const title = entry.title ? `<div class="diary-tag-modal-title">${highlightTag(entry.title, keyword)}</div>` : '';
+            const summary = entry.summary ? `<div class="diary-tag-modal-summary">${highlightTag(entry.summary, keyword)}</div>` : '';
+            const content = entry.content ? `<div class="diary-tag-modal-content">${highlightTag(entry.content, keyword)}</div>` : '';
+            return `<div class="diary-tag-modal-entry">${date}${headerTags}${title}${summary}${content}</div>`;
+          }).join('');
+      if (window.bootstrap && window.bootstrap.Modal) {
+        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    };
+
+    document.querySelectorAll('.diary-keyword-node').forEach(node => {
+      node.addEventListener('click', () => {
+        const keyword = node.dataset.keyword;
+        if (!keyword) return;
+        openModalForKeyword(keyword);
+      });
+    });
+
+    document.querySelectorAll('.diary-keyword-count-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const keyword = btn.dataset.tag;
+        if (!keyword) return;
+        openModalForKeyword(keyword);
+      });
+    });
+  })();
+</script>
