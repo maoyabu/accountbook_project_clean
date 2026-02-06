@@ -27,13 +27,18 @@ const tokenize = (text) => {
   return matches;
 };
 
-const isValidToken = (token) => {
+const isValidToken = (token, stopwords) => {
   if (!token) return false;
-  if (defaultStopwords.has(token)) return false;
+  if (stopwords && stopwords.has(token)) return false;
+  if (/^[=\\/\\-\\*+]+$/.test(token)) return false;
   if (/^\d+$/.test(token)) return false;
   if (/^[a-z0-9]+$/i.test(token) && token.length < 3) return false;
   if (/^[一-龠々〆ヵヶぁ-んァ-ヴー]+$/.test(token) && token.length < 2) return false;
   return token.length >= 2;
+};
+
+const normalizeToken = (token) => {
+  return String(token || '').trim().toLowerCase();
 };
 
 const scoreToken = (token, count) => {
@@ -59,6 +64,9 @@ const getTokenizer = () => {
 
 const extractDiaryTags = async (text, options = {}) => {
   const maxTags = Number.isInteger(options.maxTags) ? options.maxTags : 10;
+  const excludeWords = Array.isArray(options.excludeWords) ? options.excludeWords : [];
+  const normalizedExclude = excludeWords.map(normalizeToken).filter(Boolean);
+  const stopwords = new Set([...defaultStopwords, ...normalizedExclude]);
   let tokens = [];
 
   const tokenizer = await getTokenizer();
@@ -71,7 +79,7 @@ const extractDiaryTags = async (text, options = {}) => {
     tokens = tokenize(text);
   }
 
-  tokens = tokens.filter(isValidToken);
+  tokens = tokens.map(normalizeToken).filter((t) => isValidToken(t, stopwords));
   const counts = new Map();
   tokens.forEach((t) => {
     counts.set(t, (counts.get(t) || 0) + 1);

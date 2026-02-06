@@ -9,6 +9,7 @@ const Eventcal_events = require('../models/eventcal_events');
 require('../models/menu/menu');
 const MenuDo = require('../models/menu/menuDo');
 const { extractDiaryTags } = require('../Utils/diaryTags');
+const Eventcal_settings = require('../models/eventcal_settings');
 
 const getSelectedDate = (rawDate) => {
   if (!rawDate) return new Date();
@@ -92,6 +93,13 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         .filter(ev => ev.excludeFromTags)
         .map(ev => `${ev.item}||${ev.event}`)
     );
+    const settings = await Eventcal_settings.findOne({
+      user: req.user._id,
+      group: groupId
+    }).select('excludeWords');
+    const excludeWordSet = new Set(
+      (settings?.excludeWords || []).map(w => String(w).trim().toLowerCase()).filter(Boolean)
+    );
 
     const financeGroupsMap = new Map();
     financeDocs.forEach((entry) => {
@@ -142,9 +150,12 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       const eventKey = `${entry.item || ''}||${entry.event || ''}`;
       const excludeFromTags = excludedTagEventKeySet.has(eventKey);
       const tagSource = [entry.title, entry.summary, entry.content].filter(Boolean).join(' ');
+      const rawTags = Array.isArray(entry.tags) && entry.tags.length > 0
+        ? entry.tags
+        : await extractDiaryTags(tagSource, { excludeWords: settings?.excludeWords });
       const tags = excludeFromTags
         ? []
-        : (Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource));
+        : rawTags.filter(t => !excludeWordSet.has(String(t?.name || '').trim().toLowerCase()));
       const diaryEntry = {
         id: entry._id,
         date: dayjs(entry.date).format('YYYY-MM-DD'),
@@ -181,9 +192,12 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       const eventKey = `${entry.item || ''}||${entry.event || ''}`;
       const excludeFromTags = excludedTagEventKeySet.has(eventKey);
       const tagSource = [entry.title, entry.summary, entry.content].filter(Boolean).join(' ');
+      const rawTags = Array.isArray(entry.tags) && entry.tags.length > 0
+        ? entry.tags
+        : await extractDiaryTags(tagSource, { excludeWords: settings?.excludeWords });
       const tags = excludeFromTags
         ? []
-        : (Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource));
+        : rawTags.filter(t => !excludeWordSet.has(String(t?.name || '').trim().toLowerCase()));
       monthlyDiaryEntries.push({
         id: entry._id,
         date: dayjs(entry.date).format('YYYY-MM-DD'),

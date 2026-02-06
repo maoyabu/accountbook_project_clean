@@ -121,6 +121,7 @@ router.get('/googlePhotos/list', isLoggedIn, async (req, res, next) => {
 const Wantolist = require('../models/wantolist');
 const Eventcal = require('../models/eventcal');
 const Eventcal_events = require('../models/eventcal_events');
+const Eventcal_settings = require('../models/eventcal_settings');
 const { extractDiaryTags } = require('../Utils/diaryTags');
 const SharedAccess = require('../models/shared_access');
 // --- カレンダー画面表示（月表示・日別エントリ表示・イベント取得） ---
@@ -247,6 +248,7 @@ router.get('/eventcal', isLoggedIn, async (req, res) => {
   const endOfDay = new Date(selectedDate.setHours(23, 59, 59, 999));
 
   let events = await Eventcal_events.find({ user: currentUserId, group: groupId }).sort({ entry_date: 1 });
+  const settings = await Eventcal_settings.findOne({ user: currentUserId, group: groupId });
 
   // デフォルトイベントが未登録の場合に自動挿入
   if (events.length === 0) {
@@ -358,6 +360,10 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
     //const { date, item, event, rate, content, share } = req.body;
     const { date, item, event, rate, content, share, title, summary, saveAction, existingId, redirectTo } = req.body;
     const tagSource = [title, summary, content].filter(Boolean).join(' ');
+    const settings = await Eventcal_settings.findOne({
+      user: req.user._id,
+      group: req.session.activeGroupId
+    }).select('excludeWords');
     // Unified photo object handling
     let photoObjs = (req.files || []).map(f => ({
       url: f.path,
@@ -403,7 +409,9 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
         excludeFromTags = Boolean(existingEvent.excludeFromTags);
       }
     }
-    const tags = excludeFromTags ? [] : await extractDiaryTags(tagSource);
+    const tags = excludeFromTags
+      ? []
+      : await extractDiaryTags(tagSource, { excludeWords: settings?.excludeWords });
 
     const existing = await Eventcal.findOne({
         user: req.user._id,
@@ -601,6 +609,10 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
   //const { date, item, event, rate, content, share } = req.body;
   const { date, item, event, rate, content, share, title, summary, saveAction, redirectTo } = req.body;
   const tagSource = [title, summary, content].filter(Boolean).join(' ');
+  const settings = await Eventcal_settings.findOne({
+    user: req.user._id,
+    group: req.session.activeGroupId
+  }).select('excludeWords');
 
   // Ensure item/event mapping exists for this user/group
   let excludeFromTags = false;
@@ -624,7 +636,9 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
       excludeFromTags = Boolean(existingEvent.excludeFromTags);
     }
   }
-  const tags = excludeFromTags ? [] : await extractDiaryTags(tagSource);
+  const tags = excludeFromTags
+    ? []
+    : await extractDiaryTags(tagSource, { excludeWords: settings?.excludeWords });
 
   // Unified photo object handling with deletion support
   let photoObjs = (req.files || []).map(f => ({
@@ -732,6 +746,7 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
 router.get('/eventcal_events', isLoggedIn, async (req, res) => {
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
+  const settings = await Eventcal_settings.findOne({ user: userId, group: groupId });
   let events = await Eventcal_events.find({ user: userId, group: groupId }).sort({ display_order: 1, entry_date: -1 });
 
   // デフォルトイベント挿入
@@ -772,7 +787,12 @@ router.get('/eventcal_events', isLoggedIn, async (req, res) => {
     editingEvent = await Eventcal_events.findOne({ _id: req.query.edit, user: userId, group: groupId });
   }
 
-  res.render('allaboutme/eventcal_events', { events, calevent_items, editingEvent });
+  res.render('allaboutme/eventcal_events', {
+    events,
+    calevent_items,
+    editingEvent,
+    excludeWords: settings?.excludeWords || []
+  });
 });
 
 // 日記用イベントの登録
@@ -805,6 +825,51 @@ router.post('/eventcal_events', isLoggedIn, async (req, res) => {
   });
   await newEvent.save();
   await logAction({ req, action: '登録', target: 'allaboutme-event'});
+  res.redirect('/allaboutme/eventcal_events');
+});
+
+// タグ除外ワード設定
+router.post('/eventcal_events/settings/add', isLoggedIn, async (req, res) => {
+  const userId = req.user._id;
+  const groupId = req.session.activeGroupId;
+  const word = String(req.body.excludeWord || '').trim();
+  if (!word) {
+    req.flash('error', '除外ワードを入力してください');
+    return res.redirect('/allaboutme/eventcal_events');
+  }
+
+  const settings = await Eventcal_settings.findOne({ user: userId, group: groupId });
+  const current = settings?.excludeWords || [];
+  const normalized = word.toLowerCase();
+  const exists = current.some(w => String(w).trim().toLowerCase() === normalized);
+  const next = exists ? current : current.concat([word]);
+
+  await Eventcal_settings.findOneAndUpdate(
+    { user: userId, group: groupId },
+    { excludeWords: next },
+    { upsert: true, new: true }
+  );
+  req.flash('success', '除外ワードを追加しました');
+  res.redirect('/allaboutme/eventcal_events');
+});
+
+router.post('/eventcal_events/settings/delete', isLoggedIn, async (req, res) => {
+  const userId = req.user._id;
+  const groupId = req.session.activeGroupId;
+  const word = String(req.body.excludeWord || '').trim();
+  if (!word) return res.redirect('/allaboutme/eventcal_events');
+
+  const settings = await Eventcal_settings.findOne({ user: userId, group: groupId });
+  const current = settings?.excludeWords || [];
+  const normalized = word.toLowerCase();
+  const next = current.filter(w => String(w).trim().toLowerCase() !== normalized);
+
+  await Eventcal_settings.findOneAndUpdate(
+    { user: userId, group: groupId },
+    { excludeWords: next },
+    { upsert: true, new: true }
+  );
+  req.flash('success', '除外ワードを削除しました');
   res.redirect('/allaboutme/eventcal_events');
 });
 
@@ -1008,7 +1073,13 @@ router.post('/eventcal/batch/step', isLoggedIn, uploadEventPhotos().array('photo
     item,
     event
   }).select('excludeFromTags');
-  const tags = eventSetting?.excludeFromTags ? [] : await extractDiaryTags(tagSource);
+  const settings = await Eventcal_settings.findOne({
+    user: userId,
+    group: groupId
+  }).select('excludeWords');
+  const tags = eventSetting?.excludeFromTags
+    ? []
+    : await extractDiaryTags(tagSource, { excludeWords: settings?.excludeWords });
 
   if (action && action === 'save') {
     try {
