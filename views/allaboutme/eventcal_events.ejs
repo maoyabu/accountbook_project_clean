@@ -32,6 +32,22 @@
             <label class="form-label text-dark">イベント</label>
             <input type="text" class="form-control" name="event" id="eventInput" value="<%= editingEvent ? editingEvent.event : '' %>" required>
           </div>
+          <div class="mb-2">
+            <label class="form-label text-dark">タグ化設定</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="excludeFromTags" id="excludeFromTags"
+                     <%= editingEvent && editingEvent.excludeFromTags ? 'checked' : '' %>>
+              <label class="form-check-label text-dark" for="excludeFromTags">タグ化から除外する</label>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-dark">登録モーダル</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="showInEntryDropdown" id="showInEntryDropdown"
+                     <%= editingEvent ? (editingEvent.showInEntryDropdown !== false ? 'checked' : '') : 'checked' %>>
+              <label class="form-check-label text-dark" for="showInEntryDropdown">選択プルダウンに表示する</label>
+            </div>
+          </div>
 
           <% if (editingEvent) { %>
           <input type="hidden" name="_method" value="PUT">
@@ -54,6 +70,8 @@
             <th>表示順</th>
             <th>項目</th>
             <th>イベント</th>
+            <th>タグ化</th>
+            <th>登録モーダル</th>
             <th>編集</th>
             </tr>
         </thead>
@@ -63,6 +81,8 @@
                 <td><%= e.display_order %></td>
                 <td><%= e.item %></td>
                 <td><%= e.event %></td>
+                <td><%= e.excludeFromTags ? '除外' : '対象' %></td>
+                <td><%= e.showInEntryDropdown === false ? '非表示' : '表示' %></td>
                 <td>
                 <form method="GET" action="/allaboutme/eventcal_events" style="display:inline;">
                     <input type="hidden" name="edit" value="<%= e._id %>">

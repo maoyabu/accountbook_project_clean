@@ -14,6 +14,14 @@ const eventcal_eventsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    excludeFromTags: {
+        type: Boolean,
+        default: false
+    },
+    showInEntryDropdown: {
+        type: Boolean,
+        default: true
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

@@ -269,6 +269,8 @@ router.get('/eventcal', isLoggedIn, async (req, res) => {
       await new Eventcal_events({
         item: def.item,
         event: def.event,
+        excludeFromTags: false,
+        showInEntryDropdown: true,
         user: currentUserId,
         group: groupId
       }).save();
@@ -289,6 +291,7 @@ router.get('/eventcal', isLoggedIn, async (req, res) => {
 
   const entries = await Eventcal.find(filter).sort({ entry_date: 1 });
   events = await Eventcal_events.find({ user: currentUserId, group: groupId }).sort({ entry_date: 1 });
+  const eventsForDropdown = events.filter(ev => ev.showInEntryDropdown !== false);
   const group = await FinanceUser.findById(currentUserId).populate('groups');
   const groupMembers = await FinanceUser.find({ _id: { $in: group.groups[0].members } });
 
@@ -318,7 +321,7 @@ router.get('/eventcal', isLoggedIn, async (req, res) => {
     calevent_items,
     selectedDate: dayjs(startOfDay).format('YYYY-MM-DD'),
     entries,
-    events,
+    events: eventsForDropdown,
     editingEntry: null,
     groupMembers,
     selectedUserId,
@@ -355,7 +358,6 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
     //const { date, item, event, rate, content, share } = req.body;
     const { date, item, event, rate, content, share, title, summary, saveAction, existingId, redirectTo } = req.body;
     const tagSource = [title, summary, content].filter(Boolean).join(' ');
-    const tags = await extractDiaryTags(tagSource);
     // Unified photo object handling
     let photoObjs = (req.files || []).map(f => ({
       url: f.path,
@@ -380,6 +382,7 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
     end.setHours(23, 59, 59, 999);
 
     // Ensure item/event mapping exists for this user/group
+    let excludeFromTags = false;
     if (item && event) {
       const existingEvent = await Eventcal_events.findOne({
         user: req.user._id,
@@ -391,11 +394,16 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
         await new Eventcal_events({
           item,
           event,
+          excludeFromTags: false,
+          showInEntryDropdown: true,
           user: req.user._id,
           group: req.session.activeGroupId
         }).save();
+      } else {
+        excludeFromTags = Boolean(existingEvent.excludeFromTags);
       }
     }
+    const tags = excludeFromTags ? [] : await extractDiaryTags(tagSource);
 
     const existing = await Eventcal.findOne({
         user: req.user._id,
@@ -519,6 +527,14 @@ router.get('/eventcal/edit/:id', isLoggedIn, async (req, res) => {
   }).sort({ entry_date: 1 });
 
   const events = await Eventcal_events.find({ user: req.user._id, group: req.session.activeGroupId }).sort({ entry_date: 1 });
+  const eventsForDropdown = events.filter(ev => ev.showInEntryDropdown !== false);
+  if (entry && entry.item && entry.event) {
+    const exists = eventsForDropdown.some(ev => ev.item === entry.item && ev.event === entry.event);
+    if (!exists) {
+      const fallback = events.find(ev => ev.item === entry.item && ev.event === entry.event);
+      if (fallback) eventsForDropdown.push(fallback);
+    }
+  }
   const group = await FinanceUser.findById(req.user._id).populate('groups');
   const groupMembers = await FinanceUser.find({ _id: { $in: group.groups[0].members } });
   const selectedUserId = req.user._id.toString();
@@ -547,7 +563,7 @@ router.get('/eventcal/edit/:id', isLoggedIn, async (req, res) => {
     calevent_items,
     selectedDate: dayjs(entry.date).format('YYYY-MM-DD'),
     entries,
-    events,
+    events: eventsForDropdown,
     editingEntry: entry,
     groupMembers,
     selectedUserId,
@@ -585,9 +601,9 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
   //const { date, item, event, rate, content, share } = req.body;
   const { date, item, event, rate, content, share, title, summary, saveAction, redirectTo } = req.body;
   const tagSource = [title, summary, content].filter(Boolean).join(' ');
-  const tags = await extractDiaryTags(tagSource);
 
   // Ensure item/event mapping exists for this user/group
+  let excludeFromTags = false;
   if (item && event) {
     const existingEvent = await Eventcal_events.findOne({
       user: req.user._id,
@@ -599,11 +615,16 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
       await new Eventcal_events({
         item,
         event,
+        excludeFromTags: false,
+        showInEntryDropdown: true,
         user: req.user._id,
         group: req.session.activeGroupId
       }).save();
+    } else {
+      excludeFromTags = Boolean(existingEvent.excludeFromTags);
     }
   }
+  const tags = excludeFromTags ? [] : await extractDiaryTags(tagSource);
 
   // Unified photo object handling with deletion support
   let photoObjs = (req.files || []).map(f => ({
@@ -734,6 +755,8 @@ router.get('/eventcal_events', isLoggedIn, async (req, res) => {
       await new Eventcal_events({
         item: def.item,
         event: def.event,
+        excludeFromTags: false,
+        showInEntryDropdown: true,
         user: userId,
         group: groupId
       }).save();
@@ -775,6 +798,8 @@ router.post('/eventcal_events', isLoggedIn, async (req, res) => {
     display_order,
     item,
     event,
+    excludeFromTags: req.body.excludeFromTags === 'on',
+    showInEntryDropdown: req.body.showInEntryDropdown === 'on',
     user: req.user._id,
     group: req.session.activeGroupId
   });
@@ -788,7 +813,13 @@ router.post('/eventcal_events/:id/edit', isLoggedIn, async (req, res) => {
   const { item, event } = req.body;
   await Eventcal_events.findOneAndUpdate(
     { _id: req.params.id },
-    { item, event, display_order: req.body.display_order }
+    {
+      item,
+      event,
+      display_order: req.body.display_order,
+      excludeFromTags: req.body.excludeFromTags === 'on',
+      showInEntryDropdown: req.body.showInEntryDropdown === 'on'
+    }
   );
   await logAction({ req, action: '更新', target: 'allaboutme-event'});
   res.redirect('/allaboutme/eventcal_events');
@@ -969,9 +1000,15 @@ router.post('/eventcal/batch/step', isLoggedIn, uploadEventPhotos().array('photo
   //const { item, event, rate, content, share, date } = req.body;
   const { item, event, rate, content, share, date, title, summary } = req.body;
   const tagSource = [title, summary, content].filter(Boolean).join(' ');
-  const tags = await extractDiaryTags(tagSource);
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
+  const eventSetting = await Eventcal_events.findOne({
+    user: userId,
+    group: groupId,
+    item,
+    event
+  }).select('excludeFromTags');
+  const tags = eventSetting?.excludeFromTags ? [] : await extractDiaryTags(tagSource);
 
   if (action && action === 'save') {
     try {

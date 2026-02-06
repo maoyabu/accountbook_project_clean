@@ -2452,6 +2452,25 @@ padding-left: 10px;
   margin-bottom: 6px;
 }
 
+.diary-tag-keyword {
+  background: #e6f4e8;
+  color: #2e6b3f;
+  font-weight: 600;
+  padding: 2px 10px;
+}
+
+.diary-tag-item {
+  background: #f2f4f8;
+  color: #516072;
+}
+
+.diary-tag-modal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 .diary-tag-cf.is-income {
   background: #e7f6ee;
   color: #1f7a4a;

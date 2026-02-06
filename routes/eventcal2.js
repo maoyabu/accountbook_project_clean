@@ -72,7 +72,7 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     const diaryDocsMonth = await Eventcal.find({
       user: req.user._id,
       date: { $gte: monthStart, $lte: monthEnd }
-    }).select('date title summary content tags');
+    }).select('date item event title summary content tags');
 
     const menuDoDocs = await MenuDo.find({
       recordedBy: req.user._id,
@@ -82,10 +82,16 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       .populate('group')
       .sort({ mealType: 1, createdAt: 1 });
 
-    const events = await Eventcal_events.find({
+    const allEvents = await Eventcal_events.find({
       user: req.user._id,
       group: groupId
     }).sort({ display_order: 1, entry_date: 1 });
+    const events = allEvents.filter(ev => ev.showInEntryDropdown !== false);
+    const excludedTagEventKeySet = new Set(
+      allEvents
+        .filter(ev => ev.excludeFromTags)
+        .map(ev => `${ev.item}||${ev.event}`)
+    );
 
     const financeGroupsMap = new Map();
     financeDocs.forEach((entry) => {
@@ -117,7 +123,7 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     });
 
     const eventOrderIndex = new Map();
-    events.forEach((ev, idx) => {
+    allEvents.forEach((ev, idx) => {
       const key = ev.event || '';
       if (!eventOrderIndex.has(key)) {
         eventOrderIndex.set(key, Number.isInteger(ev.display_order) ? ev.display_order : idx + 1);
@@ -133,8 +139,12 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       if (!diaryGroupsMap.has(groupId)) {
         diaryGroupsMap.set(groupId, { groupId, groupName, entries: [] });
       }
+      const eventKey = `${entry.item || ''}||${entry.event || ''}`;
+      const excludeFromTags = excludedTagEventKeySet.has(eventKey);
       const tagSource = [entry.title, entry.summary, entry.content].filter(Boolean).join(' ');
-      const tags = Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource);
+      const tags = excludeFromTags
+        ? []
+        : (Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource));
       const diaryEntry = {
         id: entry._id,
         date: dayjs(entry.date).format('YYYY-MM-DD'),
@@ -168,11 +178,17 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     const monthlyTagCountMap = new Map();
     const monthlyDiaryEntries = [];
     for (const entry of diaryDocsMonth) {
+      const eventKey = `${entry.item || ''}||${entry.event || ''}`;
+      const excludeFromTags = excludedTagEventKeySet.has(eventKey);
       const tagSource = [entry.title, entry.summary, entry.content].filter(Boolean).join(' ');
-      const tags = Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource);
+      const tags = excludeFromTags
+        ? []
+        : (Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource));
       monthlyDiaryEntries.push({
         id: entry._id,
         date: dayjs(entry.date).format('YYYY-MM-DD'),
+        item: entry.item || '',
+        event: entry.event || '',
         title: entry.title || '',
         summary: entry.summary || '',
         content: entry.content || '',

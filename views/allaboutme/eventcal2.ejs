@@ -25,7 +25,7 @@
       <div id="diaryGrid" class="diary-grid"></div>
       <% if (monthlyTagSummary && monthlyTagSummary.length > 0) { %>
         <div class="diary-month-tags">
-          <div class="diary-month-tags-title">当月のタグ</div>
+          <div class="diary-month-tags-title">今月のキーワード</div>
           <div class="diary-tags">
             <% monthlyTagSummary.forEach((tag, idx) => { %>
               <% if (idx < 10) { %>
@@ -621,16 +621,21 @@
         const matches = (window.monthlyDiaryEntriesData || []).filter(e => (e.tags || []).includes(tag));
         const tagModalTitle = document.getElementById('diaryTagModalLabel');
         if (tagModalTitle) {
-          tagModalTitle.textContent = tag ? `タグ: ${tag}` : 'タグ検索';
+          tagModalTitle.innerHTML = tag
+            ? `キーワード: <span class="diary-tag diary-tag-keyword">${escapeHtml(tag)}</span>`
+            : 'キーワード検索';
         }
         const bodyHtml = matches.length === 0
           ? '<div class="text-muted">該当する日記はありません。</div>'
           : matches.map(entry => {
               const date = entry.date ? `<div class="diary-tag-modal-date">${escapeHtml(entry.date)}</div>` : '';
+              const itemTag = entry.item ? `<span class="diary-tag diary-tag-item">${escapeHtml(entry.item)}</span>` : '';
+              const eventTag = entry.event ? `<span class="diary-tag diary-tag-event">${escapeHtml(entry.event)}</span>` : '';
+              const headerTags = (itemTag || eventTag) ? `<div class="diary-tag-modal-tags">${itemTag}${eventTag}</div>` : '';
               const title = entry.title ? `<div class="diary-tag-modal-title">${highlightTag(entry.title, tag)}</div>` : '';
               const summary = entry.summary ? `<div class="diary-tag-modal-summary">${highlightTag(entry.summary, tag)}</div>` : '';
               const content = entry.content ? `<div class="diary-tag-modal-content">${highlightTag(entry.content, tag)}</div>` : '';
-              return `<div class="diary-tag-modal-entry">${date}${title}${summary}${content}</div>`;
+              return `<div class="diary-tag-modal-entry">${date}${headerTags}${title}${summary}${content}</div>`;
             }).join('');
         tagModalBody.innerHTML = bodyHtml;
         if (window.bootstrap && window.bootstrap.Modal) {
