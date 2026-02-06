@@ -6,9 +6,16 @@
 </div>
 
 <div class="container mt-3">
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="/allaboutme/eventcal2" class="btn btn-sm btn-outline-secondary">My Diaryトップ</a>
+    <a href="/allaboutme/diary-keywords" class="btn btn-sm btn-outline-primary">キーワードランキング/マッピング</a>
+    <a href="/allaboutme/export-diary" class="btn btn-sm btn-outline-secondary">My Diary書出し</a>
+    <a href="/allaboutme/diary-settings" class="btn btn-sm btn-outline-secondary">My Diary設定</a>
+  </div>
+
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
-      <h4 class="mb-1">MyDiary キーワード</h4>
+      <h4 class="mb-1">My Diary キーワード</h4>
       <div class="text-muted small">
         <%= fiscalRange.start.getFullYear() %>年<%= fiscalRange.start.getMonth() + 1 %>月
         〜

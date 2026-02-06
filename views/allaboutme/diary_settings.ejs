@@ -9,8 +9,14 @@
   </a>
 </div>
 <div class="container">
+  <div class="d-flex flex-wrap gap-2 mb-3 mt-2">
+    <a href="/allaboutme/eventcal2" class="btn btn-sm btn-outline-secondary">My Diaryトップ</a>
+    <a href="/allaboutme/diary-keywords" class="btn btn-sm btn-outline-secondary">キーワードランキング/マッピング</a>
+    <a href="/allaboutme/export-diary" class="btn btn-sm btn-outline-secondary">My Diary書出し</a>
+    <a href="/allaboutme/diary-settings" class="btn btn-sm btn-outline-primary">My Diary設定</a>
+  </div>
   <% const activeTab = typeof locals.activeTab !== 'undefined' ? locals.activeTab : 'exclude'; %>
-  <ul class="nav nav-tabs mt-3" role="tablist">
+  <ul class="nav nav-tabs diary-settings-tabs mt-3" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link <%= activeTab === 'exclude' ? 'active' : '' %>" id="exclude-tab" data-bs-toggle="tab" data-bs-target="#exclude-tabpane" type="button" role="tab" aria-controls="exclude-tabpane" aria-selected="<%= activeTab === 'exclude' ? 'true' : 'false' %>">
         <i class="fa-solid fa-gear me-1"></i>タグ化しない除外ワード設定

@@ -154,13 +154,11 @@
         <% } else { %>
           <ul class="nav flex-column menu-list">
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/allaboutme/wantolist') ? 'is-active is-myself' : '' %> <%= hasGroup && svc.allaboutme ? '' : 'disabled' %>" href="<%= hasGroup && svc.allaboutme ? '/allaboutme/wantolist' : '#' %>"><i class="fa-solid fa-list-check"></i> マイリスト</a></li>
-            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/allaboutme/eventcal2') ? 'is-active is-myself' : '' %> <%= hasGroup && svc.allaboutme ? '' : 'disabled' %>" href="<%= hasGroup && svc.allaboutme ? '/allaboutme/eventcal2' : '#' %>"><i class="fa-solid fa-calendar-days"></i> MyDiary</a></li>
+            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/allaboutme/eventcal2') ? 'is-active is-myself' : '' %> <%= hasGroup && svc.allaboutme ? '' : 'disabled' %>" href="<%= hasGroup && svc.allaboutme ? '/allaboutme/eventcal2' : '#' %>"><i class="fa-solid fa-calendar-days"></i> My Diary</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/history/list') ? 'is-active is-myself' : '' %>" href="/history/list"><i class="fa-solid fa-clock-rotate-left"></i> My History</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/relation') ? 'is-active is-myself' : '' %>" href="/relation"><i class="fa-solid fa-people-group"></i> My Relation</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/resume/myresume') ? 'is-active is-myself' : '' %>" href="/resume/myresume"><i class="fa-solid fa-book"></i> My 履歴書</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/allaboutme/report/mylist') ? 'is-active is-myself' : '' %>" href="/allaboutme/report/mylist"><i class="fa-regular fa-clipboard"></i> レポート</a></li>
-            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/allaboutme/export-diary') ? 'is-active is-myself' : '' %>" href="/allaboutme/export-diary"><i class="fa-regular fa-file-lines"></i> MyDiary書出し</a></li>
-            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/allaboutme/diary-settings') ? 'is-active is-myself' : '' %>" href="/allaboutme/diary-settings"><i class="fa-solid fa-gear"></i> MyDiary設定</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/history/categories') ? 'is-active is-myself' : '' %>" href="/history/categories"><i class="fa-solid fa-folder-tree"></i> My History設定</a></li>
           </ul>
         <% } %>
