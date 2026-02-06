@@ -29,7 +29,7 @@
           <tr>
             <th class="text-dark align-middle" rowspan="2">項目</th>
             <th class="text-dark" colspan="3"><%= month %>月</th>
-            <th class="text-dark th-period-highlight" colspan="3">1月〜<%= month %>月</th>
+            <th class="text-dark th-period-highlight" colspan="3"><%= fiscalRangeLabel || `${fiscalStartMonth || 1}月〜${month}月` %></th>
           </tr>
           <tr>
             <th class="text-dark">合計</th>
@@ -68,14 +68,14 @@
             <tr>
               <td class="text-start"><%= item %></td>
               <td class="text-end">
-                <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>" class="text-decoration-none">
+                <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&fy=<%= fiscalYear %>" class="text-decoration-none">
                   <%= monData.total.toLocaleString() %>
                 </a>
               </td>
               <td class="text-end"><%= monData.budget.toLocaleString() %></td>
               <td class="text-end <%= monData.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= monData.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= monData.diff.toLocaleString() %></td>
               <td class="text-end">
-                <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&cumulative=1" class="text-decoration-none">
+                <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&cumulative=1&fy=<%= fiscalYear %>" class="text-decoration-none">
                   <%= cum.total.toLocaleString() %>
                 </a>
               </td>

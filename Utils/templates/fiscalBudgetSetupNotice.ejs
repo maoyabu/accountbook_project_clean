@@ -1,0 +1,13 @@
+<%- include('_mailHeader') %>
+<div class="email-container">
+  <div class="email-header">
+    <h1>年度予算設定のご案内</h1>
+  </div>
+  <p><strong><%= groupName %></strong> のメンバーの皆さまへ</p>
+  <p><strong><%= fiscalYearLabel %></strong> の予算設定をご確認ください。</p>
+  <p>年度の開始月は <strong><%= fiscalStartMonth %>月</strong> です。</p>
+  <p>
+    予算設定はこちら: <a href="<%= budgetUrl %>"><%= budgetUrl %></a>
+  </p>
+</div>
+<%- include('_mailFooter') %>

@@ -23,6 +23,12 @@ const FinanceCloseStatus = require('../models/finance_close_status');
 const FinanceCloseGroup = require('../models/finance_close_group');
 const FinanceCloseYearStatus = require('../models/finance_close_year_status');
 const FinanceCloseYearGroup = require('../models/finance_close_year_group');
+const {
+  normalizeFiscalStartMonth,
+  getFiscalYearForDate,
+  getPreviousFiscalYearMeta,
+  getFiscalYearStartDateInCalendarYear
+} = require('../Utils/fiscalYear');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -60,11 +66,8 @@ const getPreviousMonthMeta = (baseDate = new Date()) => {
   const end = new Date(target.getFullYear(), target.getMonth() + 1, 0, 23, 59, 59, 999);
   return { monthKey, monthLabel, start, end, year: String(target.getFullYear()) };
 };
-const getPreviousYearMeta = (baseDate = new Date()) => {
-  const year = baseDate.getFullYear() - 1;
-  const start = new Date(year, 0, 1, 0, 0, 0, 0);
-  const end = new Date(year, 11, 31, 23, 59, 59, 999);
-  return { year, yearLabel: `${year}年度`, start, end };
+const getPreviousYearMeta = (baseDate = new Date(), startMonth = 1) => {
+  return getPreviousFiscalYearMeta(baseDate, startMonth);
 };
 const isGroupServiceEnabled = (user, groupId, serviceKey) => {
   if (!user) return false;
@@ -95,7 +98,30 @@ const ex_cfs = [
 //const pay_cfs = []; // PaymentItemから取得に変更
 const whos = []; //activeGrouopIdから読み込む
 
-const currentYear = new Date().getFullYear();
+const getCurrentFiscalYear = (startMonth = 1) => {
+  return getFiscalYearForDate(new Date(), startMonth) ?? new Date().getFullYear();
+};
+
+const getGroupFiscalStartMonth = async (groupId) => {
+  if (!groupId) return 1;
+  const group = await Group.findById(groupId).select('financeFiscalStartMonth');
+  return normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
+};
+
+const parseDateValue = (value) => {
+  if (!value) return null;
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt;
+};
+
+const resolveFiscalYearForValue = (value, startMonth = 1) => {
+  const dt = parseDateValue(value);
+  if (dt) {
+    return getFiscalYearForDate(dt, startMonth) ?? dt.getFullYear();
+  }
+  return getCurrentFiscalYear(startMonth);
+};
 
 // Financeトップ
 router.get('/top', isLoggedIn, async (req, res) => {
@@ -111,6 +137,7 @@ router.get('/top', isLoggedIn, async (req, res) => {
       : activeGroupId;
 
     const today = new Date();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(objectId);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
     const monthStartStr = monthStart.toISOString().split('T')[0];
@@ -128,7 +155,8 @@ router.get('/top', isLoggedIn, async (req, res) => {
       dayRate,
       dayRatePrev
     };
-    const yearStr = String(today.getFullYear());
+    const fiscalYear = getFiscalYearForDate(today, fiscalStartMonth) ?? today.getFullYear();
+    const yearStr = String(fiscalYear);
 
     const budgets = await Budget.find({ group: objectId, year: yearStr }).sort({ display_order: 1 }).lean();
     const budgetMap = new Map(budgets.map(b => [b.expense_item || '未分類', Number(b.budget) || 0]));
@@ -220,7 +248,7 @@ router.get('/top', isLoggedIn, async (req, res) => {
       isSelf: req.user && m.id === req.user._id.toString()
     }));
 
-    const { year: closeYearValue, yearLabel: closeYearLabel, start: closeYearStart, end: closeYearEnd } = getPreviousYearMeta(today);
+    const { year: closeYearValue, yearLabel: closeYearLabel, start: closeYearStart, end: closeYearEnd } = getPreviousFiscalYearMeta(today, fiscalStartMonth);
     const yearStatuses = closeMemberIds.length > 0
       ? await FinanceCloseYearStatus.find({
         group: objectId,
@@ -280,6 +308,7 @@ router.get('/top', isLoggedIn, async (req, res) => {
         yearValue: closeYearValue,
         members: closeYearMembers
       },
+      fiscalStartMonth,
       todayMeta,
       recentFinances,
       totalYen,
@@ -311,8 +340,8 @@ async function fetchItemsByYear(groupId, laCf, year) {
   return items;
 }
 
-async function fetchExpenseItemsByYear(groupId, year) {
-  const yearStr = year ? String(year) : String(new Date().getFullYear());
+async function fetchExpenseItemsByYear(groupId, year, startMonth = 1) {
+  const yearStr = year ? String(year) : String(getCurrentFiscalYear(startMonth));
   const budgetItems = await Budget.find({ group: groupId, year: yearStr }).sort({ display_order: 1 });
   if (budgetItems.length === 0) {
     return ['Please Choice', ...ex_cfs];
@@ -320,9 +349,9 @@ async function fetchExpenseItemsByYear(groupId, year) {
   return ['Please Choice', ...budgetItems.map(item => item.expense_item)];
 }
 
-async function loadCfItems(req, year) {
+async function loadCfItems(req, year, startMonth = 1) {
   const groupId = req.session.activeGroupId;
-  const targetYear = year ? String(year) : String(new Date().getFullYear());
+  const targetYear = year ? String(year) : String(getCurrentFiscalYear(startMonth));
   in_items = [...defaultInItems];
   dedu_cfs = [...defaultDeduCfs];
   saving_cfs = [...defaultSavingCfs];
@@ -439,8 +468,9 @@ router.get('/entry', isLoggedIn, async(req, res) => {
         req.flash('error', 'アクティブなグループが選択されていません');
         return res.redirect('/group_list');
     }
-    const yearForItems = extractYearFromDate(req.query?.date) || currentYear;
-    await loadCfItems(req, yearForItems);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = resolveFiscalYearForValue(req.query?.date, fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
     // MongoDBからデータを取得（activeGroupIDで絞り込み）
     const allUsers = await FinanceUser.find({ groups: activeGroupId });
     const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
@@ -468,8 +498,9 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
       // console.log('アップロードされたレシート画像パス:', req.file.path);
     }
     const activeGroupId = req.session.activeGroupId;
-    const yearForItems = extractYearFromDate(req.body?.finance?.date) || currentYear;
-    await loadCfItems(req, yearForItems);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = resolveFiscalYearForValue(req.body?.finance?.date, fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
     const { finance } = req.body;
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
     const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
@@ -695,11 +726,12 @@ router.get('/search', isLoggedIn, async (req, res) => {
     return res.redirect('/group_list');
   }
 
-  await loadCfItems(req);
+  const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+  const yearForItems = getCurrentFiscalYear(fiscalStartMonth);
+  await loadCfItems(req, yearForItems, fiscalStartMonth);
 
   // ex_cfsをfinance_ex_budgetから取得
-  const currentYear = new Date().getFullYear();
-  const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear });
+  const budgetItems = await Budget.find({ group: activeGroupId, year: String(yearForItems) });
   const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
 
   // グループに所属するメンバー一覧を取得
@@ -851,9 +883,10 @@ router.post('/search', catchAsync(async (req, res) => {
     }
 
     // 候補リストの準備（区分2=明細項目用）
-    await loadCfItems(req);
-    const currentYear = new Date().getFullYear();
-    const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear });
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = getCurrentFiscalYear(fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
+    const budgetItems = await Budget.find({ group: activeGroupId, year: String(yearForItems) });
     const ex_cfs = budgetItems.map(item => item.expense_item);
 
     res.render('finance/search_results', {
@@ -958,9 +991,10 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
   }
 
   // 候補リストを同様に用意
-  await loadCfItems(req);
-  const currentYear = new Date().getFullYear();
-  const budgetItems = await Budget.find({ group: activeGroupId, year: currentYear });
+  const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+  const yearForItems = getCurrentFiscalYear(fiscalStartMonth);
+  await loadCfItems(req, yearForItems, fiscalStartMonth);
+  const budgetItems = await Budget.find({ group: activeGroupId, year: String(yearForItems) });
   const ex_cfs = budgetItems.map(item => item.expense_item);
 
   res.render('finance/search_results', {
@@ -1160,8 +1194,9 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         return res.redirect('/finance/list');
     }
     const finance = await Finance.findById(id).populate('user');
-    const yearForItems = extractYearFromDate(finance?.date) || currentYear;
-    await loadCfItems(req, yearForItems);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = resolveFiscalYearForValue(finance?.date, fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
     // グループごとの貯蓄項目を取得
     const savingItems = await fetchItemsByYear(activeGroupId, '貯蓄項目', yearForItems);
     let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
@@ -1232,8 +1267,9 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
     const { date, cf, amount, payment_type, user } = finance;
     const allUsers = await FinanceUser.find(); // もしくは必要なユーザー情報取得
 
-    const yearForItems = extractYearFromDate(date) || currentYear;
-    await loadCfItems(req, yearForItems);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = resolveFiscalYearForValue(date, fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
     const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
     const savingItems = await fetchItemsByYear(activeGroupId, '貯蓄項目', yearForItems);
     let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
@@ -1456,7 +1492,6 @@ cron.schedule('0 * * * *', async () => {
     const daysInMonth = monthEnd.getDate();
     const dayRate = Math.round((today.getDate() / daysInMonth) * 1000) / 10;
     const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const yearStr = String(today.getFullYear());
 
     const users = await FinanceUser.find({
       financeBudgetNoticeEnabled: true,
@@ -1485,7 +1520,56 @@ cron.schedule('0 * * * *', async () => {
         const noticeHour = Number.isInteger(noticeSetting?.noticeHour) ? noticeSetting.noticeHour : 8;
         if (today.getHours() !== noticeHour) continue;
 
-        const budgets = await Budget.find({ group: groupId, year: yearStr }).lean();
+        // 年度予算設定のアラート（年度開始月の1ヶ月前の1日）
+        const fiscalStartMonth = normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
+        const alertMonth = fiscalStartMonth === 1 ? 12 : fiscalStartMonth - 1;
+        if (today.getDate() === 1 && (today.getMonth() + 1) === alertMonth) {
+          const nextFiscalYear = (getFiscalYearForDate(today, fiscalStartMonth) ?? today.getFullYear()) + 1;
+          const lastAlertYear = Number.isInteger(noticeSetting?.lastFiscalAlertYear)
+            ? noticeSetting.lastFiscalAlertYear
+            : null;
+          if (lastAlertYear !== nextFiscalYear) {
+            const groupDoc = await Group.findById(groupId).populate('members').populate('createdBy');
+            const recipientSet = new Set();
+            (groupDoc?.members || []).forEach((m) => {
+              if (m && m.email && m.isMail !== false && isGroupServiceEnabled(m, groupId, 'finance')) {
+                recipientSet.add(m.email);
+              }
+            });
+            if (groupDoc?.createdBy && groupDoc.createdBy.email && groupDoc.createdBy.isMail !== false) {
+              if (isGroupServiceEnabled(groupDoc.createdBy, groupId, 'finance')) {
+                recipientSet.add(groupDoc.createdBy.email);
+              }
+            }
+            const recipients = Array.from(recipientSet);
+            if (recipients.length > 0) {
+              const baseUrl = process.env.NODE_ENV === 'production'
+                ? process.env.BASE_URL
+                : 'http://localhost:3000';
+              const budgetUrl = `${baseUrl}/finance/budget`;
+              const fiscalYearLabel = `${nextFiscalYear}年度`;
+              await sendMail({
+                to: recipients,
+                subject: `【家計簿】${fiscalYearLabel}の予算設定のご案内`,
+                templateName: 'fiscalBudgetSetupNotice',
+                templateData: {
+                  groupName: groupDoc?.group_name || 'グループ未設定',
+                  fiscalYearLabel,
+                  fiscalStartMonth,
+                  budgetUrl
+                }
+              });
+              await FinanceBudgetNoticeSetting.findOneAndUpdate(
+                { group: groupId },
+                { lastFiscalAlertYear: nextFiscalYear },
+                { upsert: true, new: true }
+              );
+            }
+          }
+        }
+
+        const fiscalYear = getFiscalYearForDate(today, fiscalStartMonth) ?? today.getFullYear();
+        const budgets = await Budget.find({ group: groupId, year: String(fiscalYear) }).lean();
         if (!budgets || budgets.length === 0) continue;
 
         const totalBudget = budgets.reduce((sum, b) => sum + (Number(b.budget) || 0), 0);
@@ -1831,7 +1915,8 @@ router.post('/year-close/complete', isLoggedIn, async (req, res) => {
     }
 
     const now = new Date();
-    const { year, yearLabel, start, end } = getPreviousYearMeta(now);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const { year, yearLabel, start, end } = getPreviousYearMeta(now, fiscalStartMonth);
 
     await FinanceCloseYearStatus.findOneAndUpdate(
       { user: req.user._id, group: groupId, year },
@@ -2011,7 +2096,8 @@ router.post('/year-close/undo', isLoggedIn, async (req, res) => {
       return res.redirect('/finance/top');
     }
     const now = new Date();
-    const { year, yearLabel } = getPreviousYearMeta(now);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const { year, yearLabel } = getPreviousYearMeta(now, fiscalStartMonth);
 
     await FinanceCloseYearStatus.findOneAndUpdate(
       { user: req.user._id, group: groupId, year },
@@ -2037,9 +2123,10 @@ router.post('/year-close/undo', isLoggedIn, async (req, res) => {
 
 //予算関連ルート
 //予算設定のトップ画面表示
-router.get('/budget', isLoggedIn, (req, res) => {
+router.get('/budget', isLoggedIn, async (req, res) => {
   const activeGroupId = req.session.activeGroupId;
-  const selectedYear = new Date().getFullYear(); // 現在の年を初期値に
+  const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+  const selectedYear = getCurrentFiscalYear(fiscalStartMonth); // 現在の年度を初期値に
   Promise.all([
     MatometeSetting.findOne({ group: activeGroupId }),
     FinanceBudgetNoticeSetting.findOne({ group: activeGroupId })
@@ -2048,6 +2135,7 @@ router.get('/budget', isLoggedIn, (req, res) => {
       activeGroupId,
       selectedYear,
       page: 'budget',
+      fiscalStartMonth,
       noticeSettings: {
         enabled: req.user?.financeBudgetNoticeEnabled !== false,
         thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
@@ -2083,6 +2171,25 @@ router.post('/budget/notice-settings', isLoggedIn, async (req, res) => {
 
   req.flash('success', '予算通知の設定を更新しました');
   res.redirect('/finance/budget');
+});
+
+// 年度の開始月設定
+router.post('/budget/fiscal-start-month', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/finance/budget');
+    }
+    const month = normalizeFiscalStartMonth(req.body.fiscal_start_month);
+    await Group.findByIdAndUpdate(groupId, { financeFiscalStartMonth: month });
+    req.flash('success', '年度の開始月を更新しました');
+    return res.redirect('/finance/budget');
+  } catch (err) {
+    console.error('年度の開始月更新エラー:', err);
+    req.flash('error', '年度の開始月の更新に失敗しました');
+    return res.redirect('/finance/budget');
+  }
 });
 
 // まとめて入力 催促メール設定の保存
@@ -2461,7 +2568,9 @@ router.get('/receipt/new', isLoggedIn, upload.single('receiptImage'), async (req
         req.flash('error', 'アクティブなグループが選択されていません');
         return res.redirect('/group_list');
     }
-    await loadCfItems(req);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = getCurrentFiscalYear(fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
     const currentUser = await FinanceUser.findById(req.user._id).populate('groups');
     const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
 

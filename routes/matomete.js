@@ -9,6 +9,14 @@ const mongoose = require('mongoose');
 const Items = require('../models/finance_items');
 const PaymentItem = require('../models/paymentItems');
 const MatometeStatus = require('../models/matomete_status');
+const Group = require('../models/groups');
+const { normalizeFiscalStartMonth, getFiscalYearForDate } = require('../Utils/fiscalYear');
+
+const getGroupFiscalStartMonth = async (groupId) => {
+  if (!groupId) return 1;
+  const group = await Group.findById(groupId).select('financeFiscalStartMonth');
+  return normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
+};
 
 //selectedの選択肢をここで定義
 const la_cfs = ['Please Choice','支出','収入','控除','貯蓄'];
@@ -21,8 +29,9 @@ router.get('/regular-entry/manage', isLoggedIn, async (req, res) => {
     const groupId = req.session.activeGroupId; // ← 修正済み
     const userId = req.user._id;
     // ex_cfsをfinance_ex_budgetから取得
-    const currentYear = new Date().getFullYear();
-    const budgetItems = await Budget.find({ group: groupId, year: currentYear }).sort({ display_order: 1 });
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const currentYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const budgetItems = await Budget.find({ group: groupId, year: String(currentYear) }).sort({ display_order: 1 });
     const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
     
     try {
@@ -119,8 +128,9 @@ router.get('/regular-entry/edit/:id', isLoggedIn, async (req, res) => {
   const userId = req.user._id;
   const { id } = req.params;
   // ex_cfsをfinance_ex_budgetから取得
-  const currentYear = new Date().getFullYear();
-  const budgetItems = await Budget.find({ group: groupId, year: currentYear }).sort({ display_order: 1 });
+  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+  const currentYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+  const budgetItems = await Budget.find({ group: groupId, year: String(currentYear) }).sort({ display_order: 1 });
   const ex_cfs = ['Please Choice', ...budgetItems.map(item => item.expense_item)];
 
   try {

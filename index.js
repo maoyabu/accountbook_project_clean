@@ -68,6 +68,12 @@ const LocalStrategy = require('passport-local').Strategy;
 const FinanceUser = require('./models/users');
 const FinanceCloseStatus = require('./models/finance_close_status');
 const FinanceCloseYearStatus = require('./models/finance_close_year_status');
+const Group = require('./models/groups');
+const {
+  normalizeFiscalStartMonth,
+  getPreviousFiscalYearMeta,
+  getFiscalYearStartDateInCalendarYear
+} = require('./Utils/fiscalYear');
 
 const googlePhotosRouter = require('./routes/googlePhotos');
 const ocrRoutes = require('./routes/ocr');
@@ -243,21 +249,28 @@ app.use(async (req, res, next) => {
       month: monthKey
     }).lean();
 
-    const prevYear = now.getFullYear() - 1;
-    const yearLabel = `${prevYear}年度`;
-    const yearStatus = await FinanceCloseYearStatus.findOne({
-      user: req.user._id,
-      group: req.session.activeGroupId,
-      year: prevYear
-    }).lean();
+    const group = await Group.findById(req.session.activeGroupId).select('financeFiscalStartMonth');
+    const fiscalStartMonth = normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
+    const yearStartInCalendar = getFiscalYearStartDateInCalendarYear(now, fiscalStartMonth);
+    const canShowYearClose = now >= yearStartInCalendar;
+    let prevYearMeta = null;
+    let yearStatus = null;
+    if (canShowYearClose) {
+      prevYearMeta = getPreviousFiscalYearMeta(now, fiscalStartMonth);
+      yearStatus = await FinanceCloseYearStatus.findOne({
+        user: req.user._id,
+        group: req.session.activeGroupId,
+        year: prevYearMeta.year
+      }).lean();
+    }
 
     res.locals.financeClose = {
       show: !(status?.completed),
       monthKey,
       monthLabel,
-      yearShow: !(yearStatus?.completed),
-      yearValue: prevYear,
-      yearLabel
+      yearShow: canShowYearClose && !(yearStatus?.completed),
+      yearValue: prevYearMeta?.year,
+      yearLabel: prevYearMeta?.yearLabel
     };
   } catch (err) {
     console.error('Finance close locals error:', err);

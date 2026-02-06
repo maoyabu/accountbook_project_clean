@@ -81,7 +81,7 @@
               <% recentFinances.forEach(finance => { %>
                 <li class="list-group-item recent-finance-row d-flex align-items-center">
                   <div class="recent-finance-main">
-                    <strong><%= finance.date ? finance.date.toISOString().split('T')[0] : '' %></strong>
+                    <strong><%= finance.date ? new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') : '' %></strong>
                     <span class="ms-2"><%= finance.content || '内容未入力' %></span>
                   </div>
                   <div class="recent-finance-amount">

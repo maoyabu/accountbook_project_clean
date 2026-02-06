@@ -2,11 +2,28 @@ const Budget = require('../models/finance_ex_budget');
 const Finance = require('../models/finance');
 const mongoose = require('mongoose');
 const { ObjectId } = require('mongodb');
+const Group = require('../models/groups');
+const {
+  normalizeFiscalStartMonth,
+  getFiscalYearForDate,
+  getFiscalYearRange,
+  getFiscalMonths
+} = require('../Utils/fiscalYear');
+
+const getGroupFiscalStartMonth = async (groupId) => {
+  if (!groupId) return 1;
+  const group = await Group.findById(groupId).select('financeFiscalStartMonth');
+  return normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
+};
 
 //月次支出の項目別グラフの表示
 exports.getMonthlyStackedExpenseData = async (req, res) => {
     const groupId = new mongoose.Types.ObjectId(req.session.activeGroupId);
-    const selectedYear = parseInt(req.query.year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const selectedYear = parseInt(req.query.year) || defaultYear;
+    const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+    const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx]));
   
     // このグループの支出データがある年を取得
     const yearsRaw = await Finance.aggregate([
@@ -19,16 +36,12 @@ exports.getMonthlyStackedExpenseData = async (req, res) => {
       },
       {
         $project: {
-          year: { $year: "$date" }
+          year: { $year: { date: "$date", timezone: "Asia/Tokyo" } },
+          month: { $month: { date: "$date", timezone: "Asia/Tokyo" } }
         }
       },
       {
-        $group: {
-          _id: "$year"
-        }
-      },
-      {
-        $sort: { _id: -1 } // 新しい順に並べる（必要なら）
+        $group: { _id: { year: "$year", month: "$month" } }
       }
     ]);
 
@@ -38,20 +51,26 @@ exports.getMonthlyStackedExpenseData = async (req, res) => {
       { $group: { _id: "$year" } }
     ]);
   
-    const financeYears = yearsRaw.map(doc => String(doc._id));
+    const financeYearSet = new Set();
+    yearsRaw.forEach(doc => {
+      const year = doc._id.year;
+      const month = doc._id.month;
+      const fiscalYear = month >= fiscalStartMonth ? year : year - 1;
+      financeYearSet.add(String(fiscalYear));
+    });
+    const financeYears = Array.from(financeYearSet);
     const budgetYears = budgetYearsRaw.map(doc => doc._id);
     const availableYears = [...new Set([...financeYears, ...budgetYears])].sort((a, b) => b - a);
     console.log('availableYears:', availableYears);
     
-    const startOfYear = new Date(`${selectedYear}-01-01T00:00:00.000Z`);
-    const endOfYear = new Date(`${selectedYear + 1}-01-01T00:00:00.000Z`);
+    const fiscalRange = getFiscalYearRange(selectedYear, fiscalStartMonth);
   
     const raw = await Finance.aggregate([
       {
         $match: {
           cf: '支出',
           group: groupId,
-          date: { $gte: startOfYear, $lt: endOfYear }
+          date: { $gte: fiscalRange.start, $lt: fiscalRange.end }
         }
       },
       {
@@ -83,7 +102,9 @@ exports.getMonthlyStackedExpenseData = async (req, res) => {
     const monthlyData = Array(12).fill(null).map(() => ({}));
     raw.forEach(({ _id, total }) => {
       const { month, item } = _id;
-      monthlyData[month - 1][item] = total;
+      const idx = monthIndexMap.get(month);
+      if (idx === undefined) return;
+      monthlyData[idx][item] = total;
     });
 
     const datasets = filteredItems.map((item, index) => {
@@ -97,7 +118,7 @@ exports.getMonthlyStackedExpenseData = async (req, res) => {
       };
     });
   
-    const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}月`);
+    const labels = fiscalMonths.map(m => `${m}月`);
 
     res.render('dashboard/monthlyStackedChart', {
       labels,
@@ -142,6 +163,7 @@ res.render('dashboard/monthlyChart', { data });
 exports.getYearlyExpenseData = async (req, res) => {
     try {
       const groupId = new ObjectId(req.session.activeGroupId);
+      const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
       const raw = await Finance.aggregate([
         {
           $match: {
@@ -149,14 +171,26 @@ exports.getYearlyExpenseData = async (req, res) => {
             group: groupId
           }
         },
+      {
+          $addFields: {
+              yearInt: { $year: { date: "$date", timezone: "Asia/Tokyo" } },
+              monthInt: { $month: { date: "$date", timezone: "Asia/Tokyo" } }
+          }
+      },
         {
-            $addFields: {
-              yearInt: { $year: "$date" }
+          $addFields: {
+            fiscalYear: {
+              $cond: [
+                { $gte: ["$monthInt", fiscalStartMonth] },
+                "$yearInt",
+                { $subtract: ["$yearInt", 1] }
+              ]
             }
+          }
         },
         {
           $group: {
-            _id: { year: "$yearInt", item: "$expense_item" },
+            _id: { year: "$fiscalYear", item: "$expense_item" },
             total: { $sum: "$amount" }
           }
         },
@@ -167,6 +201,7 @@ exports.getYearlyExpenseData = async (req, res) => {
   
       // データ整形など必要なら続けて追加
       const years = [...new Set(raw.map(item => item._id.year))].sort();
+      const yearLabels = years.map(y => `${y}年度`);
       const items = [...new Set(raw.map(item => item._id.item))];
       
       const datasets = items.map(item => {
@@ -182,7 +217,7 @@ exports.getYearlyExpenseData = async (req, res) => {
       });
       
       res.render("dashboard/yearlyStackedChart", {
-        labels: years,
+        labels: yearLabels,
         datasets: datasets
       });
 
@@ -213,21 +248,26 @@ function getColorForItem(item) {
 }
 
 //月次支出の項目別グラフデータを生成する関数
-module.exports.generateMonthlyStackedChartData = async function (groupId, selectedYear) {
+module.exports.generateMonthlyStackedChartData = async function (groupId, selectedYear, startMonth = 1) {
+  const fiscalStartMonth = normalizeFiscalStartMonth(startMonth);
+  const fiscalRange = getFiscalYearRange(selectedYear, fiscalStartMonth);
+  const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+  const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx]));
+
   const result = await Finance.aggregate([
     {
       $match: {
         group: new mongoose.Types.ObjectId(groupId),
         cf: '支出',
         date: {
-          $gte: new Date(`${selectedYear}-01-01`),
-          $lte: new Date(`${selectedYear}-12-31`)
+          $gte: fiscalRange.start,
+          $lt: fiscalRange.end
         }
       }
     },
     {
       $project: {
-        month: { $month: "$date" },
+        month: { $month: { date: "$date", timezone: "Asia/Tokyo" } },
         expense_item: 1,
         amount: 1
       }
@@ -246,16 +286,18 @@ module.exports.generateMonthlyStackedChartData = async function (groupId, select
     }
   ]);
 
-  const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}月`);
+  const labels = fiscalMonths.map(m => `${m}月`);
   const itemSet = new Set(result.map(r => r._id.expense_item));
   const datasets = [];
 
   itemSet.forEach(item => {
-    const data = [];
-    for (let m = 1; m <= 12; m++) {
-      const found = result.find(r => r._id.month === m && r._id.expense_item === item);
-      data.push(found ? found.total : 0);
-    }
+    const data = Array(12).fill(0);
+    result.forEach((r) => {
+      if (r._id.expense_item !== item) return;
+      const idx = monthIndexMap.get(r._id.month);
+      if (idx === undefined) return;
+      data[idx] = r.total;
+    });
     datasets.push({
       label: item,
       data,

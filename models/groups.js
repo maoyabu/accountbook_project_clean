@@ -17,10 +17,16 @@ const groupSchema = new Schema({
         ref: 'User',
         default: []
       }],
-      invitedUsers: {
+    invitedUsers: {
         type: [String],
         default: []
       },
+    financeFiscalStartMonth: {
+        type: Number,
+        default: 1,
+        min: 1,
+        max: 12
+    }
   }, { timestamps: true });
 
 module.exports = mongoose.model('Group', groupSchema);

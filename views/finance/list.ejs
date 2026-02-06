@@ -165,7 +165,7 @@
     <tbody>
       <% for (let finance of finances) { %>
         <tr data-id="<%= finance.id %>">
-          <td class="col-date"><%= finance.date.toISOString().split('T')[0] %></td>
+          <td class="col-date"><%= new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') %></td>
           <td class="col-cf text-center"><%= finance.cf %></td>
           <td class="hide-on-mobile col-class">
             <%= finance.income_item === 'Please Choice' ? '' : finance.income_item %>

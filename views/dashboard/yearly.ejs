@@ -8,11 +8,11 @@
       <!-- 年セレクタ部分 -->
       <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
         <select id="year-select" name="year" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
-          <% for (let y = 2022; y <= new Date().getFullYear(); y++) { %>
+          <% (availableYears || []).forEach(y => { %>
             <option value="<%= y %>" <%= year === y ? 'selected' : '' %>><%= y %></option>
-          <% } %>
+          <% }) %>
         </select>
-        <span>年 <%= titlePrefix %>の年間サマリー</span>
+        <span>年度 <%= titlePrefix %>の年間サマリー</span>
       </form>
 
       <!-- Excel出力ボタン -->
@@ -33,9 +33,9 @@
             <tr>
               <th class="sticky-top sticky-col header-fixed" style="border-left: none; border-right: none;">項目</th>
               <th class="sticky-top sticky-col2 header-fixed" style="border-left: none; border-right: none;">予算</th>
-              <% for (let m = 1; m <= 12; m++) { %>
+              <% (fiscalMonths || []).forEach((m) => { %>
               <th class="sticky-top" style="background-color: #44616D; color: white; border-left: none; border-right: none;"><%= m %>月</th>
-              <% } %>
+              <% }) %>
               <th class="sticky-top" style="background-color: #44616D; color: white; border-left: none; border-right: none;">累計</th>
               <th class="sticky-top" style="background-color: #44616D; color: white;">累計差</th>
             </tr>
@@ -46,23 +46,20 @@
               <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
                 <td class="sticky-col fw-bold text-center"><%= cf %></td>
                 <td class="sticky-col2"><%= totalBudgets[cf]?.toLocaleString() || '0' %></td>
-                <% for (let m = 1; m <= 12; m++) { %>
+                <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>
                   <td>
                     <a
                       href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&cf=<%= encodeURIComponent(cf) %>"
                       class="text-decoration-none">
-                      <%= (monthlySummary[m]?.[cf] || 0).toLocaleString() %>
+                      <%= (monthlySummary[mIndex]?.[cf] || 0).toLocaleString() %>
                     </a>
                   </td>
-                <% } %>
+                <% }) %>
                 <td class="fw-bold"><%= Array.from({ length: 12 }, (_, i) => monthlySummary[i+1]?.[cf] || 0).reduce((a, b) => a + b, 0).toLocaleString() %></td>
                 <%
                   const isIncome = cf === '収入';
                   const total = Array.from({ length: 12 }, (_, i) => monthlySummary[i+1]?.[cf] || 0).reduce((a, b) => a + b, 0);
-                  const currentYear = new Date().getFullYear();
-                  const currentMonth = new Date().getMonth() + 1;
-                  const budgetMonth = year === currentYear ? currentMonth : 12;
-                  const budget = (totalBudgets?.[cf] || budgetMap?.[cf] || 0) * budgetMonth;
+                  const budget = (totalBudgets?.[cf] || budgetMap?.[cf] || 0) * (budgetMonthCount || 12);
                   const isSaving = cf === '貯蓄';
                   const diff = isIncome || isSaving ? total - budget : budget - total;
                 %>
@@ -104,15 +101,15 @@
                 <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
                 <td class="sticky-col text-start"><%= item %></td>
                 <td class="sticky-col2"><%= budgetMap[item]?.toLocaleString() || '0' %></td>
-                <% for (let m = 1; m <= 12; m++) { %>
+                <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>
                   <td>
                     <a
                       href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&item=<%= encodeURIComponent(item) %>"
                       class="text-decoration-none">
-                      <%= (monthlyExpensesDetail[m]?.[item] || 0).toLocaleString() %>
+                      <%= (monthlyExpensesDetail[mIndex]?.[item] || 0).toLocaleString() %>
                     </a>
                   </td>
-                <% } %>
+                <% }) %>
                 <td class="fw-bold">
                   <a
                     href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&item=<%= encodeURIComponent(item) %>"

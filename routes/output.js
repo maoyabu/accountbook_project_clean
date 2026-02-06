@@ -12,6 +12,13 @@ const Group = require('../models/groups');
 const dashboardController = require('../controllers/dashboardController');
 const Items = require('../models/finance_items');
 const PaymentItem = require('../models/paymentItems');
+const {
+  normalizeFiscalStartMonth,
+  getFiscalYearForDate,
+  getFiscalYearRange,
+  getFiscalMonths,
+  getFiscalMonthIndex
+} = require('../Utils/fiscalYear');
 
 const xlsx = require('xlsx');
 const ExcelJS = require('exceljs');
@@ -26,15 +33,36 @@ async function fetchItemsByYear(groupId, year) {
     return items;
 }
 
-function getBudgetMonthCount(targetYear) {
-    const now = new Date();
-    if (targetYear === now.getFullYear()) {
-        return now.getMonth() + 1;
+const parseJstDateStart = (value) => {
+    if (!value) return null;
+    const dt = new Date(`${value}T00:00:00+09:00`);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt;
+};
+
+const parseJstDateEnd = (value) => {
+    if (!value) return null;
+    const dt = new Date(`${value}T23:59:59.999+09:00`);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt;
+};
+
+function getBudgetMonthCount(targetYear, startMonth = 1, baseDate = new Date()) {
+    const currentFiscalYear = getFiscalYearForDate(baseDate, startMonth) ?? baseDate.getFullYear();
+    if (targetYear === currentFiscalYear) {
+        const monthIndex = getFiscalMonthIndex(baseDate.getMonth() + 1, startMonth);
+        return (monthIndex ?? 0) + 1;
     }
-    if (targetYear < now.getFullYear()) {
+    if (targetYear < currentFiscalYear) {
         return 12;
     }
     return 12;
+}
+
+async function getGroupFiscalStartMonth(groupId) {
+    if (!groupId) return 1;
+    const group = await Group.findById(groupId).select('financeFiscalStartMonth');
+    return normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
 }
 
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
@@ -243,6 +271,11 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
 
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
+  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+  const fiscalYear = getFiscalYearForDate(start, fiscalStartMonth) ?? year;
+  const fiscalRange = getFiscalYearRange(fiscalYear, fiscalStartMonth);
+  const fiscalRangeLabel = `${fiscalRange.start.getFullYear()}年${fiscalRange.start.getMonth() + 1}月〜${fiscalRange.endInclusive.getFullYear()}年${fiscalRange.endInclusive.getMonth() + 1}月`;
+  const fiscalMonthIndex = (getFiscalMonthIndex(month, fiscalStartMonth) ?? 0) + 1;
 
   const finances = await Finance.find({
     user: userId,
@@ -263,7 +296,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     }
   }
 
-  const budgets = await FinanceExBudget.find({ group: groupId, year });
+  const budgets = await FinanceExBudget.find({ group: groupId, year: String(fiscalYear) });
   const budgetMap = {};
   for (let b of budgets) {
     budgetMap[b.expense_item] = b.budget || 0;
@@ -285,9 +318,9 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     })
     .sort((a, b) => a.display_order - b.display_order);
 
-  // === 累計集計: 1月から選択月まで ===
-  const startOfYear = new Date(year, 0, 1); // January 1st
-  const endOfCurrentMonth = new Date(year, month, 0, 23, 59, 59, 999); // End of current month
+  // === 累計集計: 年度開始月から年度末まで ===
+  const startOfYear = fiscalRange.start;
+  const endOfCurrentMonth = fiscalRange.endInclusive;
 
   const cumulativeFinances = await Finance.find({
     user: userId,
@@ -306,7 +339,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   const cumulativeItems = Object.keys(budgetMap).map(item => {
     const total = cumulativeSummary[item] || 0;
     const monthlyBudget = budgetMap[item];
-    const budget = monthlyBudget * month;
+    const budget = monthlyBudget * 12;
     return {
       item,
       total,
@@ -325,7 +358,10 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     cumulativeItems,
     formAction: '/export/dashboard/monthly-m',
     titlePrefix: `${req.user.displayname}さん`,
-    viewType: 'user'
+    viewType: 'user',
+    fiscalStartMonth,
+    fiscalRangeLabel,
+    fiscalYear
   });
 });
 
@@ -345,6 +381,11 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   const end = new Date(year, month, 1);
 
   const groupId = req.session.activeGroupId;
+  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+  const fiscalYear = getFiscalYearForDate(start, fiscalStartMonth) ?? year;
+  const fiscalRange = getFiscalYearRange(fiscalYear, fiscalStartMonth);
+  const fiscalRangeLabel = `${fiscalRange.start.getFullYear()}年${fiscalRange.start.getMonth() + 1}月〜${fiscalRange.endInclusive.getFullYear()}年${fiscalRange.endInclusive.getMonth() + 1}月`;
+  const fiscalMonthIndex = (getFiscalMonthIndex(month, fiscalStartMonth) ?? 0) + 1;
 
   const finances = await Finance.find({
     group: groupId,
@@ -366,7 +407,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   }
 
   // 予算取得
-  const budgets = await FinanceExBudget.find({ group: groupId, year });
+  const budgets = await FinanceExBudget.find({ group: groupId, year: String(fiscalYear) });
   const budgetMap = {};
   for (let b of budgets) {
     budgetMap[b.expense_item] = b.budget || 0;
@@ -389,9 +430,9 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     })
     .sort((a, b) => a.display_order - b.display_order);
 
-  // === 累計集計: 1月から選択月まで ===
-  const startOfYear = new Date(year, 0, 1); // January 1st
-  const endOfCurrentMonth = new Date(year, month, 0, 23, 59, 59, 999); // End of current month
+  // === 累計集計: 年度開始月から年度末まで ===
+  const startOfYear = fiscalRange.start;
+  const endOfCurrentMonth = fiscalRange.endInclusive;
 
   const cumulativeFinances = await Finance.find({
     group: groupId,
@@ -409,7 +450,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   const cumulativeItems = Object.keys(budgetMap).map(item => {
     const total = cumulativeSummary[item] || 0;
     const monthlyBudget = budgetMap[item];
-    const budget = monthlyBudget * month;
+    const budget = monthlyBudget * 12;
     return {
       item,
       total,
@@ -439,7 +480,10 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     cumulativeItems,
     formAction: '/export/dashboard/monthly-g',
     titlePrefix: `${groupName}`,
-    viewType: 'group'
+    viewType: 'group',
+    fiscalStartMonth,
+    fiscalRangeLabel,
+    fiscalYear
   });
 });
 
@@ -448,7 +492,12 @@ router.get('/dashboard/yearly-m', async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
     const userId = req.user._id;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const year = parseInt(req.query.year) || defaultYear;
+    const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
+    const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+    const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
 
     const result = await Finance.aggregate([
       {
@@ -456,14 +505,14 @@ router.get('/dashboard/yearly-m', async (req, res) => {
           group: new mongoose.Types.ObjectId(groupId),
           user: new mongoose.Types.ObjectId(userId),
           date: {
-            $gte: new Date(`${year}-01-01`),
-            $lte: new Date(`${year}-12-31`)
+            $gte: fiscalRange.start,
+            $lt: fiscalRange.end
           }
         }
       },
       {
         $project: {
-          month: { $month: '$date' },
+          month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
           expense_item: 1
@@ -494,19 +543,21 @@ router.get('/dashboard/yearly-m', async (req, res) => {
 
     result.forEach(r => {
       const { month, cf, expense_item } = r._id;
+      const fiscalMonth = monthIndexMap.get(month);
+      if (!fiscalMonth) return;
       const total = r.total;
-      if (!monthlySummary[month][cf]) monthlySummary[month][cf] = 0;
-      monthlySummary[month][cf] += total;
+      if (!monthlySummary[fiscalMonth][cf]) monthlySummary[fiscalMonth][cf] = 0;
+      monthlySummary[fiscalMonth][cf] += total;
 
       if (cf === '支出' && expense_item) {
-        if (!monthlyExpensesDetail[month][expense_item]) {
-          monthlyExpensesDetail[month][expense_item] = 0;
+        if (!monthlyExpensesDetail[fiscalMonth][expense_item]) {
+          monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
-        monthlyExpensesDetail[month][expense_item] += total;
+        monthlyExpensesDetail[fiscalMonth][expense_item] += total;
       }
     });
     // Dynamically build ex_cfs from budget items
-    const budgets = await FinanceExBudget.find({ group: groupId, year });
+    const budgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     const budgetMap = {};
     const ex_cfs = [];
     for (let b of budgets) {
@@ -520,16 +571,17 @@ router.get('/dashboard/yearly-m', async (req, res) => {
     ex_cfs.sort((a, b) => (orderMap_m[a] ?? 9999) - (orderMap_m[b] ?? 9999));
 
     // === 累計予算計算: 現在月までの累計予算を計算 ===
-    const currentMonth = new Date().getMonth() + 1;
+    const budgetMonthCount = getBudgetMonthCount(year, fiscalStartMonth, new Date());
     const cumulativeBudgetMap = {};
     for (let [item, monthlyBudget] of Object.entries(budgetMap)) {
-      // 貯蓄は対象年が現在年なら現在月まで、過去年なら12ヶ月分
+      // 貯蓄は対象年が現在年度なら現在月まで、過去年なら12ヶ月分
       if (item === '貯蓄') {
-        const now = new Date();
-        const targetMonth = (year === now.getFullYear()) ? now.getMonth() + 1 : 12;
+        const targetMonth = year === (getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear())
+          ? budgetMonthCount
+          : 12;
         cumulativeBudgetMap[item] = monthlyBudget * targetMonth;
       } else {
-        cumulativeBudgetMap[item] = monthlyBudget * currentMonth;
+        cumulativeBudgetMap[item] = monthlyBudget * budgetMonthCount;
       }
     }
 
@@ -554,9 +606,17 @@ router.get('/dashboard/yearly-m', async (req, res) => {
         totalBudgets[cfKey] += i.budget;
       }
     }
-    const exBudgets = await FinanceExBudget.find({ group: groupId, year });
+    const exBudgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     for (const ex of exBudgets) {
       totalBudgets['支出'] += ex.budget || 0;
+    }
+
+    const firstYear = 2022;
+    const lastYear = defaultYear;
+    const availableYears = Array.from({ length: Math.max(lastYear - firstYear + 1, 1) }, (_, i) => firstYear + i);
+    if (!availableYears.includes(year)) {
+      availableYears.push(year);
+      availableYears.sort((a, b) => a - b);
     }
 
     res.render('dashboard/yearly', {
@@ -570,7 +630,10 @@ router.get('/dashboard/yearly-m', async (req, res) => {
       titlePrefix: `${req.user.displayname}さん`,
       viewType: 'user',
       totalBudgets,
-      mainClass: 'container-fluid dashboard-yearly-main'
+      mainClass: 'container-fluid dashboard-yearly-main',
+      fiscalMonths,
+      budgetMonthCount,
+      availableYears
     });
 
   } catch (err) {
@@ -583,21 +646,26 @@ router.get('/dashboard/yearly-m', async (req, res) => {
 router.get('/dashboard/yearly-g', async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const year = parseInt(req.query.year) || defaultYear;
+    const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
+    const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+    const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
 
     const result = await Finance.aggregate([
       {
         $match: {
           group: new mongoose.Types.ObjectId(groupId),
           date: {
-            $gte: new Date(`${year}-01-01`),
-            $lte: new Date(`${year}-12-31`)
+            $gte: fiscalRange.start,
+            $lt: fiscalRange.end
           }
         }
       },
       {
         $project: {
-          month: { $month: '$date' },
+          month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
           expense_item: 1
@@ -628,19 +696,21 @@ router.get('/dashboard/yearly-g', async (req, res) => {
 
     result.forEach(r => {
       const { month, cf, expense_item } = r._id;
+      const fiscalMonth = monthIndexMap.get(month);
+      if (!fiscalMonth) return;
       const total = r.total;
-      if (!monthlySummary[month][cf]) monthlySummary[month][cf] = 0;
-      monthlySummary[month][cf] += total;
+      if (!monthlySummary[fiscalMonth][cf]) monthlySummary[fiscalMonth][cf] = 0;
+      monthlySummary[fiscalMonth][cf] += total;
 
       if (cf === '支出' && expense_item) {
-        if (!monthlyExpensesDetail[month][expense_item]) {
-          monthlyExpensesDetail[month][expense_item] = 0;
+        if (!monthlyExpensesDetail[fiscalMonth][expense_item]) {
+          monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
-        monthlyExpensesDetail[month][expense_item] += total;
+        monthlyExpensesDetail[fiscalMonth][expense_item] += total;
       }
     });
 
-    const budgets = await FinanceExBudget.find({ group: groupId, year });
+    const budgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     const budgetMap = {};
     const ex_cfs = [];
     for (let b of budgets) {
@@ -653,15 +723,16 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     ex_cfs.sort((a, b) => (orderMap_g[a] ?? 9999) - (orderMap_g[b] ?? 9999));
 
     // === 累計予算計算: 現在月までの累計予算を計算 ===
-    const currentMonth = new Date().getMonth() + 1;
+    const budgetMonthCount = getBudgetMonthCount(year, fiscalStartMonth, new Date());
     const cumulativeBudgetMap = {};
     for (let [item, monthlyBudget] of Object.entries(budgetMap)) {
       if (item === '貯蓄') {
-        const now = new Date();
-        const targetMonth = (year === now.getFullYear()) ? now.getMonth() + 1 : 12;
+        const targetMonth = year === (getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear())
+          ? budgetMonthCount
+          : 12;
         cumulativeBudgetMap[item] = monthlyBudget * targetMonth;
       } else {
-        cumulativeBudgetMap[item] = monthlyBudget * currentMonth;
+        cumulativeBudgetMap[item] = monthlyBudget * budgetMonthCount;
       }
     }
 
@@ -687,7 +758,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       }
     }
 
-    const exBudgets = await FinanceExBudget.find({ group: groupId, year });
+    const exBudgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     for (const ex of exBudgets) {
       totalBudgets['支出'] += ex.budget || 0;
     }
@@ -704,6 +775,14 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       groupName = req.session.groupName;
     }
 
+    const firstYear = 2022;
+    const lastYear = defaultYear;
+    const availableYears = Array.from({ length: Math.max(lastYear - firstYear + 1, 1) }, (_, i) => firstYear + i);
+    if (!availableYears.includes(year)) {
+      availableYears.push(year);
+      availableYears.sort((a, b) => a - b);
+    }
+
     res.render('dashboard/yearly', {
       year,
       monthlySummary,
@@ -715,7 +794,10 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       titlePrefix: `${groupName}`,
       viewType: 'group',
       totalBudgets,
-      mainClass: 'container-fluid dashboard-yearly-main'
+      mainClass: 'container-fluid dashboard-yearly-main',
+      fiscalMonths,
+      budgetMonthCount,
+      availableYears
     });
 
   } catch (err) {
@@ -729,7 +811,12 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
     const userId = req.user._id;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const year = parseInt(req.query.year) || defaultYear;
+    const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
+    const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+    const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
 
     const result = await Finance.aggregate([
       {
@@ -737,14 +824,14 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
           group: new mongoose.Types.ObjectId(groupId),
           user: new mongoose.Types.ObjectId(userId),
           date: {
-            $gte: new Date(`${year}-01-01`),
-            $lte: new Date(`${year}-12-31`)
+            $gte: fiscalRange.start,
+            $lt: fiscalRange.end
           }
         }
       },
       {
         $project: {
-          month: { $month: '$date' },
+          month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
           expense_item: 1
@@ -776,19 +863,21 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
 
     result.forEach(r => {
       const { month, cf, expense_item } = r._id;
+      const fiscalMonth = monthIndexMap.get(month);
+      if (!fiscalMonth) return;
       const total = r.total;
-      if (!monthlySummary[month][cf]) monthlySummary[month][cf] = 0;
-      monthlySummary[month][cf] += total;
+      if (!monthlySummary[fiscalMonth][cf]) monthlySummary[fiscalMonth][cf] = 0;
+      monthlySummary[fiscalMonth][cf] += total;
 
       if (cf === '支出' && expense_item) {
-        if (!monthlyExpensesDetail[month][expense_item]) {
-          monthlyExpensesDetail[month][expense_item] = 0;
+        if (!monthlyExpensesDetail[fiscalMonth][expense_item]) {
+          monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
-        monthlyExpensesDetail[month][expense_item] += total;
+        monthlyExpensesDetail[fiscalMonth][expense_item] += total;
       }
     });
 
-    const budgets = await FinanceExBudget.find({ group: groupId, year });
+    const budgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     const budgetMap = {};
     const ex_cfs = [];
     for (let b of budgets) {
@@ -819,18 +908,18 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
         totalBudgets[cfKey] += i.budget || 0;
       }
     }
-    const exBudgets = await FinanceExBudget.find({ group: groupId, year });
+    const exBudgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     for (const ex of exBudgets) {
       totalBudgets['支出'] += ex.budget || 0;
     }
 
     const data = [];
 
-    const budgetMonthCount = getBudgetMonthCount(year);
+    const budgetMonthCount = getBudgetMonthCount(year, fiscalStartMonth, new Date());
 
     // ヘッダー
     const header = ['項目', '予算'];
-    for (let m = 1; m <= 12; m++) header.push(`${m}月`);
+    fiscalMonths.forEach(m => header.push(`${m}月`));
     header.push('年合計', '', '予算累計', '累計差');
     data.push(header);
 
@@ -1042,21 +1131,26 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
 router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const year = parseInt(req.query.year) || defaultYear;
+    const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
+    const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+    const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
 
     const result = await Finance.aggregate([
       {
         $match: {
           group: new mongoose.Types.ObjectId(groupId),
           date: {
-            $gte: new Date(`${year}-01-01`),
-            $lte: new Date(`${year}-12-31`)
+            $gte: fiscalRange.start,
+            $lt: fiscalRange.end
           }
         }
       },
       {
         $project: {
-          month: { $month: '$date' },
+          month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
           expense_item: 1
@@ -1088,19 +1182,21 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
 
     result.forEach(r => {
       const { month, cf, expense_item } = r._id;
+      const fiscalMonth = monthIndexMap.get(month);
+      if (!fiscalMonth) return;
       const total = r.total;
-      if (!monthlySummary[month][cf]) monthlySummary[month][cf] = 0;
-      monthlySummary[month][cf] += total;
+      if (!monthlySummary[fiscalMonth][cf]) monthlySummary[fiscalMonth][cf] = 0;
+      monthlySummary[fiscalMonth][cf] += total;
 
       if (cf === '支出' && expense_item) {
-        if (!monthlyExpensesDetail[month][expense_item]) {
-          monthlyExpensesDetail[month][expense_item] = 0;
+        if (!monthlyExpensesDetail[fiscalMonth][expense_item]) {
+          monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
-        monthlyExpensesDetail[month][expense_item] += total;
+        monthlyExpensesDetail[fiscalMonth][expense_item] += total;
       }
     });
 
-    const budgets = await FinanceExBudget.find({ group: groupId, year });
+    const budgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     const budgetMap = {};
     const ex_cfs = [];
     for (let b of budgets) {
@@ -1131,18 +1227,18 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
         totalBudgets[cfKey] += i.budget || 0;
       }
     }
-    const exBudgets = await FinanceExBudget.find({ group: groupId, year });
+    const exBudgets = await FinanceExBudget.find({ group: groupId, year: String(year) });
     for (const ex of exBudgets) {
       totalBudgets['支出'] += ex.budget || 0;
     }
 
     const data = [];
 
-    const budgetMonthCount = getBudgetMonthCount(year);
+    const budgetMonthCount = getBudgetMonthCount(year, fiscalStartMonth, new Date());
 
     // ヘッダー
     const header = ['項目', '予算'];
-    for (let m = 1; m <= 12; m++) header.push(`${m}月`);
+    fiscalMonths.forEach(m => header.push(`${m}月`));
     header.push('年合計', '', '予算累計', '累計差');
     data.push(header);
 
@@ -1357,7 +1453,9 @@ router.get('/monthly-chart', dashboardController.getMonthlyExpenseData);
 // 月別支出明細のグラフ表示
 router.get('/monthly-stacked', isLoggedIn, catchAsync(async (req, res) => {
   const groupId = new mongoose.Types.ObjectId(req.session.activeGroupId);
-  const selectedYear = parseInt(req.query.year) || new Date().getFullYear();
+  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+  const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+  const selectedYear = parseInt(req.query.year) || defaultYear;
 
   // 利用可能な年を取得（支出データから）
   const yearsRaw = await Finance.aggregate([
@@ -1370,24 +1468,31 @@ router.get('/monthly-stacked', isLoggedIn, catchAsync(async (req, res) => {
     },
     {
       $project: {
-        year: { $year: "$date" }
+        year: { $year: "$date" },
+        month: { $month: "$date" }
       }
     },
-    {
-      $group: {
-        _id: "$year"
-      }
-    },
-    {
-      $sort: { _id: 1 }
-    }
   ]);
-  const availableYears = yearsRaw.map(y => y._id);
+  const yearSet = new Set();
+  yearsRaw.forEach((y) => {
+    const fiscalYear = y.month >= fiscalStartMonth ? y.year : y.year - 1;
+    yearSet.add(fiscalYear);
+  });
+  const budgetYears = await FinanceExBudget.distinct('year', { group: groupId });
+  budgetYears.forEach((y) => {
+    const num = Number(y);
+    if (Number.isInteger(num)) yearSet.add(num);
+  });
+  const availableYears = Array.from(yearSet).sort((a, b) => a - b);
+  if (!availableYears.includes(selectedYear)) {
+    availableYears.push(selectedYear);
+    availableYears.sort((a, b) => a - b);
+  }
 
   // チャート用のデータ生成処理（すでに存在する logic を再利用）
   let labels, datasets;
   if (dashboardController.generateMonthlyStackedChartData) {
-    ({ labels, datasets } = await dashboardController.generateMonthlyStackedChartData(groupId, selectedYear));
+    ({ labels, datasets } = await dashboardController.generateMonthlyStackedChartData(groupId, selectedYear, fiscalStartMonth));
   } else if (dashboardController.getMonthlyStackedExpenseData) {
     throw new Error('generateMonthlyStackedChartData関数が必要です。');
   } else {
@@ -1418,29 +1523,39 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
     const { year, month, item, scope, cf } = req.query;
     const { from, to, payment_type, user } = req.query;
 
-    const y = parseInt(year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const y = parseInt(year) || defaultYear;
     const m = month ? parseInt(month) : undefined;
     const cfValue = cf || '支出';
+    const fiscalRange = getFiscalYearRange(y, fiscalStartMonth);
+    const resolvedYearForMonth = m
+      ? (m >= fiscalStartMonth ? y : y + 1)
+      : null;
 
     // 日付範囲設定
     let dateFilter = {};
     if (from || to) {
       // 明示的な絞り込みが指定されたらそれを優先
-      const start = from ? new Date(from) : (m && m >= 1 && m <= 12 ? new Date(y, m - 1, 1) : new Date(`${y}-01-01`));
-      const end = to ? new Date(to) : (m && m >= 1 && m <= 12 ? new Date(y, m, 1) : new Date(`${y + 1}-01-01`));
+      const start = from
+        ? parseJstDateStart(from)
+        : (m && m >= 1 && m <= 12 ? new Date(y, m - 1, 1) : fiscalRange.start);
+      const end = to
+        ? parseJstDateEnd(to)
+        : (m && m >= 1 && m <= 12 ? new Date(y, m, 1) : fiscalRange.endInclusive);
       if (!isNaN(start.getTime())) start.setHours(0, 0, 0, 0);
       if (!isNaN(end.getTime())) end.setHours(23, 59, 59, 999);
       dateFilter = { $gte: start, $lte: end };
     } else {
       // 年または年月の範囲
       if (m && m >= 1 && m <= 12) {
-        const start = new Date(y, m - 1, 1);
-        const end = new Date(y, m, 1);
-        dateFilter = { $gte: start, $lt: end };
+        const start = new Date(resolvedYearForMonth, m - 1, 1, 0, 0, 0, 0);
+        const end = new Date(resolvedYearForMonth, m, 0, 23, 59, 59, 999);
+        dateFilter = { $gte: start, $lte: end };
       } else {
-        const start = new Date(`${y}-01-01`);
-        const end = new Date(`${y + 1}-01-01`);
-        dateFilter = { $gte: start, $lt: end };
+        const start = fiscalRange.start;
+        const end = fiscalRange.endInclusive;
+        dateFilter = { $gte: start, $lte: end };
       }
     }
 
@@ -1523,28 +1638,35 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
       return res.redirect('/group_list');
     }
 
-    const { year, month, item, scope } = req.query;
+    const { year, month, item, scope, fy } = req.query;
     const { from, to, payment_type, user, cumulative } = req.query;
 
-    const y = parseInt(year) || new Date().getFullYear();
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const y = parseInt(year) || defaultYear;
     const m = month ? parseInt(month) : (new Date().getMonth() + 1);
+    const resolvedYearForMonth = y;
+    const selectedDate = new Date(y, m - 1, 1);
+    const fyValue = Number.isInteger(Number(fy)) ? parseInt(fy) : null;
+    const fiscalYear = fyValue || getFiscalYearForDate(selectedDate, fiscalStartMonth) || y;
+    const fiscalRange = getFiscalYearRange(fiscalYear, fiscalStartMonth);
 
     // 日付範囲設定
     let dateFilter = {};
     if (from || to) {
-      const start = from ? new Date(from) : new Date(y, m - 1, 1);
-      const end = to ? new Date(to) : new Date(y, m, 1);
+      const start = from ? parseJstDateStart(from) : new Date(y, m - 1, 1);
+      const end = to ? parseJstDateEnd(to) : new Date(y, m, 1);
       if (!isNaN(start.getTime())) start.setHours(0, 0, 0, 0);
       if (!isNaN(end.getTime())) end.setHours(23, 59, 59, 999);
       dateFilter = { $gte: start, $lte: end };
     } else if (cumulative) {
-      const start = new Date(y, 0, 1);
-      const end = new Date(y, m, 1);
-      dateFilter = { $gte: start, $lt: end };
+      const start = fiscalRange.start;
+      const end = new Date(resolvedYearForMonth, m, 0, 23, 59, 59, 999);
+      dateFilter = { $gte: start, $lte: end };
     } else {
-      const start = new Date(y, m - 1, 1);
-      const end = new Date(y, m, 1);
-      dateFilter = { $gte: start, $lt: end };
+      const start = new Date(resolvedYearForMonth, m - 1, 1, 0, 0, 0, 0);
+      const end = new Date(resolvedYearForMonth, m, 0, 23, 59, 59, 999);
+      dateFilter = { $gte: start, $lte: end };
     }
 
     // 明細クエリ（支出の指定項目）

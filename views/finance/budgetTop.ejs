@@ -15,6 +15,19 @@
         <input type="text" id="budgetYear" name="year" placeholder="例: 2025" value="<%= selectedYear %>" required>
         <button type="submit" class="btn btn-primary btn-sm">予算を作成／編集</button>
     </form>
+    <form action="/finance/budget/fiscal-start-month" method="POST" class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+            <label for="fiscalStartMonth" class="form-label">年度の開始月</label>
+            <select id="fiscalStartMonth" name="fiscal_start_month" class="form-select">
+                <% for (let m = 1; m <= 12; m++) { %>
+                    <option value="<%= m %>" <%= (fiscalStartMonth || 1) === m ? 'selected' : '' %>><%= m %>月</option>
+                <% } %>
+            </select>
+        </div>
+        <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
+        </div>
+    </form>
 </div>
 <div class="p-3 border rounded bg-light mb-4">
     <h5><i class="fa-regular fa-bell"></i> 予算到達メール通知</h5>
