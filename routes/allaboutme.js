@@ -791,7 +791,8 @@ router.get('/eventcal_events', isLoggedIn, async (req, res) => {
     events,
     calevent_items,
     editingEvent,
-    excludeWords: settings?.excludeWords || []
+    excludeWords: settings?.excludeWords || [],
+    activeTab: req.query.edit ? 'event' : (req.query.tab === 'event' ? 'event' : 'exclude')
   });
 });
 
@@ -887,14 +888,14 @@ router.post('/eventcal_events/:id/edit', isLoggedIn, async (req, res) => {
     }
   );
   await logAction({ req, action: '更新', target: 'allaboutme-event'});
-  res.redirect('/allaboutme/eventcal_events');
+  res.redirect('/allaboutme/eventcal_events?tab=event');
 });
 
 // 日記削除
 router.post('/eventcal_events/:id/delete', isLoggedIn, async (req, res) => {
   await Eventcal_events.findByIdAndDelete(req.params.id);
   await logAction({ req, action: '削除', target: 'allaboutme-event'});
-  res.redirect('/allaboutme/eventcal_events');
+  res.redirect('/allaboutme/eventcal_events?tab=event');
 });
 
 //リマインドメールの送信　毎朝8時

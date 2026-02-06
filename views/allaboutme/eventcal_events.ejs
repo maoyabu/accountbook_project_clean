@@ -9,21 +9,22 @@
   </a>
 </div>
 <div class="container">
+  <% const activeTab = typeof locals.activeTab !== 'undefined' ? locals.activeTab : 'exclude'; %>
   <ul class="nav nav-tabs mt-3" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="exclude-tab" data-bs-toggle="tab" data-bs-target="#exclude-tabpane" type="button" role="tab" aria-controls="exclude-tabpane" aria-selected="true">
+      <button class="nav-link <%= activeTab === 'exclude' ? 'active' : '' %>" id="exclude-tab" data-bs-toggle="tab" data-bs-target="#exclude-tabpane" type="button" role="tab" aria-controls="exclude-tabpane" aria-selected="<%= activeTab === 'exclude' ? 'true' : 'false' %>">
         タグ化しない除外ワード
       </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="event-tab" data-bs-toggle="tab" data-bs-target="#event-tabpane" type="button" role="tab" aria-controls="event-tabpane" aria-selected="false">
+      <button class="nav-link <%= activeTab === 'event' ? 'active' : '' %>" id="event-tab" data-bs-toggle="tab" data-bs-target="#event-tabpane" type="button" role="tab" aria-controls="event-tabpane" aria-selected="<%= activeTab === 'event' ? 'true' : 'false' %>">
         日記のイベント項目の登録
       </button>
     </li>
   </ul>
 
   <div class="tab-content">
-    <div class="tab-pane fade show active" id="exclude-tabpane" role="tabpanel" aria-labelledby="exclude-tab">
+    <div class="tab-pane fade <%= activeTab === 'exclude' ? 'show active' : '' %>" id="exclude-tabpane" role="tabpanel" aria-labelledby="exclude-tab">
       <div class="card mb-2 mt-2">
         <div class="card-body text-white p-2 rounded" style="background-color: #44616D;">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -61,7 +62,7 @@
       </div>
     </div>
 
-    <div class="tab-pane fade" id="event-tabpane" role="tabpanel" aria-labelledby="event-tab">
+    <div class="tab-pane fade <%= activeTab === 'event' ? 'show active' : '' %>" id="event-tabpane" role="tabpanel" aria-labelledby="event-tab">
       <div class="card mb-2 mt-2">
           <div class="card-body text-white p-2 rounded" style="background-color: #44616D;">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -138,6 +139,7 @@
                     <td>
                     <form method="GET" action="/allaboutme/eventcal_events" style="display:inline;">
                         <input type="hidden" name="edit" value="<%= e._id %>">
+                        <input type="hidden" name="tab" value="event">
                         <button class="btn btn-sm"><i class="fas fa-pen"></i></button>
                     </form>
                     <form method="POST" action="/allaboutme/eventcal_events/<%= e._id %>/delete" style="display:inline;" onsubmit="return confirm('削除しますか？')">
@@ -152,3 +154,27 @@
     </div>
   </div>
 </div>
+
+<script>
+  (() => {
+    const params = new URLSearchParams(window.location.search);
+    const forcedEvent = params.get('tab') === 'event' || params.has('edit') || "<%= activeTab %>" === 'event';
+    if (!forcedEvent) return;
+    const excludeBtn = document.getElementById('exclude-tab');
+    const eventBtn = document.getElementById('event-tab');
+    const excludePane = document.getElementById('exclude-tabpane');
+    const eventPane = document.getElementById('event-tabpane');
+    if (excludeBtn && eventBtn && excludePane && eventPane) {
+      excludeBtn.classList.remove('active');
+      excludeBtn.setAttribute('aria-selected', 'false');
+      eventBtn.classList.add('active');
+      eventBtn.setAttribute('aria-selected', 'true');
+      excludePane.classList.remove('show', 'active');
+      eventPane.classList.add('show', 'active');
+    }
+    const trigger = document.getElementById('event-tab');
+    if (!trigger || !window.bootstrap || !window.bootstrap.Tab) return;
+    const tab = window.bootstrap.Tab.getOrCreateInstance(trigger);
+    tab.show();
+  })();
+</script>
