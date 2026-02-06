@@ -7,81 +7,73 @@
     ガイド
   </a>
 </div>
+<h5 class="mb-2"><i class="fa-regular fa-money-bill-1"></i> 年度毎の予算設定</h5>
 <div class="p-3 border rounded bg-light mb-4">
-    <h5><i class="fa-regular fa-money-bill-1"></i> 年度毎の予算設定</h5>
     <form id="budgetSetupForm" action="/finance/budget/setup" method="POST" class="mb-3">
         <input type="hidden" name="groupId" value="<%= activeGroupId %>">
         <label for="budgetYear">年度:</label>
         <input type="text" id="budgetYear" name="year" placeholder="例: 2025" value="<%= selectedYear %>" required>
         <button type="submit" class="btn btn-primary btn-sm">予算を作成／編集</button>
     </form>
-    <form action="/finance/budget/fiscal-start-month" method="POST" class="row g-2 align-items-end">
-        <div class="col-12 col-md-4">
-            <label for="fiscalStartMonth" class="form-label">年度の開始月</label>
-            <select id="fiscalStartMonth" name="fiscal_start_month" class="form-select">
-                <% for (let m = 1; m <= 12; m++) { %>
-                    <option value="<%= m %>" <%= (fiscalStartMonth || 1) === m ? 'selected' : '' %>><%= m %>月</option>
-                <% } %>
-            </select>
-        </div>
-        <div class="col-12 col-md-auto">
-            <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
-        </div>
+    <form action="/finance/budget/fiscal-start-month" method="POST" class="d-flex align-items-center gap-2">
+        <label for="fiscalStartMonth" class="form-label mb-0">年度の開始月</label>
+        <select id="fiscalStartMonth" name="fiscal_start_month" class="form-select form-select-sm" style="max-width: 7rem;">
+            <% for (let m = 1; m <= 12; m++) { %>
+                <option value="<%= m %>" <%= (fiscalStartMonth || 1) === m ? 'selected' : '' %>><%= m %>月</option>
+            <% } %>
+        </select>
+        <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
     </form>
 </div>
+<h5 class="mb-2"><i class="fa-regular fa-bell"></i> 予算到達メール通知</h5>
 <div class="p-3 border rounded bg-light mb-4">
-    <h5><i class="fa-regular fa-bell"></i> 予算到達メール通知</h5>
     <form action="/finance/budget/notice-settings" method="POST" class="mb-2">
         <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="noticeEnabled" name="notice_enabled" <%= noticeSettings?.enabled ? 'checked' : '' %>>
             <label class="form-check-label" for="noticeEnabled">通知を受け取る</label>
         </div>
-        <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-4">
+        <div class="row g-1 align-items-end">
+            <div class="col-12 col-md-2">
                 <label class="form-label">到達率1（%）</label>
-                <input type="number" class="form-control" name="notice_threshold1" min="0" max="100" value="<%= noticeSettings?.thresholds?.[0] ?? 50 %>">
+                <input type="number" class="form-control" name="notice_threshold1" min="0" max="100" value="<%= noticeSettings?.thresholds?.[0] ?? 50 %>" style="max-width: 6rem;">
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-2">
                 <label class="form-label">到達率2（%）</label>
-                <input type="number" class="form-control" name="notice_threshold2" min="0" max="100" value="<%= noticeSettings?.thresholds?.[1] ?? 80 %>">
+                <input type="number" class="form-control" name="notice_threshold2" min="0" max="100" value="<%= noticeSettings?.thresholds?.[1] ?? 80 %>" style="max-width: 6rem;">
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-2">
                 <label class="form-label">到達率3（%）</label>
-                <input type="number" class="form-control" name="notice_threshold3" min="0" max="100" value="<%= noticeSettings?.thresholds?.[2] ?? 90 %>">
+                <input type="number" class="form-control" name="notice_threshold3" min="0" max="100" value="<%= noticeSettings?.thresholds?.[2] ?? 90 %>" style="max-width: 6rem;">
+            </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
             </div>
         </div>
         <div class="text-muted small mt-2">※ 100%は設定しなくても通知されます。</div>
-        <button type="submit" class="btn btn-outline-primary btn-sm mt-3">保存</button>
+    </form>
+    <form action="/finance/budget/notice-time" method="POST" class="mt-3 d-flex align-items-center gap-2">
+        <label class="form-label mb-0">送信時間（0〜23時）</label>
+        <input type="number" class="form-control" name="budget_notice_hour" min="0" max="23" value="<%= noticeSettings?.budgetNoticeHour ?? 8 %>" style="max-width: 6rem;">
+        <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
     </form>
     <% if (process.env.NODE_ENV !== 'production') { %>
-      <form action="/finance/budget/notice-test" method="POST" class="mt-3">
+      <form action="/finance/budget/notice-test" method="POST" class="mt-2">
           <div class="text-muted small">※ テスト送信はActiveグループのメンバーへ送信します。</div>
           <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">テスト送信</button>
       </form>
     <% } %>
-    <form action="/finance/budget/notice-time" method="POST" class="mt-3">
-        <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-6">
-                <label class="form-label">送信時間（0〜23時）</label>
-                <input type="number" class="form-control" name="budget_notice_hour" min="0" max="23" value="<%= noticeSettings?.budgetNoticeHour ?? 8 %>">
-            </div>
-        </div>
-        <button type="submit" class="btn btn-outline-primary btn-sm mt-3">保存</button>
-    </form>
 </div>
+<h5 class="mb-2"><i class="fa-regular fa-envelope"></i> まとめて入力の催促</h5>
 <div class="p-3 border rounded bg-light mb-4">
-    <h5><i class="fa-regular fa-envelope"></i> まとめて入力 催促メール</h5>
     <form action="/finance/budget/matomete-settings" method="POST" class="mb-2">
         <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-6">
-                <label class="form-label">催促までの日数（1〜31日）</label>
-                <input type="number" class="form-control" name="matomete_reminder_days" min="1" max="31" value="<%= noticeSettings?.matometeReminderDays ?? 7 %>">
+            <div class="col-12 col-md-4">
+                <label class="form-label">催促メール送信までの日数</label>
+                <input type="number" class="form-control" name="matomete_reminder_days" min="1" max="31" value="<%= noticeSettings?.matometeReminderDays ?? 7 %>" style="max-width: 9rem;">
             </div>
-        </div>
-        <div class="row g-2 align-items-end mt-1">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
                 <label class="form-label">送信時間（0〜23時）</label>
-                <input type="number" class="form-control" name="matomete_reminder_hour" min="0" max="23" value="<%= noticeSettings?.matometeReminderHour ?? 8 %>">
+                <input type="number" class="form-control" name="matomete_reminder_hour" min="0" max="23" value="<%= noticeSettings?.matometeReminderHour ?? 8 %>" style="max-width: 9rem;">
             </div>
         </div>
         <div class="text-muted small mt-2">※ 毎月1日に前月分の案内を送信後、指定日数が経過しても完了していない場合に催促メールを送信します。</div>
