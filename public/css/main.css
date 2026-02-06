@@ -2368,6 +2368,90 @@ padding-left: 10px;
   color: #556377;
 }
 
+.diary-month-tags {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #d7dde7;
+}
+
+.diary-month-tags-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #3e556d;
+  margin-bottom: 8px;
+}
+
+.diary-tag-month-top {
+  background: #e6f4e8;
+  color: #2e6b3f;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 4px 12px;
+}
+
+.diary-tag-month-sub {
+  background: #f1f3f6;
+  color: #6a7280;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+}
+
+.diary-tag-count {
+  font-size: 0.72em;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.diary-month-tag-btn {
+  border: none;
+  cursor: pointer;
+}
+
+.diary-month-tag-btn:focus-visible {
+  outline: 2px solid rgba(46, 107, 63, 0.4);
+  outline-offset: 2px;
+}
+
+.diary-tag-highlight {
+  background: #fff3a3;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.diary-tag-modal-entry {
+  padding: 10px 0;
+  border-bottom: 1px solid #e6e9ef;
+}
+
+.diary-tag-modal-entry:last-child {
+  border-bottom: none;
+}
+
+.diary-tag-modal-date {
+  font-size: 0.78rem;
+  color: #6c7a89;
+  margin-bottom: 4px;
+}
+
+.diary-tag-modal-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2f3b4a;
+  margin-bottom: 6px;
+}
+
+.diary-tag-modal-content {
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+  color: #3b4654;
+}
+
+.diary-tag-modal-summary {
+  font-size: 0.82rem;
+  color: #536170;
+  margin-bottom: 6px;
+}
+
 .diary-tag-cf.is-income {
   background: #e7f6ee;
   color: #1f7a4a;

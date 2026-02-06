@@ -34,6 +34,12 @@ const eventcalSchema = new mongoose.Schema({
     summary: {
         type: String
     },
+    tags: [
+    {
+        name: String,
+        score: Number
+    }
+    ],
     photos: [
     {
         url: String,

@@ -8,6 +8,7 @@ const Eventcal = require('../models/eventcal');
 const Eventcal_events = require('../models/eventcal_events');
 require('../models/menu/menu');
 const MenuDo = require('../models/menu/menuDo');
+const { extractDiaryTags } = require('../Utils/diaryTags');
 
 const getSelectedDate = (rawDate) => {
   if (!rawDate) return new Date();
@@ -49,6 +50,10 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
 
     const selectedDate = getSelectedDate(req.query.date);
     const { start, end } = buildDayRange(selectedDate);
+    const monthStart = dayjs(selectedDate).startOf('month').toDate();
+    const monthEnd = dayjs(selectedDate).endOf('month').toDate();
+    monthStart.setHours(0, 0, 0, 0);
+    monthEnd.setHours(23, 59, 59, 999);
 
     const financeDocs = await Finance.find({
       user: req.user._id,
@@ -63,6 +68,11 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     })
       .populate('group')
       .sort({ entry_date: 1 });
+
+    const diaryDocsMonth = await Eventcal.find({
+      user: req.user._id,
+      date: { $gte: monthStart, $lte: monthEnd }
+    }).select('date title summary content tags');
 
     const menuDoDocs = await MenuDo.find({
       recordedBy: req.user._id,
@@ -116,12 +126,15 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
 
     const diaryGroupsMap = new Map();
     const diaryEntries = [];
-    diaryDocs.forEach((entry) => {
+    const diaryTagSummaryMap = new Map();
+    for (const entry of diaryDocs) {
       const groupId = entry.group?._id?.toString() || 'unknown';
       const groupName = entry.group?.group_name || 'グループ未設定';
       if (!diaryGroupsMap.has(groupId)) {
         diaryGroupsMap.set(groupId, { groupId, groupName, entries: [] });
       }
+      const tagSource = [entry.title, entry.summary, entry.content].filter(Boolean).join(' ');
+      const tags = Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource);
       const diaryEntry = {
         id: entry._id,
         date: dayjs(entry.date).format('YYYY-MM-DD'),
@@ -131,11 +144,17 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         title: entry.title || '',
         content: entry.content || '',
         summary: entry.summary || '',
-        share: Boolean(entry.share)
+        share: Boolean(entry.share),
+        tags
       };
       diaryGroupsMap.get(groupId).entries.push(diaryEntry);
       diaryEntries.push(diaryEntry);
-    });
+      tags.forEach((tag) => {
+        if (!tag?.name) return;
+        const current = diaryTagSummaryMap.get(tag.name) || 0;
+        diaryTagSummaryMap.set(tag.name, current + (Number(tag.score) || 0));
+      });
+    }
 
     diaryGroupsMap.forEach((group) => {
       group.entries.sort((a, b) => {
@@ -145,6 +164,30 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         return 0;
       });
     });
+
+    const monthlyTagCountMap = new Map();
+    const monthlyDiaryEntries = [];
+    for (const entry of diaryDocsMonth) {
+      const tagSource = [entry.title, entry.summary, entry.content].filter(Boolean).join(' ');
+      const tags = Array.isArray(entry.tags) && entry.tags.length > 0 ? entry.tags : await extractDiaryTags(tagSource);
+      monthlyDiaryEntries.push({
+        id: entry._id,
+        date: dayjs(entry.date).format('YYYY-MM-DD'),
+        title: entry.title || '',
+        summary: entry.summary || '',
+        content: entry.content || '',
+        tags: tags.map(t => t?.name).filter(Boolean)
+      });
+      tags.forEach((tag) => {
+        if (!tag?.name) return;
+        const increment = Number.isFinite(Number(tag.score)) ? Number(tag.score) : 1;
+        monthlyTagCountMap.set(tag.name, (monthlyTagCountMap.get(tag.name) || 0) + increment);
+      });
+    }
+    const monthlyTagSummary = Array.from(monthlyTagCountMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .slice(0, 30);
 
     const mealLabelMap = {
       breakfast: '朝食',
@@ -177,11 +220,18 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       if (bucket) bucket.push(mealEntry);
     });
 
+    const diaryTagSummary = Array.from(diaryTagSummaryMap.entries())
+      .map(([name, score]) => ({ name, score: Math.round(score * 100) / 100 }))
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
     return res.render('allaboutme/eventcal2', {
       selectedDate: dayjs(start).format('YYYY-MM-DD'),
       financeGroups: Array.from(financeGroupsMap.values()),
       diaryGroups: Array.from(diaryGroupsMap.values()),
       diaryEntries,
+      diaryTagSummary,
+      monthlyTagSummary,
+      monthlyDiaryEntries,
       mealGroups: Array.from(mealGroupsMap.values()),
       events
     });

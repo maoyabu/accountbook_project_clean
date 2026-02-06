@@ -23,6 +23,7 @@
     "heic-convert": "^2.1.0",
     "joi": "^17.13.3",
     "json2csv": "^6.0.0-alpha.2",
+    "kuromoji": "^0.1.2",
     "mailer": "^0.6.7",
     "method-override": "^3.0.0",
     "moment": "^2.30.1",

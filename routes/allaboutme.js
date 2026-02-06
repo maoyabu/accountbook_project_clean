@@ -121,6 +121,7 @@ router.get('/googlePhotos/list', isLoggedIn, async (req, res, next) => {
 const Wantolist = require('../models/wantolist');
 const Eventcal = require('../models/eventcal');
 const Eventcal_events = require('../models/eventcal_events');
+const { extractDiaryTags } = require('../Utils/diaryTags');
 const SharedAccess = require('../models/shared_access');
 // --- カレンダー画面表示（月表示・日別エントリ表示・イベント取得） ---
 const dayjs = require('dayjs');
@@ -353,6 +354,8 @@ router.post('/eventcal/from-google', isLoggedIn, (req, res) => {
 router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), async (req, res) => {
     //const { date, item, event, rate, content, share } = req.body;
     const { date, item, event, rate, content, share, title, summary, saveAction, existingId, redirectTo } = req.body;
+    const tagSource = [title, summary, content].filter(Boolean).join(' ');
+    const tags = await extractDiaryTags(tagSource);
     // Unified photo object handling
     let photoObjs = (req.files || []).map(f => ({
       url: f.path,
@@ -434,6 +437,7 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
             content,
             title,
             summary,
+            tags,
             // saveAction はフォーム指定が draft なら draft、そうでなければ final
             saveAction: (saveAction === 'draft') ? 'draft' : 'final',
             // 下書きなら非公開、本保存ならフォーム値に従う
@@ -465,6 +469,7 @@ router.post('/eventcal', isLoggedIn, uploadEventPhotos().array('photos', 5), asy
       content,
       title,
       summary,
+      tags,
       share: (saveAction === 'draft') ? false : (share === 'on'),
       saveAction: (saveAction === 'draft') ? 'draft' : 'final',
       user: req.user._id,
@@ -579,6 +584,8 @@ router.post('/eventcal/delete/:id', isLoggedIn, async (req, res) => {
 router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos', 5), async (req, res) => {
   //const { date, item, event, rate, content, share } = req.body;
   const { date, item, event, rate, content, share, title, summary, saveAction, redirectTo } = req.body;
+  const tagSource = [title, summary, content].filter(Boolean).join(' ');
+  const tags = await extractDiaryTags(tagSource);
 
   // Ensure item/event mapping exists for this user/group
   if (item && event) {
@@ -684,6 +691,7 @@ router.post('/eventcal/edit/:id', isLoggedIn, uploadEventPhotos().array('photos'
       content,
       title,
       summary,
+      tags,
       share: (saveAction === 'draft') ? false : (share === 'on'),
       saveAction: (saveAction === 'draft') ? 'draft' : 'final',
       photos: photoObjs
@@ -960,6 +968,8 @@ router.post('/eventcal/batch/step', isLoggedIn, uploadEventPhotos().array('photo
   const action = req.body.action;
   //const { item, event, rate, content, share, date } = req.body;
   const { item, event, rate, content, share, date, title, summary } = req.body;
+  const tagSource = [title, summary, content].filter(Boolean).join(' ');
+  const tags = await extractDiaryTags(tagSource);
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
 
@@ -979,6 +989,7 @@ router.post('/eventcal/batch/step', isLoggedIn, uploadEventPhotos().array('photo
         content,
         title,
         summary,
+        tags,
         share: share === 'on',
         user: userId,
         group: groupId

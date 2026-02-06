@@ -23,6 +23,20 @@
         <span>日</span>
       </div>
       <div id="diaryGrid" class="diary-grid"></div>
+      <% if (monthlyTagSummary && monthlyTagSummary.length > 0) { %>
+        <div class="diary-month-tags">
+          <div class="diary-month-tags-title">当月のタグ</div>
+          <div class="diary-tags">
+            <% monthlyTagSummary.forEach((tag, idx) => { %>
+              <% if (idx < 10) { %>
+                <button type="button" class="diary-tag diary-tag-month-top diary-month-tag-btn" data-tag="<%= tag.name %>"><%= tag.name %> <span class="diary-tag-count">(<%= tag.count %>)</span></button>
+              <% } else { %>
+                <button type="button" class="diary-tag diary-tag-month-sub diary-month-tag-btn" data-tag="<%= tag.name %>"><%= tag.name %> <span class="diary-tag-count">(<%= tag.count %>)</span></button>
+              <% } %>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
     </div>
 
     <div class="diary-list-card">
@@ -124,6 +138,13 @@
 
       <div class="diary-section">
       <div class="diary-section-title">My Diary</div>
+      <% if (diaryTagSummary && diaryTagSummary.length > 0) { %>
+        <div class="diary-tags" style="margin-bottom: 10px;">
+          <% diaryTagSummary.forEach(tag => { %>
+            <span class="diary-tag diary-tag-category"><%= tag.name %> <span class="text-muted small">(<%= tag.score %>)</span></span>
+          <% }) %>
+        </div>
+      <% } %>
       <% if (!diaryGroups || diaryGroups.length === 0) { %>
         <div class="diary-empty">この日のMy Diaryはありません。</div>
         <% } else { %>
@@ -260,6 +281,18 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
       </div>
       <div class="modal-body" id="diaryContentModalBody" style="white-space: pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade diary-modal" id="diaryTagModal" tabindex="-1" aria-labelledby="diaryTagModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="diaryTagModalLabel">タグ検索</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body" id="diaryTagModalBody"></div>
     </div>
   </div>
 </div>
@@ -462,7 +495,8 @@
     if (!itemInput || !eventInput || !eventList) return;
 
     const events = <%- JSON.stringify((events || []).map(ev => ({ item: ev.item, event: ev.event }))) %>;
-    const diaryEntries = <%- JSON.stringify(diaryEntries || []) %>;
+    window.diaryEntriesData = <%- JSON.stringify(diaryEntries || []) %>;
+    window.monthlyDiaryEntriesData = <%- JSON.stringify(monthlyDiaryEntries || []) %>;
 
     const renderEventOptions = (itemValue) => {
       eventList.innerHTML = '';
@@ -512,7 +546,7 @@
     document.querySelectorAll('.diary-edit-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const entryId = btn.dataset.id;
-        const entry = diaryEntries.find(e => e.id === entryId);
+        const entry = (window.diaryEntriesData || []).find(e => e.id === entryId);
         fillFormForEdit(entry);
         const modalEl = document.getElementById('diaryEntryModal');
         if (modalEl && window.bootstrap && window.bootstrap.Modal) {
@@ -545,6 +579,65 @@
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       openDiaryContent(event.target);
+    });
+  })();
+
+  (() => {
+    const tagModalEl = document.getElementById('diaryTagModal');
+    const tagModalBody = document.getElementById('diaryTagModalBody');
+    if (!tagModalEl || !tagModalBody) return;
+
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
+    const highlightTag = (text, tag) => {
+      if (!text || !tag) return escapeHtml(text);
+      const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedTag, 'gi');
+      let result = '';
+      let lastIndex = 0;
+      const raw = String(text);
+      for (const match of raw.matchAll(regex)) {
+        const start = match.index ?? 0;
+        const end = start + match[0].length;
+        result += escapeHtml(raw.slice(lastIndex, start));
+        result += `<mark class="diary-tag-highlight">${escapeHtml(match[0])}</mark>`;
+        lastIndex = end;
+      }
+      result += escapeHtml(raw.slice(lastIndex));
+      return result;
+    };
+
+    document.querySelectorAll('.diary-month-tag-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tag = btn.getAttribute('data-tag');
+        const matches = (window.monthlyDiaryEntriesData || []).filter(e => (e.tags || []).includes(tag));
+        const tagModalTitle = document.getElementById('diaryTagModalLabel');
+        if (tagModalTitle) {
+          tagModalTitle.textContent = tag ? `タグ: ${tag}` : 'タグ検索';
+        }
+        const bodyHtml = matches.length === 0
+          ? '<div class="text-muted">該当する日記はありません。</div>'
+          : matches.map(entry => {
+              const date = entry.date ? `<div class="diary-tag-modal-date">${escapeHtml(entry.date)}</div>` : '';
+              const title = entry.title ? `<div class="diary-tag-modal-title">${highlightTag(entry.title, tag)}</div>` : '';
+              const summary = entry.summary ? `<div class="diary-tag-modal-summary">${highlightTag(entry.summary, tag)}</div>` : '';
+              const content = entry.content ? `<div class="diary-tag-modal-content">${highlightTag(entry.content, tag)}</div>` : '';
+              return `<div class="diary-tag-modal-entry">${date}${title}${summary}${content}</div>`;
+            }).join('');
+        tagModalBody.innerHTML = bodyHtml;
+        if (window.bootstrap && window.bootstrap.Modal) {
+          const tagModal = window.bootstrap.Modal.getOrCreateInstance(tagModalEl);
+          tagModal.show();
+        }
+      });
     });
   })();
 
