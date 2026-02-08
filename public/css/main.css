@@ -211,9 +211,20 @@ main {
     gap: 6px;
 }
 .top-nav-group-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
     font-weight: 600;
+    font-size: 0.75em;
+    line-height: 1;
+    border: 1px solid transparent;
+    background: rgba(0, 0, 0, 0.08);
+}
+.top-nav-group-name i {
     font-size: 0.85em;
-    opacity: 0.85;
+    opacity: 0.7;
 }
 .brand-group {
     display: none;
@@ -1817,6 +1828,24 @@ li{
 
 #top-nav.theme-message .top-nav-service-label {
     color: #9a5c00;
+}
+
+#top-nav.theme-finance .top-nav-group-name {
+    color: #1e40af;
+    border-color: rgba(30, 64, 175, 0.25);
+    background: rgba(30, 64, 175, 0.12);
+}
+
+#top-nav.theme-myself .top-nav-group-name {
+    color: #166534;
+    border-color: rgba(22, 101, 52, 0.25);
+    background: rgba(22, 101, 52, 0.12);
+}
+
+#top-nav.theme-message .top-nav-group-name {
+    color: #9a5c00;
+    border-color: rgba(154, 92, 0, 0.25);
+    background: rgba(154, 92, 0, 0.12);
 }
 
 #top-nav.theme-finance .top-nav-brand {
