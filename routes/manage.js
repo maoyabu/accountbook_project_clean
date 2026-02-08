@@ -10,6 +10,7 @@ const { sendMail } = require('../Utils/mailer');
 const MatometeStatus = require('../models/matomete_status');
 const Group = require('../models/groups');
 const MatometeSetting = require('../models/matomete_setting');
+const RegularEntry = require('../models/finance_regularEntry');
 
 const isGroupServiceEnabled = (user, groupId, serviceKey) => {
   if (!user) return false;
@@ -76,6 +77,8 @@ const sendReminders = async () => {
       for (const user of users) {
         if (user.isMail === false) continue;
         if (!user.email) continue;
+        const entryCount = await RegularEntry.countDocuments({ user: user._id });
+        if (entryCount === 0) continue;
   
         await sendMail({
           to: user.email,
@@ -122,6 +125,12 @@ cron.schedule('0 * * * *', async () => {
         const reminderHour = Number.isInteger(setting?.reminderHour) ? setting.reminderHour : 8;
         if (today.getHours() !== reminderHour) continue;
         if (today.getDate() < reminderDays + 1) continue;
+
+        const entryCount = await RegularEntry.countDocuments({
+          user: user._id,
+          group: group._id
+        });
+        if (entryCount === 0) continue;
 
         const status = await MatometeStatus.findOne({
           user: user._id,
