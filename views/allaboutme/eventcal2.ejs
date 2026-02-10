@@ -154,6 +154,15 @@
                       <% }) %>
                     </div>
                   <% } %>
+                  <% if (group.key === 'dinner') { %>
+                    <div class="diary-meal-comment" data-group-id="<%= mealGroup.groupId %>" data-date="<%= selectedDate %>" data-comment="<%= mealGroup.dinnerComment || '' %>">
+                      <div class="diary-meal-comment-header">
+                        <div class="diary-meal-comment-title">この日の食事コメント</div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary diary-meal-comment-edit" data-bs-toggle="modal" data-bs-target="#mealCommentModal">編集</button>
+                      </div>
+                      <div class="diary-meal-comment-body <%= mealGroup.dinnerComment ? '' : 'is-empty' %>"><%= mealGroup.dinnerComment || '（コメントなし）' %></div>
+                    </div>
+                  <% } %>
                 </div>
               <% }) %>
             </div>
@@ -318,6 +327,24 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
       </div>
       <div class="modal-body" id="diaryTagModalBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade diary-modal" id="mealCommentModal" tabindex="-1" aria-labelledby="mealCommentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mealCommentModalLabel">この日の食事コメント</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body">
+        <textarea class="form-control" id="mealCommentInput" rows="6" placeholder="コメントを入力"></textarea>
+      </div>
+      <div class="modal-footer d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+        <button type="button" class="btn btn-primary" id="mealCommentSaveBtn">保存</button>
+      </div>
     </div>
   </div>
 </div>
@@ -580,6 +607,81 @@
         }
       });
     });
+  })();
+
+  (() => {
+    const containers = document.querySelectorAll('.diary-meal-comment');
+    if (!containers.length) return;
+
+    const modalEl = document.getElementById('mealCommentModal');
+    const inputEl = document.getElementById('mealCommentInput');
+    const saveBtn = document.getElementById('mealCommentSaveBtn');
+    let activeContainer = null;
+
+    const setView = (container, comment) => {
+      const body = container.querySelector('.diary-meal-comment-body');
+      if (!body) return;
+      const trimmed = (comment || '').trim();
+      body.textContent = trimmed || '（コメントなし）';
+      body.classList.toggle('is-empty', !trimmed);
+      container.dataset.comment = comment || '';
+    };
+
+    containers.forEach((container) => {
+      const editBtn = container.querySelector('.diary-meal-comment-edit');
+      setView(container, container.dataset.comment || '');
+
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          activeContainer = container;
+          if (inputEl) inputEl.value = container.dataset.comment || '';
+        });
+      }
+    });
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        if (!activeContainer || !inputEl) return;
+        const groupId = activeContainer.dataset.groupId;
+        const date = activeContainer.dataset.date;
+        if (!groupId || !date) return;
+        const payload = {
+          groupId,
+          date,
+          comment: inputEl.value
+        };
+        saveBtn.disabled = true;
+        try {
+          const resp = await fetch('/allaboutme/eventcal2/meal-comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!resp.ok) {
+            const msg = await resp.text().catch(() => '');
+            throw new Error(msg || 'コメントの更新に失敗しました');
+          }
+          const data = await resp.json();
+          setView(activeContainer, data?.comment || '');
+          if (modalEl && window.bootstrap?.Modal) {
+            const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.hide();
+          }
+        } catch (err) {
+          console.error(err);
+          alert('コメントの更新に失敗しました');
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        activeContainer = null;
+        if (inputEl) inputEl.value = '';
+      });
+    }
   })();
 
   (() => {

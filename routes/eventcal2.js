@@ -6,8 +6,10 @@ const { isLoggedIn } = require('../middleware');
 const Finance = require('../models/finance');
 const Eventcal = require('../models/eventcal');
 const Eventcal_events = require('../models/eventcal_events');
+const Group = require('../models/groups');
 require('../models/menu/menu');
 const MenuDo = require('../models/menu/menuDo');
+const WeeklyMenuPlan = require('../models/menu/weeklyMenuPlan');
 const { extractDiaryTags } = require('../Utils/diaryTags');
 const Eventcal_settings = require('../models/eventcal_settings');
 
@@ -82,6 +84,36 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       .populate('menu')
       .populate('group')
       .sort({ mealType: 1, createdAt: 1 });
+
+    const selectedDateKey = dayjs(selectedDate).format('YYYY-MM-DD');
+    const mealCommentMap = new Map();
+    const commentGroupIds = new Set(
+      menuDoDocs
+        .map(entry => entry.group?._id?.toString())
+        .filter(Boolean)
+    );
+    if (groupId) commentGroupIds.add(String(groupId));
+    if (commentGroupIds.size > 0) {
+      const targetDate = new Date(selectedDate);
+      targetDate.setHours(0, 0, 0, 0);
+      const plans = await WeeklyMenuPlan.find({
+        group: { $in: Array.from(commentGroupIds) },
+        weekStart: { $lte: targetDate },
+        weekEnd: { $gte: targetDate }
+      }).select('group dayComments').lean();
+
+      plans.forEach((plan) => {
+        const planGroupId = plan.group?.toString();
+        if (!planGroupId) return;
+        const dayComment = (plan.dayComments || []).find(dc => (
+          dayjs(dc.date).format('YYYY-MM-DD') === selectedDateKey
+        ));
+        if (!dayComment) return;
+        mealCommentMap.set(planGroupId, {
+          comment: dayComment.comment || ''
+        });
+      });
+    }
 
     const allEvents = await Eventcal_events.find({
       user: req.user._id,
@@ -234,7 +266,8 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         mealGroupsMap.set(groupId, {
           groupId,
           groupName,
-          meals: { breakfast: [], lunch: [], dinner: [] }
+          meals: { breakfast: [], lunch: [], dinner: [] },
+          dinnerComment: ''
         });
       }
       const mealEntry = {
@@ -249,6 +282,24 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       const bucket = mealGroupsMap.get(groupId).meals[entry.mealType];
       if (bucket) bucket.push(mealEntry);
     });
+
+    mealGroupsMap.forEach((group, id) => {
+      const commentData = mealCommentMap.get(id);
+      group.dinnerComment = commentData?.comment || '';
+    });
+
+    if (groupId && !mealGroupsMap.has(String(groupId))) {
+      const activeComment = mealCommentMap.get(String(groupId));
+      if (activeComment) {
+        const activeGroup = await Group.findById(groupId).select('group_name');
+        mealGroupsMap.set(String(groupId), {
+          groupId: String(groupId),
+          groupName: activeGroup?.group_name || 'グループ未設定',
+          meals: { breakfast: [], lunch: [], dinner: [] },
+          dinnerComment: activeComment.comment || ''
+        });
+      }
+    }
 
     const diaryTagSummary = Array.from(diaryTagSummaryMap.entries())
       .map(([name, score]) => ({ name, score: Math.round(score * 100) / 100 }))
@@ -269,6 +320,62 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
     console.error('MyDiary取得エラー:', error);
     req.flash('error', 'MyDiaryの取得に失敗しました');
     return res.redirect('/myTop/top');
+  }
+});
+
+router.post('/eventcal2/meal-comment', isLoggedIn, async (req, res) => {
+  try {
+    const { groupId, date, comment } = req.body || {};
+    if (!groupId || !date) {
+      return res.status(400).json({ message: 'groupIdとdateは必須です' });
+    }
+
+    const targetDate = new Date(date);
+    if (Number.isNaN(targetDate.getTime())) {
+      return res.status(400).json({ message: '日付の形式が不正です' });
+    }
+    targetDate.setHours(0, 0, 0, 0);
+
+    const plan = await WeeklyMenuPlan.findOne({
+      group: groupId,
+      weekStart: { $lte: targetDate },
+      weekEnd: { $gte: targetDate }
+    }).sort({ weekStart: -1 });
+
+    if (!plan) {
+      return res.status(404).json({ message: '該当する週間献立が見つかりません' });
+    }
+
+    const dayComment = (plan.dayComments || []).find(dc => (
+      dayjs(dc.date).format('YYYY-MM-DD') === dayjs(targetDate).format('YYYY-MM-DD')
+    ));
+
+    if (dayComment) {
+      dayComment.comment = String(comment || '').trim();
+      await plan.save();
+      return res.json({ comment: dayComment.comment || '' });
+    }
+
+    const weekStart = new Date(plan.weekStart);
+    weekStart.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((targetDate.getTime() - weekStart.getTime()) / 86400000);
+    if (diffDays < 0 || diffDays > 6) {
+      return res.status(400).json({ message: '日付が週間献立の範囲外です' });
+    }
+
+    plan.dayComments = Array.isArray(plan.dayComments) ? plan.dayComments : [];
+    const newComment = {
+      dayIndex: diffDays,
+      date: targetDate,
+      comment: String(comment || '').trim()
+    };
+    plan.dayComments.push(newComment);
+    await plan.save();
+
+    return res.json({ comment: newComment.comment || '' });
+  } catch (error) {
+    console.error('食事コメント更新エラー:', error);
+    return res.status(500).json({ message: 'コメントの更新に失敗しました' });
   }
 });
 

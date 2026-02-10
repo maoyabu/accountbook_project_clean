@@ -139,7 +139,11 @@ const wantolist_items = ['やってて楽しいこと','楽しみにしている
 const calevent_items = ['今日の気分・体調・睡眠','今日のお食事','生活サイクル','日記'];
 
 router.use((req, res, next) => {
-  res.locals.selectedUserId = req.session.selectedUserId || req.user._id.toString();
+  const sessionUserId = req.session?.selectedUserId;
+  const currentUserId = req.user?._id ? req.user._id.toString() : null;
+  if (sessionUserId || currentUserId) {
+    res.locals.selectedUserId = sessionUserId || currentUserId;
+  }
   next();
 });
 
