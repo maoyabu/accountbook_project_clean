@@ -81,7 +81,13 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       recordedBy: req.user._id,
       date: { $gte: start, $lte: end }
     })
-      .populate('menu')
+      .populate({
+        path: 'menu',
+        populate: {
+          path: 'setMenus',
+          select: 'name imageUrl'
+        }
+      })
       .populate('group')
       .sort({ mealType: 1, createdAt: 1 });
 
@@ -259,7 +265,8 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
 
     const mealGroupsMap = new Map();
     menuDoDocs.forEach((entry) => {
-      const menu = entry.menu || {};
+      if (!entry.menu) return;
+      const menu = entry.menu;
       const groupId = entry.group?._id?.toString() || 'unknown';
       const groupName = entry.group?.group_name || 'グループ未設定';
       if (!mealGroupsMap.has(groupId)) {
@@ -270,6 +277,13 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
           dinnerComment: ''
         });
       }
+      const setMenus = Array.isArray(menu.setMenus) ? menu.setMenus : [];
+      const setImages = menu.menuType === 'set'
+        ? setMenus
+          .filter(item => item && item.imageUrl)
+          .map(item => ({ url: item.imageUrl, name: item.name || '' }))
+          .slice(0, 5)
+        : [];
       const mealEntry = {
         id: entry._id,
         mealType: entry.mealType,
@@ -277,7 +291,9 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         name: menu.name || '',
         junle: menu.junle || '',
         kind: menu.kind || '',
-        imageUrl: menu.imageUrl || ''
+        imageUrl: menu.imageUrl || '',
+        menuType: menu.menuType || 'single',
+        setImages
       };
       const bucket = mealGroupsMap.get(groupId).meals[entry.mealType];
       if (bucket) bucket.push(mealEntry);

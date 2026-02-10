@@ -9,6 +9,20 @@ const menuSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    menuType: {
+        type: String,
+        enum: ['single', 'set'],
+        default: 'single'
+    },
+    setType: {
+        type: [String],
+        enum: ['morning', 'lunch', 'dinner'],
+        default: []
+    },
+    setMenus: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Menu'
+    }],
     menu: {
         type: String
     },

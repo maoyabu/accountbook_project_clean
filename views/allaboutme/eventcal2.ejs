@@ -143,10 +143,22 @@
                             <% } %>
                           </div>
                           <div class="diary-meal-row">
-                            <% if (entry.imageUrl) { %>
-                              <img class="diary-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
+                            <% if (entry.menuType === 'set') { %>
+                              <% if (entry.setImages && entry.setImages.length > 0) { %>
+                                <div class="diary-meal-set-grid">
+                                  <% entry.setImages.forEach(img => { %>
+                                    <img class="diary-meal-thumb diary-meal-thumb-set" src="<%= img.url %>" alt="<%= img.name %>">
+                                  <% }) %>
+                                </div>
+                              <% } else { %>
+                                <div class="diary-meal-thumb diary-meal-thumb-empty diary-meal-thumb-set">画像なし</div>
+                              <% } %>
                             <% } else { %>
-                              <div class="diary-meal-thumb diary-meal-thumb-empty">画像なし</div>
+                              <% if (entry.imageUrl) { %>
+                                <img class="diary-meal-thumb" src="<%= entry.imageUrl %>" alt="<%= entry.name %>">
+                              <% } else { %>
+                                <div class="diary-meal-thumb diary-meal-thumb-empty">画像なし</div>
+                              <% } %>
                             <% } %>
                             <div class="diary-meal-name"><%= entry.name || '（メニュー名なし）' %></div>
                           </div>
