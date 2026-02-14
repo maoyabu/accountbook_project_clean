@@ -1455,7 +1455,6 @@ router.get('/monthly-stacked', isLoggedIn, catchAsync(async (req, res) => {
   const groupId = new mongoose.Types.ObjectId(req.session.activeGroupId);
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
-  const selectedYear = parseInt(req.query.year) || defaultYear;
 
   // 利用可能な年を取得（支出データから）
   const yearsRaw = await Finance.aggregate([
@@ -1468,8 +1467,8 @@ router.get('/monthly-stacked', isLoggedIn, catchAsync(async (req, res) => {
     },
     {
       $project: {
-        year: { $year: "$date" },
-        month: { $month: "$date" }
+        year: { $year: { date: "$date", timezone: "Asia/Tokyo" } },
+        month: { $month: { date: "$date", timezone: "Asia/Tokyo" } }
       }
     },
   ]);
@@ -1483,27 +1482,77 @@ router.get('/monthly-stacked', isLoggedIn, catchAsync(async (req, res) => {
     const num = Number(y);
     if (Number.isInteger(num)) yearSet.add(num);
   });
-  const availableYears = Array.from(yearSet).sort((a, b) => a - b);
-  if (!availableYears.includes(selectedYear)) {
-    availableYears.push(selectedYear);
-    availableYears.sort((a, b) => a - b);
+
+  if (yearSet.size === 0) {
+    yearSet.add(defaultYear);
   }
 
-  // チャート用のデータ生成処理（すでに存在する logic を再利用）
-  let labels, datasets;
+  const availableYears = Array.from(yearSet).sort((a, b) => a - b);
+  const maxSelectableYears = 3;
+  const requestedYearsRaw = req.query.years ?? req.query.year;
+  const requestedYears = Array.isArray(requestedYearsRaw)
+    ? requestedYearsRaw
+    : (requestedYearsRaw ? [requestedYearsRaw] : []);
+
+  let selectedYears = requestedYears
+    .map((value) => Number(value))
+    .filter((year) => Number.isInteger(year))
+    .filter((year, index, arr) => arr.indexOf(year) === index)
+    .filter((year) => availableYears.includes(year));
+
+  selectedYears.sort((a, b) => a - b);
+
+  if (selectedYears.length > maxSelectableYears) {
+    selectedYears = selectedYears.slice(0, maxSelectableYears);
+  }
+
+  if (selectedYears.length === 0) {
+    selectedYears = [availableYears.includes(defaultYear) ? defaultYear : availableYears[availableYears.length - 1]];
+  }
+
+  // チャート用のデータ生成処理（既存ロジックを再利用）
+  let yearlyCharts = [];
   if (dashboardController.generateMonthlyStackedChartData) {
-    ({ labels, datasets } = await dashboardController.generateMonthlyStackedChartData(groupId, selectedYear, fiscalStartMonth));
+    yearlyCharts = await Promise.all(selectedYears.map(async (targetYear) => {
+      const { labels, datasets } = await dashboardController.generateMonthlyStackedChartData(
+        groupId,
+        targetYear,
+        fiscalStartMonth
+      );
+      return { year: targetYear, labels, datasets };
+    }));
   } else if (dashboardController.getMonthlyStackedExpenseData) {
     throw new Error('generateMonthlyStackedChartData関数が必要です。');
   } else {
     throw new Error('グラフ用データ生成関数が見つかりません。');
   }
 
+  const labels = yearlyCharts[0]?.labels || getFiscalMonths(fiscalStartMonth).map((m) => `${m}月`);
+  const datasets = [];
+  const itemColorMap = new Map();
+  yearlyCharts.forEach(({ year, datasets: yearDatasets }) => {
+    yearDatasets.forEach((dataset) => {
+      const itemKey = dataset.label;
+      if (!itemColorMap.has(itemKey)) {
+        itemColorMap.set(itemKey, dataset.backgroundColor);
+      }
+      datasets.push({
+        ...dataset,
+        label: itemKey,
+        itemKey,
+        fiscalYear: year,
+        stack: String(year),
+        backgroundColor: itemColorMap.get(itemKey)
+      });
+    });
+  });
+
   res.render('dashboard/monthlyStackedChart', {
     labels,
     datasets,
-    year: selectedYear,
     availableYears,
+    selectedYears,
+    maxSelectableYears
   });
 }));
 

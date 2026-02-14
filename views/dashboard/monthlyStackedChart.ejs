@@ -1,73 +1,172 @@
 <% layout('layouts/boilerplate') %>
 
-<head>
-  <meta charset="UTF-8">
-  <title>月別支出項目別（積み上げ棒グラフ）</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  
-</head>
-<body>
-  <div class="mt-4">
-    <form method="get" action="/export/monthly-stacked" id="filterForm" class="row align-items-center">
-      <div class="col-md-12 d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">【月別支出項目別グラフ】</h3>
-        <div>
-          <label for="yearSelector" class="form-label me-2 mb-0">年度を選択:</label>
-          <select id="yearSelector" name="year" class="form-select d-inline-block w-auto">
-            <% availableYears.forEach(y => { %>
-              <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %>年度</option>
-            <% }) %>
-          </select>
-        </div>
-      </div>
-      <hr>
-      <div class="col-md-12">
-        <div style="width:100%;">
-          <canvas id="stackedBarChart" height="300"></canvas>
-        </div>
-      </div>
-    </form>
-  </div>
-  <script>
-    const rawDatasets = <%- JSON.stringify(datasets) %>;
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-    const ctx = document.getElementById('stackedBarChart').getContext('2d');
-    const chart = new Chart(ctx, {
+<div class="mt-4">
+  <form method="get" action="/export/monthly-stacked" id="filterForm">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h3 class="mb-0">【月別支出項目別グラフ】</h3>
+      <button type="submit" class="btn btn-primary btn-sm">表示</button>
+    </div>
+
+    <div class="border rounded p-3 bg-light">
+      <div class="fw-semibold mb-2">
+        比較する年度を選択（最大<%= maxSelectableYears || 3 %>件）
+      </div>
+      <% if (!availableYears || availableYears.length === 0) { %>
+        <div class="text-muted">表示可能な年度がありません。</div>
+      <% } else { %>
+        <div class="d-flex flex-wrap gap-3">
+          <% availableYears.forEach(y => { %>
+            <div class="form-check m-0">
+              <input
+                class="form-check-input year-check"
+                type="checkbox"
+                name="years"
+                id="year-<%= y %>"
+                value="<%= y %>"
+                <%= selectedYears && selectedYears.includes(y) ? 'checked' : '' %>
+              >
+              <label class="form-check-label" for="year-<%= y %>"><%= y %>年度</label>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </form>
+
+  <hr>
+
+  <% if (!datasets || datasets.length === 0) { %>
+    <p class="text-muted">表示するデータがありません。</p>
+  <% } else { %>
+    <div style="width:100%;">
+      <canvas id="stackedBarChart" height="300"></canvas>
+    </div>
+  <% } %>
+</div>
+
+<script>
+  const labels = <%- JSON.stringify(labels || []) %>;
+  const datasets = <%- JSON.stringify(datasets || []) %>;
+  const filterForm = document.getElementById('filterForm');
+  const maxSelectableYears = Number(<%- JSON.stringify(maxSelectableYears || 3) %>) || 3;
+  const yearChecks = Array.from(document.querySelectorAll('.year-check'));
+
+  yearChecks.forEach((checkbox) => {
+    checkbox.addEventListener('change', (event) => {
+      const checkedCount = yearChecks.filter((item) => item.checked).length;
+      if (checkedCount <= maxSelectableYears) return;
+      event.target.checked = false;
+      alert(`年度は最大${maxSelectableYears}件まで選択できます。`);
+    });
+  });
+
+  if (filterForm) {
+    filterForm.addEventListener('submit', () => {
+      const checked = filterForm.querySelectorAll('.year-check:checked');
+      if (checked.length > 0) return;
+      const firstCheckbox = filterForm.querySelector('.year-check');
+      if (firstCheckbox) firstCheckbox.checked = true;
+    });
+  }
+
+  const canvas = document.getElementById('stackedBarChart');
+  if (canvas && datasets.length > 0) {
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: <%- JSON.stringify(labels) %>,
-        datasets: rawDatasets
+        labels,
+        datasets
       },
       options: {
         responsive: true,
         plugins: {
-            title: {
-                display: true,
-                text: '月別支出項目別（積み上げ）'
-            },
-            legend: {
-                position: 'bottom'
-            },
-            datalabels: {
-                formatter: (value, context) => {
-                const datasetIndex = context.datasetIndex;
-                const dataIndex = context.dataIndex;
-                const datasets = context.chart.data.datasets;
-                
-                let total = 0;
-                datasets.forEach(ds => {
-                    total += ds.data[dataIndex] || 0;
-                });
+          title: {
+            display: true,
+            text: '月別支出項目別（積み上げ・年度比較）'
+          },
+          legend: {
+            position: 'bottom',
+            labels: {
+              generateLabels: (chart) => {
+                const itemLegendMap = new Map();
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                  const itemKey = dataset.itemKey || dataset.label;
+                  if (!itemKey) return;
 
-                const percentage = total ? (value / total) * 100 : 0;
-                return percentage.toFixed(1) + '%';
-                },
-                color: '#fff',
-                font: {
-                weight: 'bold'
-                }
+                  const isHidden = !chart.isDatasetVisible(datasetIndex);
+                  if (!itemLegendMap.has(itemKey)) {
+                    const color = Array.isArray(dataset.backgroundColor)
+                      ? dataset.backgroundColor[0]
+                      : dataset.backgroundColor;
+                    itemLegendMap.set(itemKey, {
+                      text: itemKey,
+                      fillStyle: color,
+                      strokeStyle: color,
+                      lineWidth: 1,
+                      hidden: true,
+                      datasetIndex,
+                      itemKey
+                    });
+                  }
+                  const legendItem = itemLegendMap.get(itemKey);
+                  legendItem.hidden = legendItem.hidden && isHidden;
+                });
+                return Array.from(itemLegendMap.values());
+              }
+            },
+            onClick: (_event, legendItem, legend) => {
+              const chart = legend.chart;
+              const itemKey = legendItem.itemKey || legendItem.text;
+              const targetIndexes = [];
+              chart.data.datasets.forEach((dataset, datasetIndex) => {
+                if ((dataset.itemKey || dataset.label) !== itemKey) return;
+                targetIndexes.push(datasetIndex);
+              });
+              if (targetIndexes.length === 0) return;
+
+              const hasVisible = targetIndexes.some((index) => chart.isDatasetVisible(index));
+              targetIndexes.forEach((index) => {
+                chart.setDatasetVisibility(index, !hasVisible);
+              });
+              chart.update();
             }
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const dataset = context.dataset || {};
+                const yearLabel = dataset.fiscalYear ? `${dataset.fiscalYear}年度 ` : '';
+                const itemLabel = dataset.itemKey || dataset.label || '';
+                const value = Number(context.raw) || 0;
+                return `${yearLabel}${itemLabel}: ${value.toLocaleString()}円`;
+              }
+            }
+          },
+          datalabels: {
+            formatter: (value, context) => {
+              if (!value) return '';
+              const dataIndex = context.dataIndex;
+              const stackKey = context.dataset?.stack;
+              const allDatasets = context.chart.data.datasets || [];
+              let total = 0;
+              allDatasets.forEach((dataset, datasetIndex) => {
+                if (dataset.stack !== stackKey) return;
+                if (!context.chart.isDatasetVisible(datasetIndex)) return;
+                total += dataset.data[dataIndex] || 0;
+              });
+
+              if (!total) return '';
+              return `${((value / total) * 100).toFixed(1)}%`;
+            },
+            color: '#fff',
+            font: {
+              weight: 'bold'
+            }
+          }
         },
         scales: {
           x: {
@@ -80,9 +179,5 @@
       },
       plugins: [ChartDataLabels]
     });
-
-    document.getElementById('yearSelector').addEventListener('change', () => {
-      document.getElementById('filterForm').submit();
-    });
-  </script>
-</body>
+  }
+</script>
