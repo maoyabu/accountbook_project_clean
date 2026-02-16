@@ -225,7 +225,7 @@ router.get('/', async (req, res, next) => {
 
     console.log('[api/finance] all query:', { user: userId, group: groupId, scope: 'group' });
 
-    const query = { user: userId, group: groupId };
+    const query = { group: groupId };
     const items = await Finance.find(query)
       .sort({ date: -1, _id: -1 })
       .lean();
