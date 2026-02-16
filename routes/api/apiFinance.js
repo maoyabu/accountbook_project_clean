@@ -176,7 +176,7 @@ router.get('/recent', async (req, res, next) => {
 
     console.log('[api/finance] recent query:', { user: userId, group: groupId, limit });
 
-    const query = { group: groupId };
+    const query = { user: userId, group: groupId };
     const items = await Finance.find(query)
       .sort({ date: -1, _id: -1 })
       .limit(limit)
