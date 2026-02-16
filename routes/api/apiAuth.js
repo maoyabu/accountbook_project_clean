@@ -21,6 +21,7 @@ function toUserJSON(user) {
         email: user.email,
         displayname: user.displayname || null,
         avatar: user.avatar || null,
+        isAdmin: Boolean(user.isAdmin),
         // 必要に応じて他のフィールド
       };
     }
@@ -73,7 +74,7 @@ router.post('/login', (req, res, next) => {
       try {
         // ここで DB から displayname / avatar を含めて再取得する
         const fresh = await FinanceUser.findById(user._id)
-          .select('username email displayname avatar'); // 必要なフィールドを明示
+          .select('username email displayname avatar isAdmin'); // 必要なフィールドを明示
         const payload = { token: 'session', user: toUserJSON(fresh || user) };
         console.log('[api/auth] login response:', JSON.stringify(payload));
         return res.json(payload);

@@ -92,7 +92,8 @@ router.get('/masters', async (req, res, next) => {
     // budgets: expense_item -> item
     const budgets = budgetsDocs.map(doc => ({
       item: String(doc.expense_item ?? doc.item ?? ''),
-      display_order: Number(doc.display_order ?? doc.displayOrder ?? 0)
+      display_order: Number(doc.display_order ?? doc.displayOrder ?? 0),
+      budget: Number(doc.budget ?? 0)
     }));
 
     // paymentItems: paymentItem -> item（重複排除）
