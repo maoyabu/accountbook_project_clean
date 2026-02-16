@@ -176,7 +176,7 @@ router.get('/recent', async (req, res, next) => {
 
     console.log('[api/finance] recent query:', { user: userId, group: groupId, limit });
 
-    const query = { user: userId, group: groupId };
+    const query = { group: groupId };
     const items = await Finance.find(query)
       .sort({ date: -1, _id: -1 })
       .limit(limit)
@@ -223,7 +223,7 @@ router.get('/', async (req, res, next) => {
       return res.status(400).json({ error: 'missing_params', message: 'group は必須です' });
     }
 
-    console.log('[api/finance] all query:', { user: userId, group: groupId });
+    console.log('[api/finance] all query:', { user: userId, group: groupId, scope: 'group' });
 
     const query = { user: userId, group: groupId };
     const items = await Finance.find(query)
