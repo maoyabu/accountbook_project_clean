@@ -2480,6 +2480,7 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
 
   req.flash('success', '予算を保存しました');
   await logAction({ req, action: '保存', target: '年度予算' });
+  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const [matometeSetting, noticeSetting] = await Promise.all([
     MatometeSetting.findOne({ group: groupId }),
     FinanceBudgetNoticeSetting.findOne({ group: groupId })
@@ -2488,6 +2489,7 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
       activeGroupId: groupId,
       selectedYear: year,
       page: 'budget',
+      fiscalStartMonth,
       noticeSettings: {
         enabled: req.user?.financeBudgetNoticeEnabled !== false,
         thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0

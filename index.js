@@ -98,6 +98,12 @@ const secureNoteRoutes = require('./routes/secureNote');
 const resumeRoutes = require('./routes/resume');
 const plannerRoutes = require('./routes/planner');
 const messageRoutes = require('./routes/message');
+
+// iOS App の API ルート
+const apiAuthRoutes = require('./routes/api/apiAuth');
+const apiGroupsRoutes = require('./routes/api/apiGroups');
+const apiFinanceRoutes = require('./routes/api/apiFinance');
+
 const MessageSetting = require('./models/messageSetting');
 const MessageStatus = require('./models/messageStatus');
 const { sendMail } = require('./Utils/mailer');
@@ -397,6 +403,12 @@ app.use('/finance', financeRoutes);
 
 //ユーザー登録関連のルート作成
 app.use('/', userRoutes);
+
+//iOS Appの認証ルート
+app.use('/api/auth', apiAuthRoutes);
+
+app.use('/api/groups', apiGroupsRoutes);
+app.use('/api/finance', apiFinanceRoutes);
 
 //まとめて入力項目関連のルート作成
 app.use('/matomete', matometeRoutes);
