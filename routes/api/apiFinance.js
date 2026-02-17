@@ -482,4 +482,27 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+// DELETE /api/finance/:id
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'invalid_id', message: 'ID が不正です' });
+    }
+
+    const existing = await Finance.findOne({ _id: id, user: userId }).lean();
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'データが見つかりません' });
+    }
+
+    await Finance.deleteOne({ _id: id, user: userId });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
