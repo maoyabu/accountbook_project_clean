@@ -110,6 +110,7 @@ const { sendMail } = require('./Utils/mailer');
 
 const { setActiveGroup } = require('./middleware');
 const { logPageAccess } = require('./middleware');
+const apiCategoryMapping = require('./routes/api/apiCategoryMapping');
 
 const MongoStore = require('connect-mongo');
 
@@ -409,6 +410,8 @@ app.use('/api/auth', apiAuthRoutes);
 
 app.use('/api/groups', apiGroupsRoutes);
 app.use('/api/finance', apiFinanceRoutes);
+
+app.use('/api', apiCategoryMapping);
 
 //まとめて入力項目関連のルート作成
 app.use('/matomete', matometeRoutes);
