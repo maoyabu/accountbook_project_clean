@@ -865,13 +865,13 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       }
       const entryAmount = Number(entry.amount) || 0;
       const paymentType = normalizePaymentTypeName(entry.payment_type);
-      if (paymentType === '現金') {
-        row.cashAmount += entryAmount;
-        if (entry.cf !== '収入') {
+      if (entry.cf === '支出') {
+        if (paymentType === '現金') {
+          row.cashAmount += entryAmount;
           row.cashUsedAmount += entryAmount;
+        } else {
+          row.nonCashAmount += entryAmount;
         }
-      } else {
-        row.nonCashAmount += entryAmount;
       }
 
       if (entry.cf === '収入') {
