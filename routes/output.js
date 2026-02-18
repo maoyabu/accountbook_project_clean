@@ -530,14 +530,8 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       day: 'numeric'
     }).format(new Date());
 
-    let groupName = req.session.groupName || 'グループ';
-    if (!req.session.groupName) {
-      const group = await Group.findById(groupId).select('group_name').lean();
-      if (group?.group_name) {
-        groupName = group.group_name;
-        req.session.groupName = group.group_name;
-      }
-    }
+    const activeGroup = await Group.findById(groupId).select('group_name').lean();
+    const groupName = activeGroup?.group_name || 'グループ';
 
     res.render('dashboard/monthlyCalendar', {
       year,
