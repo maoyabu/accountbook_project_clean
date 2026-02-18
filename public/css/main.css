@@ -221,6 +221,7 @@ main {
     line-height: 1;
     border: 1px solid transparent;
     background: rgba(0, 0, 0, 0.08);
+    white-space: nowrap;
 }
 .top-nav-group-name i {
     font-size: 0.85em;
@@ -1680,7 +1681,7 @@ table td, table th {
 .dashboard-calendar-main {
     max-width: none;
     width: 100%;
-    margin: 120px 0;
+    margin: 72px 0 16px;
     padding-left: 8px;
     padding-right: 8px;
 }
@@ -1722,7 +1723,29 @@ table td, table th {
 }
 
 .dashboard-calendar-table td.content-col {
-    min-width: 160px;
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.dashboard-calendar-table th.content-head {
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+}
+
+.dashboard-calendar-table td.content-col .content-text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.25;
+    max-height: calc(1.25em * 3);
 }
 
 .dashboard-calendar-table td.amount-col,
@@ -1742,6 +1765,34 @@ table td, table th {
 
 .dashboard-calendar-table .month-total-row td {
     background-color: #dbe6ef;
+}
+
+.dashboard-calendar-toolbar {
+    flex-wrap: nowrap;
+}
+
+.dashboard-calendar-control-form {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.dashboard-calendar-show-btn {
+    white-space: nowrap;
+    min-width: 58px;
+}
+
+.dashboard-calendar-title {
+    min-width: 0;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-calendar-created {
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 li{
@@ -1877,6 +1928,8 @@ li{
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
     text-decoration: none;
 }
 
@@ -2277,7 +2330,15 @@ padding-left: 10px;
     }
 
     .dashboard-calendar-table td.content-col {
-        min-width: 120px;
+        width: 140px;
+        min-width: 140px;
+        max-width: 140px;
+    }
+
+    .dashboard-calendar-table th.content-head {
+        width: 140px;
+        min-width: 140px;
+        max-width: 140px;
     }
 
 }

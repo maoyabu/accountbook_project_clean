@@ -484,7 +484,6 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
     const daysInMonth = new Date(year, month, 0).getDate();
 
     const finances = await Finance.find({
-      user: req.user._id,
       group: groupId,
       date: { $gte: start, $lt: end }
     })
@@ -531,11 +530,20 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       day: 'numeric'
     }).format(new Date());
 
+    let groupName = req.session.groupName || 'グループ';
+    if (!req.session.groupName) {
+      const group = await Group.findById(groupId).select('group_name').lean();
+      if (group?.group_name) {
+        groupName = group.group_name;
+        req.session.groupName = group.group_name;
+      }
+    }
+
     res.render('dashboard/monthlyCalendar', {
       year,
       month,
       ymValue: `${year}-${String(month).padStart(2, '0')}`,
-      titlePrefix: `${req.user.displayname}さん`,
+      titlePrefix: `${groupName}`,
       formAction: '/export/dashboard/monthly-calendar-m',
       dayRows,
       subtotal,
