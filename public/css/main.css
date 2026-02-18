@@ -1722,6 +1722,52 @@ table td, table th {
     white-space: nowrap;
 }
 
+.dashboard-calendar-table th.memo-head,
+.dashboard-calendar-table td.memo-col {
+    width: 180px;
+    min-width: 180px;
+    max-width: 180px;
+}
+
+.dashboard-calendar-table td.memo-col {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.dashboard-calendar-table .memo-cell-btn {
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    min-height: 1.25em;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+}
+
+.dashboard-calendar-table .memo-cell-btn:focus-visible {
+    outline: 2px solid #2d6cdf;
+    outline-offset: 1px;
+    border-radius: 3px;
+}
+
+.dashboard-calendar-table td.memo-col .memo-text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.25;
+    max-height: calc(1.25em * 3);
+}
+
+.dashboard-calendar-table td.memo-col .memo-text.is-empty {
+    color: #6c757d;
+}
+
 .dashboard-calendar-table td.content-col {
     width: 220px;
     min-width: 220px;
@@ -1755,6 +1801,34 @@ table td, table th {
     white-space: nowrap;
 }
 
+.dashboard-calendar-table th.payment-group-head {
+    min-width: 220px;
+}
+
+.dashboard-calendar-table th.payment-head {
+    min-width: 110px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.dashboard-calendar-table td.payment-amount-col {
+    min-width: 110px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.dashboard-calendar-table th.cash-balance-head {
+    min-width: 110px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.dashboard-calendar-table td.cash-balance-col {
+    min-width: 110px;
+    text-align: right;
+    white-space: nowrap;
+}
+
 .dashboard-calendar-table td.summary-label {
     text-align: center;
 }
@@ -1765,6 +1839,22 @@ table td, table th {
 
 .dashboard-calendar-table .month-total-row td {
     background-color: #dbe6ef;
+}
+
+.dashboard-calendar-table tr.today-row td {
+    background-color: #dff3df;
+}
+
+.dashboard-calendar-table td.day-col.is-saturday,
+.dashboard-calendar-table td.weekday-col.is-saturday,
+.dashboard-calendar-table td.memo-col.is-saturday {
+    background-color: #eaf4ff;
+}
+
+.dashboard-calendar-table td.day-col.is-sunday-holiday,
+.dashboard-calendar-table td.weekday-col.is-sunday-holiday,
+.dashboard-calendar-table td.memo-col.is-sunday-holiday {
+    background-color: #fdecec;
 }
 
 .dashboard-calendar-toolbar {
@@ -1778,6 +1868,20 @@ table td, table th {
 }
 
 .dashboard-calendar-show-btn {
+    white-space: nowrap;
+    min-width: 58px;
+}
+
+.dashboard-carry-label {
+    white-space: nowrap;
+}
+
+.dashboard-carry-input {
+    width: 120px;
+    min-width: 120px;
+}
+
+.dashboard-carry-save-btn {
     white-space: nowrap;
     min-width: 58px;
 }
@@ -2339,6 +2443,28 @@ padding-left: 10px;
         width: 140px;
         min-width: 140px;
         max-width: 140px;
+    }
+
+    .dashboard-calendar-table th.memo-head,
+    .dashboard-calendar-table td.memo-col {
+        width: 120px;
+        min-width: 120px;
+        max-width: 120px;
+    }
+
+    .dashboard-calendar-table th.payment-head,
+    .dashboard-calendar-table td.payment-amount-col {
+        min-width: 96px;
+    }
+
+    .dashboard-calendar-table th.cash-balance-head,
+    .dashboard-calendar-table td.cash-balance-col {
+        min-width: 96px;
+    }
+
+    .dashboard-carry-input {
+        width: 96px;
+        min-width: 96px;
     }
 
 }

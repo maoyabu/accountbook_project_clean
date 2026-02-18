@@ -8,6 +8,7 @@ const fs = require('fs');
 const methodOverride = require('method-override');
 const FinanceUser = require('../models/users');
 const FinanceExBudget = require('../models/finance_ex_budget');
+const FinanceMonthlyCalendar = require('../models/finance_monthly_calendar');
 const Group = require('../models/groups');
 const dashboardController = require('../controllers/dashboardController');
 const Items = require('../models/finance_items');
@@ -52,6 +53,157 @@ const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
 const normalizeCategoryName = (value) => String(value || '').replace(/\s+/g, '').replace(/　/g, '').trim();
 
+const normalizePaymentTypeName = (value) => String(value || '').replace(/\s+/g, '').replace(/　/g, '').trim();
+
+const pad2 = (num) => String(num).padStart(2, '0');
+
+const toDateKey = (year, month, day) => `${year}-${pad2(month)}-${pad2(day)}`;
+
+const dateToKey = (date) => toDateKey(date.getFullYear(), date.getMonth() + 1, date.getDate());
+
+const getNthWeekdayOfMonth = (year, month, weekday, nth) => {
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const day = 1 + ((7 + weekday - firstDay) % 7) + (nth - 1) * 7;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return day <= daysInMonth ? day : null;
+};
+
+const getVernalEquinoxDay = (year) => {
+  if (year < 1980 || year > 2099) return 20;
+  return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+};
+
+const getAutumnalEquinoxDay = (year) => {
+  if (year < 1980 || year > 2099) return 23;
+  return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+};
+
+const setHoliday = (holidayMap, year, month, day, name) => {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (!day || day < 1 || day > daysInMonth) return;
+  holidayMap.set(toDateKey(year, month, day), name);
+};
+
+const buildJapaneseHolidayMap = (year) => {
+  const holidayMap = new Map();
+
+  setHoliday(holidayMap, year, 1, 1, '元日');
+
+  if (year >= 2000) {
+    setHoliday(holidayMap, year, 1, getNthWeekdayOfMonth(year, 1, 1, 2), '成人の日');
+  } else {
+    setHoliday(holidayMap, year, 1, 15, '成人の日');
+  }
+
+  if (year >= 1967) {
+    setHoliday(holidayMap, year, 2, 11, '建国記念の日');
+  }
+
+  if (year >= 2020) {
+    setHoliday(holidayMap, year, 2, 23, '天皇誕生日');
+  } else if (year >= 1989 && year <= 2018) {
+    setHoliday(holidayMap, year, 12, 23, '天皇誕生日');
+  } else if (year >= 1949 && year <= 1988) {
+    setHoliday(holidayMap, year, 4, 29, '天皇誕生日');
+  }
+
+  setHoliday(holidayMap, year, 3, getVernalEquinoxDay(year), '春分の日');
+
+  if (year >= 2007) {
+    setHoliday(holidayMap, year, 4, 29, '昭和の日');
+  } else if (year >= 1989) {
+    setHoliday(holidayMap, year, 4, 29, 'みどりの日');
+  }
+
+  setHoliday(holidayMap, year, 5, 3, '憲法記念日');
+  if (year >= 2007) {
+    setHoliday(holidayMap, year, 5, 4, 'みどりの日');
+  }
+  setHoliday(holidayMap, year, 5, 5, 'こどもの日');
+
+  if (year === 2020) {
+    setHoliday(holidayMap, year, 7, 23, '海の日');
+  } else if (year === 2021) {
+    setHoliday(holidayMap, year, 7, 22, '海の日');
+  } else if (year >= 2003) {
+    setHoliday(holidayMap, year, 7, getNthWeekdayOfMonth(year, 7, 1, 3), '海の日');
+  } else if (year >= 1996) {
+    setHoliday(holidayMap, year, 7, 20, '海の日');
+  }
+
+  if (year === 2020) {
+    setHoliday(holidayMap, year, 8, 10, '山の日');
+  } else if (year === 2021) {
+    setHoliday(holidayMap, year, 8, 8, '山の日');
+  } else if (year >= 2016) {
+    setHoliday(holidayMap, year, 8, 11, '山の日');
+  }
+
+  if (year >= 2003) {
+    setHoliday(holidayMap, year, 9, getNthWeekdayOfMonth(year, 9, 1, 3), '敬老の日');
+  } else if (year >= 1966) {
+    setHoliday(holidayMap, year, 9, 15, '敬老の日');
+  }
+
+  setHoliday(holidayMap, year, 9, getAutumnalEquinoxDay(year), '秋分の日');
+
+  if (year === 2020) {
+    setHoliday(holidayMap, year, 7, 24, 'スポーツの日');
+  } else if (year === 2021) {
+    setHoliday(holidayMap, year, 7, 23, 'スポーツの日');
+  } else if (year >= 2022) {
+    setHoliday(holidayMap, year, 10, getNthWeekdayOfMonth(year, 10, 1, 2), 'スポーツの日');
+  } else if (year >= 2000) {
+    setHoliday(holidayMap, year, 10, getNthWeekdayOfMonth(year, 10, 1, 2), '体育の日');
+  } else if (year >= 1966) {
+    setHoliday(holidayMap, year, 10, 10, '体育の日');
+  }
+
+  setHoliday(holidayMap, year, 11, 3, '文化の日');
+  setHoliday(holidayMap, year, 11, 23, '勤労感謝の日');
+
+  if (year === 1990) {
+    setHoliday(holidayMap, year, 11, 12, '即位礼正殿の儀');
+  }
+  if (year === 2019) {
+    setHoliday(holidayMap, year, 5, 1, '天皇の即位の日');
+    setHoliday(holidayMap, year, 10, 22, '即位礼正殿の儀');
+  }
+
+  if (year >= 1986) {
+    for (let dt = new Date(year, 0, 2); dt <= new Date(year, 11, 30); dt.setDate(dt.getDate() + 1)) {
+      const key = dateToKey(dt);
+      if (holidayMap.has(key)) continue;
+      const prev = new Date(dt);
+      prev.setDate(prev.getDate() - 1);
+      const next = new Date(dt);
+      next.setDate(next.getDate() + 1);
+      if (prev.getFullYear() !== year || next.getFullYear() !== year) continue;
+      if (holidayMap.has(dateToKey(prev)) && holidayMap.has(dateToKey(next))) {
+        holidayMap.set(key, '国民の休日');
+      }
+    }
+  }
+
+  if (year >= 1973) {
+    const keys = Array.from(holidayMap.keys()).sort();
+    for (const key of keys) {
+      const [y, m, d] = key.split('-').map(Number);
+      const holidayDate = new Date(y, m - 1, d);
+      if (holidayDate.getDay() !== 0) continue;
+      const substitute = new Date(holidayDate);
+      do {
+        substitute.setDate(substitute.getDate() + 1);
+      } while (holidayMap.has(dateToKey(substitute)));
+      if (substitute.getFullYear() === year) {
+        holidayMap.set(dateToKey(substitute), '振替休日');
+      }
+    }
+  }
+
+  return holidayMap;
+};
+
 const isFoodOrSeasoningExpense = (expenseItem) => {
   const normalized = normalizeCategoryName(expenseItem);
   if (!normalized) return false;
@@ -72,9 +224,41 @@ const createCalendarBucket = () => ({
   amount: 0
 });
 
+const joinTexts = (values) => {
+  const ordered = [];
+  for (const raw of values || []) {
+    const text = String(raw || '').trim();
+    if (!text) continue;
+    ordered.push(text);
+  }
+  return ordered.join(', ');
+};
+
+const joinUniqueTexts = (values) => {
+  const seen = new Set();
+  const ordered = [];
+  for (const raw of values || []) {
+    const text = String(raw || '').trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    ordered.push(text);
+  }
+  return ordered.join(', ');
+};
+
 const createCalendarDayRow = (year, month, day) => ({
   day,
   weekday: WEEKDAY_JA[new Date(year, month - 1, day).getDay()],
+  memos: [],
+  plannedNote: '',
+  memoText: '',
+  holidayName: '',
+  dayToneClass: '',
+  cashTopupAmount: 0,
+  cashAmount: 0,
+  nonCashAmount: 0,
+  cashUsedAmount: 0,
+  cashBalance: 0,
   income: createCalendarBucket(),
   deduction: createCalendarBucket(),
   foodSeasoning: createCalendarBucket(),
@@ -100,15 +284,7 @@ const addEntryToBucket = (bucket, entry, fallbackField) => {
 };
 
 const finalizeCalendarBucket = (bucket) => {
-  const seen = new Set();
-  const ordered = [];
-  for (const raw of bucket.contents) {
-    const text = String(raw || '').trim();
-    if (!text || seen.has(text)) continue;
-    seen.add(text);
-    ordered.push(text);
-  }
-  bucket.contentText = ordered.join(', ');
+  bucket.contentText = joinUniqueTexts(bucket.contents);
   return bucket;
 };
 
@@ -118,12 +294,19 @@ const summarizeCalendarRows = (rows) => {
     acc.deductionAmount += row.deduction.amount;
     acc.foodSeasoningAmount += row.foodSeasoning.amount;
     acc.otherExpenseAmount += row.otherExpense.amount;
+    acc.cashAmount += row.cashAmount;
+    acc.nonCashAmount += row.nonCashAmount;
+    acc.cashUsedAmount += row.cashUsedAmount;
     return acc;
   }, {
     incomeAmount: 0,
     deductionAmount: 0,
     foodSeasoningAmount: 0,
     otherExpenseAmount: 0,
+    cashAmount: 0,
+    nonCashAmount: 0,
+    cashUsedAmount: 0,
+    cashBalance: 0,
     balance: 0
   });
 
@@ -134,6 +317,45 @@ const summarizeCalendarRows = (rows) => {
     - summary.otherExpenseAmount;
 
   return summary;
+};
+
+const parseYearMonth = (ymRaw, fallbackDate = new Date()) => {
+  let year = fallbackDate.getFullYear();
+  let month = fallbackDate.getMonth() + 1;
+  if (typeof ymRaw === 'string') {
+    const matched = ymRaw.match(/^(\d{4})-(\d{1,2})$/);
+    if (matched) {
+      const parsedYear = Number(matched[1]);
+      const parsedMonth = Number(matched[2]);
+      if (Number.isInteger(parsedYear) && parsedMonth >= 1 && parsedMonth <= 12) {
+        year = parsedYear;
+        month = parsedMonth;
+      }
+    }
+  }
+  return { year, month };
+};
+
+const normalizeCalendarDay = (value) => {
+  const day = Number(value);
+  if (!Number.isInteger(day) || day < 1 || day > 31) return null;
+  return day;
+};
+
+const getJstTodayParts = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric'
+  }).formatToParts(new Date());
+
+  const getPart = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
+  return {
+    year: getPart('year'),
+    month: getPart('month'),
+    day: getPart('day')
+  };
 };
 
 function getBudgetMonthCount(targetYear, startMonth = 1, baseDate = new Date()) {
@@ -454,6 +676,145 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   });
 });
 
+// 月次カレンダー集計（個人） 繰越現金保存
+router.post('/dashboard/monthly-calendar-m/carry-cash', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const { year, month } = parseYearMonth(req.body.ym, new Date());
+    const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+    const rawCarryCash = Number(req.body.carryCash);
+    const carryCash = Number.isFinite(rawCarryCash) ? rawCarryCash : 0;
+
+    await FinanceMonthlyCalendar.findOneAndUpdate(
+      { group: groupId, year, month },
+      {
+        $set: {
+          ym: ymValue,
+          carryCash,
+          updatedBy: req.user._id
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    req.flash('success', '繰越現金を保存しました');
+    return res.redirect(`/export/dashboard/monthly-calendar-m?ym=${ymValue}`);
+  } catch (err) {
+    console.error('❌ 繰越現金保存エラー:', err);
+    req.flash('error', '繰越現金の保存に失敗しました');
+    return res.redirect('/export/dashboard/monthly-calendar-m');
+  }
+});
+
+// 月次カレンダー 予定メモ登録・更新
+router.post('/dashboard/monthly-calendar-m/memo', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
+    }
+
+    const { year, month } = parseYearMonth(req.body.ym, new Date());
+    const day = normalizeCalendarDay(req.body.day);
+    if (!day) {
+      return res.status(400).json({ ok: false, message: '日付が不正です' });
+    }
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day > daysInMonth) {
+      return res.status(400).json({ ok: false, message: 'この月に存在しない日付です' });
+    }
+
+    const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+    const note = String(req.body.note || '').trim();
+    const rawCashTopup = Number(req.body.cashTopup);
+    const cashTopup = Number.isFinite(rawCashTopup) ? Math.max(rawCashTopup, 0) : 0;
+
+    const doc = await FinanceMonthlyCalendar.findOneAndUpdate(
+      { group: groupId, year, month },
+      {
+        $setOnInsert: { ym: ymValue, plannedMemos: [] }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const plannedMemos = Array.isArray(doc.plannedMemos)
+      ? doc.plannedMemos.map((m) => ({
+          day: Number(m.day),
+          note: String(m.note || '').trim(),
+          cashTopup: Number(m.cashTopup) || 0
+        }))
+      : [];
+
+    const nextEntry = { day, note, cashTopup };
+    const targetIndex = plannedMemos.findIndex((m) => m.day === day);
+    if (!note && cashTopup === 0) {
+      if (targetIndex >= 0) {
+        plannedMemos.splice(targetIndex, 1);
+      }
+    } else {
+      if (targetIndex >= 0) {
+        plannedMemos[targetIndex] = nextEntry;
+      } else {
+        plannedMemos.push(nextEntry);
+      }
+    }
+
+    plannedMemos.sort((a, b) => a.day - b.day);
+    doc.ym = ymValue;
+    doc.plannedMemos = plannedMemos;
+    doc.updatedBy = req.user._id;
+    await doc.save();
+
+    return res.json({ ok: true, entry: nextEntry });
+  } catch (err) {
+    console.error('❌ カレンダーメモ保存エラー:', err);
+    return res.status(500).json({ ok: false, message: '保存に失敗しました' });
+  }
+});
+
+// 月次カレンダー 予定メモ削除
+router.post('/dashboard/monthly-calendar-m/memo/delete', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
+    }
+
+    const { year, month } = parseYearMonth(req.body.ym, new Date());
+    const day = normalizeCalendarDay(req.body.day);
+    if (!day) {
+      return res.status(400).json({ ok: false, message: '日付が不正です' });
+    }
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day > daysInMonth) {
+      return res.status(400).json({ ok: false, message: 'この月に存在しない日付です' });
+    }
+
+    const doc = await FinanceMonthlyCalendar.findOne({ group: groupId, year, month });
+    if (!doc) {
+      return res.json({ ok: true });
+    }
+
+    const before = Array.isArray(doc.plannedMemos) ? doc.plannedMemos.length : 0;
+    doc.plannedMemos = (doc.plannedMemos || []).filter((m) => Number(m.day) !== day);
+    const after = doc.plannedMemos.length;
+    if (before !== after) {
+      doc.updatedBy = req.user._id;
+      await doc.save();
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('❌ カレンダーメモ削除エラー:', err);
+    return res.status(500).json({ ok: false, message: '削除に失敗しました' });
+  }
+});
+
 // 月次カレンダー集計（個人）
 router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
   try {
@@ -463,21 +824,7 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       return res.redirect('/group_list');
     }
 
-    const now = new Date();
-    let year = now.getFullYear();
-    let month = now.getMonth() + 1;
-
-    if (typeof req.query.ym === 'string') {
-      const matched = req.query.ym.match(/^(\d{4})-(\d{1,2})$/);
-      if (matched) {
-        const parsedYear = Number(matched[1]);
-        const parsedMonth = Number(matched[2]);
-        if (Number.isInteger(parsedYear) && parsedMonth >= 1 && parsedMonth <= 12) {
-          year = parsedYear;
-          month = parsedMonth;
-        }
-      }
-    }
+    const { year, month } = parseYearMonth(req.query.ym, new Date());
 
     const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
     const end = new Date(year, month, 1, 0, 0, 0, 0);
@@ -487,19 +834,45 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       group: groupId,
       date: { $gte: start, $lt: end }
     })
-      .select('date day cf content amount income_item dedu_item expense_item')
+      .select('date day cf content memo amount payment_type income_item dedu_item expense_item')
       .lean();
 
     const dayRows = Array.from(
       { length: daysInMonth },
       (_, idx) => createCalendarDayRow(year, month, idx + 1)
     );
+    const holidayMap = buildJapaneseHolidayMap(year);
+    const calendarSetting = await FinanceMonthlyCalendar.findOne({ group: groupId, year, month }).lean();
+    const carryCash = Number(calendarSetting?.carryCash) || 0;
+    const plannedMemoMap = new Map();
+    (calendarSetting?.plannedMemos || []).forEach((planned) => {
+      const day = normalizeCalendarDay(planned?.day);
+      if (!day || day > daysInMonth) return;
+      plannedMemoMap.set(day, {
+        note: String(planned?.note || '').trim(),
+        cashTopup: Number(planned?.cashTopup) || 0
+      });
+    });
 
     for (const entry of finances) {
       const dayFromDate = getJstDay(entry.date);
       const day = Number.isInteger(dayFromDate) ? dayFromDate : Number(entry.day);
       if (!Number.isInteger(day) || day < 1 || day > daysInMonth) continue;
       const row = dayRows[day - 1];
+      const memoText = String(entry.memo || '').trim();
+      if (memoText) {
+        row.memos.push(memoText);
+      }
+      const entryAmount = Number(entry.amount) || 0;
+      const paymentType = normalizePaymentTypeName(entry.payment_type);
+      if (paymentType === '現金') {
+        row.cashAmount += entryAmount;
+        if (entry.cf !== '収入') {
+          row.cashUsedAmount += entryAmount;
+        }
+      } else {
+        row.nonCashAmount += entryAmount;
+      }
 
       if (entry.cf === '収入') {
         addEntryToBucket(row.income, entry, 'income_item');
@@ -515,14 +888,48 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
     }
 
     dayRows.forEach((row) => {
+      const planned = plannedMemoMap.get(row.day) || { note: '', cashTopup: 0 };
+      row.plannedNote = planned.note;
+      row.cashTopupAmount = planned.cashTopup;
+      row.holidayName = holidayMap.get(toDateKey(year, month, row.day)) || '';
+      if (row.holidayName || row.weekday === '日') {
+        row.dayToneClass = 'is-sunday-holiday';
+      } else if (row.weekday === '土') {
+        row.dayToneClass = 'is-saturday';
+      } else {
+        row.dayToneClass = '';
+      }
+
+      const transactionMemoText = joinTexts(row.memos);
+      const memoParts = [];
+      if (row.holidayName) memoParts.push(row.holidayName);
+      if (row.plannedNote) memoParts.push(row.plannedNote);
+      if (row.cashTopupAmount) memoParts.push(`現金追加 +${row.cashTopupAmount.toLocaleString()}`);
+      if (transactionMemoText) memoParts.push(transactionMemoText);
+      row.memoText = memoParts.join(', ');
+
       finalizeCalendarBucket(row.income);
       finalizeCalendarBucket(row.deduction);
       finalizeCalendarBucket(row.foodSeasoning);
       finalizeCalendarBucket(row.otherExpense);
     });
 
-    const subtotal = summarizeCalendarRows(dayRows.filter((row) => row.day <= 15));
+    let runningCash = carryCash;
+    dayRows.forEach((row) => {
+      runningCash += row.cashTopupAmount;
+      runningCash -= row.cashUsedAmount;
+      row.cashBalance = runningCash;
+    });
+
+    const subtotalRows = dayRows.filter((row) => row.day <= 15);
+    const subtotal = summarizeCalendarRows(subtotalRows);
     const total = summarizeCalendarRows(dayRows);
+    subtotal.cashBalance = subtotalRows.length > 0
+      ? subtotalRows[subtotalRows.length - 1].cashBalance
+      : carryCash;
+    total.cashBalance = dayRows.length > 0
+      ? dayRows[dayRows.length - 1].cashBalance
+      : carryCash;
     const todayJst = new Intl.DateTimeFormat('ja-JP', {
       timeZone: 'Asia/Tokyo',
       year: 'numeric',
@@ -532,6 +939,10 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
 
     const activeGroup = await Group.findById(groupId).select('group_name').lean();
     const groupName = activeGroup?.group_name || 'グループ';
+    const todayJstParts = getJstTodayParts();
+    const todayDay = (year === todayJstParts.year && month === todayJstParts.month)
+      ? todayJstParts.day
+      : null;
 
     res.render('dashboard/monthlyCalendar', {
       year,
@@ -539,9 +950,14 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       ymValue: `${year}-${String(month).padStart(2, '0')}`,
       titlePrefix: `${groupName}`,
       formAction: '/export/dashboard/monthly-calendar-m',
+      carryCashAction: '/export/dashboard/monthly-calendar-m/carry-cash',
+      memoSaveAction: '/export/dashboard/monthly-calendar-m/memo',
+      memoDeleteAction: '/export/dashboard/monthly-calendar-m/memo/delete',
+      carryCash,
       dayRows,
       subtotal,
       total,
+      todayDay,
       todayJst,
       mainClass: 'container-fluid dashboard-calendar-main'
     });
