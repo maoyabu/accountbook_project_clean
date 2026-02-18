@@ -47,6 +47,95 @@ const parseJstDateEnd = (value) => {
     return dt;
 };
 
+const JST_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', day: 'numeric' });
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
+
+const normalizeCategoryName = (value) => String(value || '').replace(/\s+/g, '').replace(/　/g, '').trim();
+
+const isFoodOrSeasoningExpense = (expenseItem) => {
+  const normalized = normalizeCategoryName(expenseItem);
+  if (!normalized) return false;
+  if (normalized.includes('調味料')) return true;
+  return /副食|主食|外食|食費|給食/.test(normalized);
+};
+
+const getJstDay = (value) => {
+  const dt = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(dt.getTime())) return null;
+  const day = Number(JST_DAY_FORMATTER.format(dt));
+  return Number.isInteger(day) ? day : null;
+};
+
+const createCalendarBucket = () => ({
+  contents: [],
+  contentText: '',
+  amount: 0
+});
+
+const createCalendarDayRow = (year, month, day) => ({
+  day,
+  weekday: WEEKDAY_JA[new Date(year, month - 1, day).getDay()],
+  income: createCalendarBucket(),
+  deduction: createCalendarBucket(),
+  foodSeasoning: createCalendarBucket(),
+  otherExpense: createCalendarBucket()
+});
+
+const getEntryLabel = (entry, fallbackField) => {
+  const content = String(entry?.content || '').trim();
+  if (content) {
+    return content.replace(/\s+/g, ' ');
+  }
+  const fallback = String(entry?.[fallbackField] || '').trim();
+  return fallback;
+};
+
+const addEntryToBucket = (bucket, entry, fallbackField) => {
+  const amount = Number(entry?.amount) || 0;
+  bucket.amount += amount;
+  const label = getEntryLabel(entry, fallbackField);
+  if (label) {
+    bucket.contents.push(label);
+  }
+};
+
+const finalizeCalendarBucket = (bucket) => {
+  const seen = new Set();
+  const ordered = [];
+  for (const raw of bucket.contents) {
+    const text = String(raw || '').trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    ordered.push(text);
+  }
+  bucket.contentText = ordered.join(', ');
+  return bucket;
+};
+
+const summarizeCalendarRows = (rows) => {
+  const summary = rows.reduce((acc, row) => {
+    acc.incomeAmount += row.income.amount;
+    acc.deductionAmount += row.deduction.amount;
+    acc.foodSeasoningAmount += row.foodSeasoning.amount;
+    acc.otherExpenseAmount += row.otherExpense.amount;
+    return acc;
+  }, {
+    incomeAmount: 0,
+    deductionAmount: 0,
+    foodSeasoningAmount: 0,
+    otherExpenseAmount: 0,
+    balance: 0
+  });
+
+  summary.balance =
+    summary.incomeAmount
+    - summary.deductionAmount
+    - summary.foodSeasoningAmount
+    - summary.otherExpenseAmount;
+
+  return summary;
+};
+
 function getBudgetMonthCount(targetYear, startMonth = 1, baseDate = new Date()) {
     const currentFiscalYear = getFiscalYearForDate(baseDate, startMonth) ?? baseDate.getFullYear();
     if (targetYear === currentFiscalYear) {
@@ -363,6 +452,101 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     fiscalRangeLabel,
     fiscalYear
   });
+});
+
+// 月次カレンダー集計（個人）
+router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1;
+
+    if (typeof req.query.ym === 'string') {
+      const matched = req.query.ym.match(/^(\d{4})-(\d{1,2})$/);
+      if (matched) {
+        const parsedYear = Number(matched[1]);
+        const parsedMonth = Number(matched[2]);
+        if (Number.isInteger(parsedYear) && parsedMonth >= 1 && parsedMonth <= 12) {
+          year = parsedYear;
+          month = parsedMonth;
+        }
+      }
+    }
+
+    const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const end = new Date(year, month, 1, 0, 0, 0, 0);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const finances = await Finance.find({
+      user: req.user._id,
+      group: groupId,
+      date: { $gte: start, $lt: end }
+    })
+      .select('date day cf content amount income_item dedu_item expense_item')
+      .lean();
+
+    const dayRows = Array.from(
+      { length: daysInMonth },
+      (_, idx) => createCalendarDayRow(year, month, idx + 1)
+    );
+
+    for (const entry of finances) {
+      const dayFromDate = getJstDay(entry.date);
+      const day = Number.isInteger(dayFromDate) ? dayFromDate : Number(entry.day);
+      if (!Number.isInteger(day) || day < 1 || day > daysInMonth) continue;
+      const row = dayRows[day - 1];
+
+      if (entry.cf === '収入') {
+        addEntryToBucket(row.income, entry, 'income_item');
+      } else if (entry.cf === '控除') {
+        addEntryToBucket(row.deduction, entry, 'dedu_item');
+      } else if (entry.cf === '支出') {
+        if (isFoodOrSeasoningExpense(entry.expense_item)) {
+          addEntryToBucket(row.foodSeasoning, entry, 'expense_item');
+        } else {
+          addEntryToBucket(row.otherExpense, entry, 'expense_item');
+        }
+      }
+    }
+
+    dayRows.forEach((row) => {
+      finalizeCalendarBucket(row.income);
+      finalizeCalendarBucket(row.deduction);
+      finalizeCalendarBucket(row.foodSeasoning);
+      finalizeCalendarBucket(row.otherExpense);
+    });
+
+    const subtotal = summarizeCalendarRows(dayRows.filter((row) => row.day <= 15));
+    const total = summarizeCalendarRows(dayRows);
+    const todayJst = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric'
+    }).format(new Date());
+
+    res.render('dashboard/monthlyCalendar', {
+      year,
+      month,
+      ymValue: `${year}-${String(month).padStart(2, '0')}`,
+      titlePrefix: `${req.user.displayname}さん`,
+      formAction: '/export/dashboard/monthly-calendar-m',
+      dayRows,
+      subtotal,
+      total,
+      todayJst,
+      mainClass: 'container-fluid dashboard-calendar-main'
+    });
+  } catch (err) {
+    console.error('❌ 月次カレンダー集計ルートエラー:', err);
+    res.status(500).send('月次カレンダー集計エラー');
+  }
 });
 
 //月別のDashboard表示のルート（グループ）

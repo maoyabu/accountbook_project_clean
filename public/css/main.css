@@ -1677,6 +1677,73 @@ table td, table th {
     min-width: 100px;
 }
 
+.dashboard-calendar-main {
+    max-width: none;
+    width: 100%;
+    margin: 120px 0;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.dashboard-calendar-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.dashboard-calendar-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+}
+
+.dashboard-calendar-table th,
+.dashboard-calendar-table td {
+    border: 1px solid #6a757d !important;
+    padding: 4px 6px;
+    font-size: 0.9rem;
+    vertical-align: middle;
+    background-color: #ffffff;
+}
+
+.dashboard-calendar-table thead th {
+    background-color: #d8e2ea;
+    color: #17222a;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.dashboard-calendar-table td.day-col,
+.dashboard-calendar-table td.weekday-col {
+    min-width: 44px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.dashboard-calendar-table td.content-col {
+    min-width: 160px;
+}
+
+.dashboard-calendar-table td.amount-col,
+.dashboard-calendar-table td.balance-col {
+    min-width: 110px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.dashboard-calendar-table td.summary-label {
+    text-align: center;
+}
+
+.dashboard-calendar-table .mid-total-row td {
+    background-color: #eef3f7;
+}
+
+.dashboard-calendar-table .month-total-row td {
+    background-color: #dbe6ef;
+}
+
 li{
     list-style:none;
 }
@@ -2201,6 +2268,16 @@ padding-left: 10px;
     table {
         width: 100%;
         table-layout: auto;
+    }
+
+    .dashboard-calendar-table th,
+    .dashboard-calendar-table td {
+        font-size: 0.78rem;
+        padding: 3px 4px;
+    }
+
+    .dashboard-calendar-table td.content-col {
+        min-width: 120px;
     }
 
 }

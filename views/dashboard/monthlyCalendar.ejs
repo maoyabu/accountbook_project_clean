@@ -1,0 +1,92 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="card mb-3 mt-4 rounded">
+  <div class="card-body text-white p-2 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background-color: #44616D;">
+    <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
+      <input
+        type="month"
+        name="ym"
+        value="<%= ymValue %>"
+        class="form-control form-control-sm"
+        style="max-width: 140px;"
+      >
+      <button type="submit" class="btn btn-sm btn-light">表示</button>
+      <span><%= titlePrefix %> 月次カレンダー集計</span>
+    </form>
+    <div class="small">作成日: <%= todayJst %></div>
+  </div>
+</div>
+
+<div class="card mb-3 rounded">
+  <div class="card-body p-2" style="background-color: #44616D;">
+    <div class="text-white fw-bold mb-2"><%= year %>年 <%= month %>月</div>
+    <div class="dashboard-calendar-wrap">
+      <table class="table table-sm dashboard-calendar-table mb-0">
+        <thead>
+          <tr>
+            <th rowspan="2">日</th>
+            <th rowspan="2">曜</th>
+            <th colspan="2">収入</th>
+            <th colspan="2">控除</th>
+            <th colspan="2">食費・調味料</th>
+            <th colspan="2">それ以外</th>
+            <th rowspan="2">収支</th>
+          </tr>
+          <tr>
+            <th>内容</th>
+            <th>金額</th>
+            <th>内容</th>
+            <th>金額</th>
+            <th>内容</th>
+            <th>金額</th>
+            <th>内容</th>
+            <th>金額</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% dayRows.forEach((row) => { %>
+            <tr>
+              <td class="day-col"><%= row.day %></td>
+              <td class="weekday-col"><%= row.weekday %></td>
+              <td class="content-col"><%= row.income.contentText %></td>
+              <td class="amount-col"><%= row.income.amount ? row.income.amount.toLocaleString() : '' %></td>
+              <td class="content-col"><%= row.deduction.contentText %></td>
+              <td class="amount-col"><%= row.deduction.amount ? row.deduction.amount.toLocaleString() : '' %></td>
+              <td class="content-col"><%= row.foodSeasoning.contentText %></td>
+              <td class="amount-col"><%= row.foodSeasoning.amount ? row.foodSeasoning.amount.toLocaleString() : '' %></td>
+              <td class="content-col"><%= row.otherExpense.contentText %></td>
+              <td class="amount-col"><%= row.otherExpense.amount ? row.otherExpense.amount.toLocaleString() : '' %></td>
+              <td class="balance-col"></td>
+            </tr>
+            <% if (row.day === 15) { %>
+              <tr class="mid-total-row fw-bold">
+                <td class="summary-label" colspan="2">小計</td>
+                <td></td>
+                <td class="amount-col"><%= subtotal.incomeAmount.toLocaleString() %></td>
+                <td></td>
+                <td class="amount-col"><%= subtotal.deductionAmount.toLocaleString() %></td>
+                <td></td>
+                <td class="amount-col"><%= subtotal.foodSeasoningAmount.toLocaleString() %></td>
+                <td></td>
+                <td class="amount-col"><%= subtotal.otherExpenseAmount.toLocaleString() %></td>
+                <td class="balance-col"><%= subtotal.balance.toLocaleString() %></td>
+              </tr>
+            <% } %>
+          <% }) %>
+          <tr class="month-total-row fw-bold">
+            <td class="summary-label" colspan="2">合計</td>
+            <td></td>
+            <td class="amount-col"><%= total.incomeAmount.toLocaleString() %></td>
+            <td></td>
+            <td class="amount-col"><%= total.deductionAmount.toLocaleString() %></td>
+            <td></td>
+            <td class="amount-col"><%= total.foodSeasoningAmount.toLocaleString() %></td>
+            <td></td>
+            <td class="amount-col"><%= total.otherExpenseAmount.toLocaleString() %></td>
+            <td class="balance-col"><%= total.balance.toLocaleString() %></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
