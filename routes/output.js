@@ -687,6 +687,13 @@ router.post('/dashboard/monthly-calendar-m/carry-cash', isLoggedIn, async (req, 
 
     const { year, month } = parseYearMonth(req.body.ym, new Date());
     const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+    const activeGroup = await Group.findById(groupId).select('financeWalletManagementEnabled').lean();
+    const walletManagementEnabled = activeGroup?.financeWalletManagementEnabled === true;
+    if (!walletManagementEnabled) {
+      req.flash('error', 'お財布管理が「しない」のため、繰越現金は保存できません');
+      return res.redirect(`/export/dashboard/monthly-calendar-m?ym=${ymValue}`);
+    }
+
     const rawCarryCash = Number(req.body.carryCash);
     const carryCash = Number.isFinite(rawCarryCash) ? rawCarryCash : 0;
 
@@ -732,7 +739,11 @@ router.post('/dashboard/monthly-calendar-m/memo', isLoggedIn, async (req, res) =
     const ymValue = `${year}-${String(month).padStart(2, '0')}`;
     const note = String(req.body.note || '').trim();
     const rawCashTopup = Number(req.body.cashTopup);
-    const cashTopup = Number.isFinite(rawCashTopup) ? Math.max(rawCashTopup, 0) : 0;
+    const activeGroup = await Group.findById(groupId).select('financeWalletManagementEnabled').lean();
+    const walletManagementEnabled = activeGroup?.financeWalletManagementEnabled === true;
+    const cashTopup = walletManagementEnabled && Number.isFinite(rawCashTopup)
+      ? Math.max(rawCashTopup, 0)
+      : 0;
 
     const doc = await FinanceMonthlyCalendar.findOneAndUpdate(
       { group: groupId, year, month },
@@ -829,6 +840,9 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
     const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
     const end = new Date(year, month, 1, 0, 0, 0, 0);
     const daysInMonth = new Date(year, month, 0).getDate();
+    const activeGroup = await Group.findById(groupId).select('group_name financeWalletManagementEnabled').lean();
+    const groupName = activeGroup?.group_name || 'グループ';
+    const walletManagementEnabled = activeGroup?.financeWalletManagementEnabled === true;
 
     const finances = await Finance.find({
       group: groupId,
@@ -843,14 +857,14 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
     );
     const holidayMap = buildJapaneseHolidayMap(year);
     const calendarSetting = await FinanceMonthlyCalendar.findOne({ group: groupId, year, month }).lean();
-    const carryCash = Number(calendarSetting?.carryCash) || 0;
+    const carryCash = walletManagementEnabled ? (Number(calendarSetting?.carryCash) || 0) : 0;
     const plannedMemoMap = new Map();
     (calendarSetting?.plannedMemos || []).forEach((planned) => {
       const day = normalizeCalendarDay(planned?.day);
       if (!day || day > daysInMonth) return;
       plannedMemoMap.set(day, {
         note: String(planned?.note || '').trim(),
-        cashTopup: Number(planned?.cashTopup) || 0
+        cashTopup: walletManagementEnabled ? (Number(planned?.cashTopup) || 0) : 0
       });
     });
 
@@ -904,7 +918,7 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       const memoParts = [];
       if (row.holidayName) memoParts.push(row.holidayName);
       if (row.plannedNote) memoParts.push(row.plannedNote);
-      if (row.cashTopupAmount) memoParts.push(`現金追加 +${row.cashTopupAmount.toLocaleString()}`);
+      if (walletManagementEnabled && row.cashTopupAmount) memoParts.push(`現金追加 +${row.cashTopupAmount.toLocaleString()}`);
       if (transactionMemoText) memoParts.push(transactionMemoText);
       row.memoText = memoParts.join(', ');
 
@@ -937,8 +951,6 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       day: 'numeric'
     }).format(new Date());
 
-    const activeGroup = await Group.findById(groupId).select('group_name').lean();
-    const groupName = activeGroup?.group_name || 'グループ';
     const todayJstParts = getJstTodayParts();
     const todayDay = (year === todayJstParts.year && month === todayJstParts.month)
       ? todayJstParts.day
@@ -957,6 +969,7 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       dayRows,
       subtotal,
       total,
+      walletManagementEnabled,
       todayDay,
       todayJst,
       mainClass: 'container-fluid dashboard-calendar-main'

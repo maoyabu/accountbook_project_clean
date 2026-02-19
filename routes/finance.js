@@ -2127,31 +2127,33 @@ router.get('/budget', isLoggedIn, async (req, res) => {
   const activeGroupId = req.session.activeGroupId;
   const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
   const selectedYear = getCurrentFiscalYear(fiscalStartMonth); // 現在の年度を初期値に
-  Promise.all([
+  const [matometeSetting, noticeSetting, groupDoc] = await Promise.all([
     MatometeSetting.findOne({ group: activeGroupId }),
-    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId })
-  ]).then(([matometeSetting, noticeSetting]) => {
-    res.render('finance/budgetTop', {
-      activeGroupId,
-      selectedYear,
-      page: 'budget',
-      fiscalStartMonth,
-      noticeSettings: {
-        enabled: req.user?.financeBudgetNoticeEnabled !== false,
-        thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
-          ? req.user.financeBudgetNoticeThresholds
-          : [50, 80, 90],
-        matometeReminderDays: Number.isInteger(matometeSetting?.reminderDays)
-          ? matometeSetting.reminderDays
-          : 7,
-        matometeReminderHour: Number.isInteger(matometeSetting?.reminderHour)
-          ? matometeSetting.reminderHour
-          : 8,
-        budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
-          ? noticeSetting.noticeHour
-          : 8
-      }
-    });
+    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId }),
+    Group.findById(activeGroupId).select('financeWalletManagementEnabled')
+  ]);
+
+  res.render('finance/budgetTop', {
+    activeGroupId,
+    selectedYear,
+    page: 'budget',
+    fiscalStartMonth,
+    noticeSettings: {
+      enabled: req.user?.financeBudgetNoticeEnabled !== false,
+      thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
+        ? req.user.financeBudgetNoticeThresholds
+        : [50, 80, 90],
+      matometeReminderDays: Number.isInteger(matometeSetting?.reminderDays)
+        ? matometeSetting.reminderDays
+        : 7,
+      matometeReminderHour: Number.isInteger(matometeSetting?.reminderHour)
+        ? matometeSetting.reminderHour
+        : 8,
+      budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
+        ? noticeSetting.noticeHour
+        : 8,
+      walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
+    }
   });
 });
 
@@ -2188,6 +2190,29 @@ router.post('/budget/fiscal-start-month', isLoggedIn, async (req, res) => {
   } catch (err) {
     console.error('年度の開始月更新エラー:', err);
     req.flash('error', '年度の開始月の更新に失敗しました');
+    return res.redirect('/finance/budget');
+  }
+});
+
+// お財布管理設定
+router.post('/budget/wallet-settings', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/finance/budget');
+    }
+
+    const enabled = req.body.wallet_management === 'enabled';
+    await Group.findByIdAndUpdate(groupId, {
+      financeWalletManagementEnabled: enabled
+    });
+
+    req.flash('success', `お財布管理を「${enabled ? 'する' : 'しない'}」に更新しました`);
+    return res.redirect('/finance/budget');
+  } catch (err) {
+    console.error('お財布管理設定更新エラー:', err);
+    req.flash('error', 'お財布管理設定の更新に失敗しました');
     return res.redirect('/finance/budget');
   }
 });
@@ -2481,9 +2506,10 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
   req.flash('success', '予算を保存しました');
   await logAction({ req, action: '保存', target: '年度予算' });
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
-  const [matometeSetting, noticeSetting] = await Promise.all([
+  const [matometeSetting, noticeSetting, groupDoc] = await Promise.all([
     MatometeSetting.findOne({ group: groupId }),
-    FinanceBudgetNoticeSetting.findOne({ group: groupId })
+    FinanceBudgetNoticeSetting.findOne({ group: groupId }),
+    Group.findById(groupId).select('financeWalletManagementEnabled')
   ]);
   res.render('finance/budgetTop', {
       activeGroupId: groupId,
@@ -2503,7 +2529,8 @@ router.post('/budget/save', isLoggedIn, async (req, res) => {
           : 8,
         budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
           ? noticeSetting.noticeHour
-          : 8
+          : 8,
+        walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
       }
   });
 });

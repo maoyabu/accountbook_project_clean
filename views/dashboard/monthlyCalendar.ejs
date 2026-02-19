@@ -1,4 +1,5 @@
 <% layout('layouts/boilerplate') %>
+<% const walletManaged = walletManagementEnabled === true; %>
 
 <div class="card mb-3 rounded">
   <div class="card-body text-white p-2 d-flex justify-content-between align-items-center gap-2 dashboard-calendar-toolbar" style="background-color: #44616D;">
@@ -11,16 +12,18 @@
         style="max-width: 140px;"
       >
       <button type="submit" formmethod="GET" formaction="<%= formAction %>" class="btn btn-sm btn-light dashboard-calendar-show-btn">表示</button>
-      <label for="carryCashInput" class="dashboard-carry-label">繰越現金</label>
-      <input
-        id="carryCashInput"
-        type="number"
-        name="carryCash"
-        value="<%= Number(carryCash || 0) %>"
-        class="form-control form-control-sm dashboard-carry-input"
-        step="1"
-      >
-      <button type="submit" class="btn btn-sm btn-light dashboard-carry-save-btn">保存</button>
+      <% if (walletManaged) { %>
+        <label for="carryCashInput" class="dashboard-carry-label">繰越現金</label>
+        <input
+          id="carryCashInput"
+          type="number"
+          name="carryCash"
+          value="<%= Number(carryCash || 0) %>"
+          class="form-control form-control-sm dashboard-carry-input"
+          step="1"
+        >
+        <button type="submit" class="btn btn-sm btn-light dashboard-carry-save-btn">保存</button>
+      <% } %>
       <span class="dashboard-calendar-title"><%= titlePrefix %> 月次カレンダー集計</span>
     </form>
     <div class="small dashboard-calendar-created">作成日: <%= todayJst %></div>
@@ -43,7 +46,9 @@
             <th colspan="2">それ以外</th>
             <th rowspan="2" class="balance-head">収支</th>
             <th colspan="2" class="payment-group-head">支払種別計</th>
-            <th rowspan="2" class="cash-balance-head">現金残</th>
+            <% if (walletManaged) { %>
+              <th rowspan="2" class="cash-balance-head">現金残</th>
+            <% } %>
           </tr>
           <tr>
             <th class="content-head">内容</th>
@@ -71,7 +76,7 @@
                   data-ym="<%= ymValue %>"
                   data-plan-note="<%= row.plannedNote || '' %>"
                   data-cash-topup="<%= Number(row.cashTopupAmount || 0) %>"
-                  data-has-plan="<%= (row.plannedNote || row.cashTopupAmount) ? '1' : '0' %>"
+                  data-has-plan="<%= (row.plannedNote || (walletManaged && row.cashTopupAmount)) ? '1' : '0' %>"
                 >
                   <div class="memo-text <%= row.memoText ? '' : 'is-empty' %>"><%= row.memoText || '' %></div>
                 </button>
@@ -87,7 +92,9 @@
               <td class="balance-col <%= row.dayToneClass %>"></td>
               <td class="payment-amount-col"><%= row.cashAmount ? row.cashAmount.toLocaleString() : '' %></td>
               <td class="payment-amount-col"><%= row.nonCashAmount ? row.nonCashAmount.toLocaleString() : '' %></td>
-              <td class="cash-balance-col"><%= row.cashBalance.toLocaleString() %></td>
+              <% if (walletManaged) { %>
+                <td class="cash-balance-col"><%= row.cashBalance.toLocaleString() %></td>
+              <% } %>
             </tr>
             <% if (row.day === 15) { %>
               <tr class="mid-total-row fw-bold">
@@ -103,7 +110,9 @@
                 <td class="balance-col"><%= subtotal.balance.toLocaleString() %></td>
                 <td class="payment-amount-col"><%= subtotal.cashAmount.toLocaleString() %></td>
                 <td class="payment-amount-col"><%= subtotal.nonCashAmount.toLocaleString() %></td>
-                <td class="cash-balance-col"><%= subtotal.cashBalance.toLocaleString() %></td>
+                <% if (walletManaged) { %>
+                  <td class="cash-balance-col"><%= subtotal.cashBalance.toLocaleString() %></td>
+                <% } %>
               </tr>
             <% } %>
           <% }) %>
@@ -120,7 +129,9 @@
             <td class="balance-col"><%= total.balance.toLocaleString() %></td>
             <td class="payment-amount-col"><%= total.cashAmount.toLocaleString() %></td>
             <td class="payment-amount-col"><%= total.nonCashAmount.toLocaleString() %></td>
-            <td class="cash-balance-col"><%= total.cashBalance.toLocaleString() %></td>
+            <% if (walletManaged) { %>
+              <td class="cash-balance-col"><%= total.cashBalance.toLocaleString() %></td>
+            <% } %>
           </tr>
         </tbody>
       </table>
@@ -146,18 +157,20 @@
           <label for="calendarMemoNote" class="form-label mb-1">メモ</label>
           <textarea id="calendarMemoNote" class="form-control" rows="3" placeholder="予定やメモを入力"></textarea>
         </div>
-        <div class="mb-1">
-          <label for="calendarMemoCashTopup" class="form-label mb-1">現金追加</label>
-          <input
-            type="number"
-            id="calendarMemoCashTopup"
-            class="form-control form-control-sm"
-            min="0"
-            step="1"
-            value="0"
-          >
-          <div class="form-text">通帳からお財布へ追加した現金を入力</div>
-        </div>
+        <% if (walletManaged) { %>
+          <div class="mb-1">
+            <label for="calendarMemoCashTopup" class="form-label mb-1">現金追加</label>
+            <input
+              type="number"
+              id="calendarMemoCashTopup"
+              class="form-control form-control-sm"
+              min="0"
+              step="1"
+              value="0"
+            >
+            <div class="form-text">通帳からお財布へ追加した現金を入力</div>
+          </div>
+        <% } %>
       </div>
       <div class="modal-footer d-flex justify-content-between">
         <button type="button" id="calendarMemoDeleteBtn" class="btn btn-outline-danger btn-sm">削除</button>
@@ -176,6 +189,7 @@
     const modalEl = document.getElementById('calendarMemoModal');
     if (!memoCells.length || !modalEl) return;
     if (typeof bootstrap === 'undefined') return;
+    const walletManagementEnabled = <%- walletManaged ? 'true' : 'false' %>;
 
     const modal = new bootstrap.Modal(modalEl);
     const ymInput = document.getElementById('calendarMemoYm');
@@ -206,7 +220,9 @@
         dayInput.value = String(day);
         dayLabel.value = `${ym} / ${day}日`;
         noteInput.value = planNote;
-        cashTopupInput.value = Number.isFinite(cashTopup) ? String(cashTopup) : '0';
+        if (walletManagementEnabled && cashTopupInput) {
+          cashTopupInput.value = Number.isFinite(cashTopup) ? String(cashTopup) : '0';
+        }
         deleteBtn.classList.toggle('d-none', !hasPlan);
 
         modal.show();
@@ -218,7 +234,7 @@
         ym: ymInput.value,
         day: Number(dayInput.value || 0),
         note: noteInput.value || '',
-        cashTopup: Number(cashTopupInput.value || 0)
+        cashTopup: walletManagementEnabled && cashTopupInput ? Number(cashTopupInput.value || 0) : 0
       };
       if (!payload.day) return;
 
@@ -247,7 +263,10 @@
     deleteBtn.addEventListener('click', async () => {
       const day = Number(dayInput.value || 0);
       if (!day) return;
-      if (!window.confirm('この日のメモと現金追加を削除しますか？')) return;
+      const deleteMessage = walletManagementEnabled
+        ? 'この日のメモと現金追加を削除しますか？'
+        : 'この日のメモを削除しますか？';
+      if (!window.confirm(deleteMessage)) return;
 
       setLoading(true);
       try {

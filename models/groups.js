@@ -26,6 +26,10 @@ const groupSchema = new Schema({
         default: 1,
         min: 1,
         max: 12
+    },
+    financeWalletManagementEnabled: {
+        type: Boolean,
+        default: false
     }
   }, { timestamps: true });
 
