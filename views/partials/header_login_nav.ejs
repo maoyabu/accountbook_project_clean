@@ -130,6 +130,7 @@
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/matomete/regular-entry/push') ? 'is-active is-finance' : '' %> <%= hasGroup && svc.finance ? '' : 'disabled' %>" href="<%= hasGroup && svc.finance ? '/matomete/regular-entry/push' : '#' %>"><i class="fa-solid fa-layer-group"></i> まとめて入力</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/finance/search') ? 'is-active is-finance' : '' %> <%= hasGroup && svc.finance ? '' : 'disabled' %>" href="<%= hasGroup && svc.finance ? '/finance/search' : '#' %>"><i class="fa-solid fa-magnifying-glass"></i> 検索</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/export/view') ? 'is-active is-finance' : '' %> <%= hasGroup && svc.finance ? '' : 'disabled' %>" href="<%= hasGroup && svc.finance ? '/export/view' : '#' %>"><i class="fa-solid fa-file-export"></i> EXCEL書出し</a></li>
+            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/export/payment-check') ? 'is-active is-finance' : '' %> <%= hasGroup && svc.finance ? '' : 'disabled' %>" href="<%= hasGroup && svc.finance ? '/export/payment-check' : '#' %>"><i class="fa-solid fa-list-check"></i> 月次支払種別チェック</a></li>
             <li class="nav-item"><a class="nav-link menu-item <%= isActive('/finance/budget') ? 'is-active is-finance' : '' %> <%= hasGroup && svc.finance ? '' : 'disabled' %>" href="<%= hasGroup && svc.finance ? '/finance/budget' : '#' %>"><i class="fa-solid fa-gear"></i> 家計簿設定</a></li>
           </ul>
 

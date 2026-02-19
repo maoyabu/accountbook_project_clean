@@ -1,0 +1,221 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="card mt-3 mb-3 rounded">
+  <div class="card-body p-3 text-white" style="background-color: #44616D;">
+    <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>月次支払種別チェック</h5>
+  </div>
+</div>
+
+<div class="card mb-3 rounded">
+  <div class="card-body p-3">
+    <form id="paymentCheckFilterForm" method="GET" action="<%= formAction %>" class="d-flex flex-wrap align-items-center gap-2">
+      <label for="paymentCheckYm" class="form-label mb-0">年月</label>
+      <input
+        id="paymentCheckYm"
+        type="month"
+        name="ym"
+        value="<%= ymValue %>"
+        class="form-control form-control-sm"
+        style="max-width: 12rem;"
+        required
+      >
+      <label for="paymentCheckType" class="form-label mb-0">支払種別</label>
+      <select id="paymentCheckType" name="payment_type" class="form-select form-select-sm" style="max-width: 18rem;" required>
+        <option value="">支払種別を選択してください</option>
+        <% paymentTypeOptions.forEach((type) => { %>
+          <option value="<%= type %>" <%= selectedPaymentType === type ? 'selected' : '' %>><%= type %></option>
+        <% }) %>
+      </select>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterForm = document.getElementById('paymentCheckFilterForm');
+    const ymInput = document.getElementById('paymentCheckYm');
+    const typeSelect = document.getElementById('paymentCheckType');
+    if (!filterForm || !ymInput || !typeSelect) return;
+
+    typeSelect.addEventListener('change', () => {
+      if (!ymInput.value) return;
+      filterForm.requestSubmit();
+    });
+
+    ymInput.addEventListener('change', () => {
+      if (!typeSelect.value) return;
+      filterForm.requestSubmit();
+    });
+  });
+</script>
+
+<% if (!selectedPaymentType) { %>
+  <div class="alert alert-secondary">年月と支払種別を選択してください。</div>
+<% } else { %>
+  <div class="row g-3">
+    <div class="col-12 col-xl-6">
+      <div class="card rounded h-100">
+        <div class="card-header bg-light fw-bold">未チェック</div>
+        <div class="card-body p-2">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="width: 52px;">確認</th>
+                  <th>日付</th>
+                  <th>収支区分</th>
+                  <th>区分</th>
+                  <th>内容</th>
+                  <th class="text-end">金額</th>
+                </tr>
+              </thead>
+              <tbody id="uncheckedTbody">
+                <% uncheckedEntries.forEach((row) => { %>
+                  <tr class="payment-check-row" data-row-id="<%= row.id %>" data-edit-url="<%= row.editUrl %>" style="cursor: pointer;">
+                    <td class="text-center payment-check-cell">
+                      <input
+                        type="checkbox"
+                        class="form-check-input payment-check-toggle"
+                        data-finance-id="<%= row.id %>"
+                      >
+                    </td>
+                    <td><%= row.date %></td>
+                    <td><%= row.cf %></td>
+                    <td><%= row.category || '-' %></td>
+                    <td><%= row.content || '-' %></td>
+                    <td class="text-end"><%= row.amount.toLocaleString() %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <div id="uncheckedEmpty" class="text-muted small p-2 <%= uncheckedEntries.length > 0 ? 'd-none' : '' %>">未チェックのデータはありません。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card rounded h-100">
+        <div class="card-header bg-light fw-bold">チェック済み</div>
+        <div class="card-body p-2">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="width: 52px;">確認</th>
+                  <th>日付</th>
+                  <th>収支区分</th>
+                  <th>区分</th>
+                  <th>内容</th>
+                  <th class="text-end">金額</th>
+                </tr>
+              </thead>
+              <tbody id="checkedTbody">
+                <% checkedEntries.forEach((row) => { %>
+                  <tr class="payment-check-row" data-row-id="<%= row.id %>" data-edit-url="<%= row.editUrl %>" style="cursor: pointer;">
+                    <td class="text-center payment-check-cell">
+                      <input
+                        type="checkbox"
+                        class="form-check-input payment-check-toggle"
+                        data-finance-id="<%= row.id %>"
+                        checked
+                      >
+                    </td>
+                    <td><%= row.date %></td>
+                    <td><%= row.cf %></td>
+                    <td><%= row.category || '-' %></td>
+                    <td><%= row.content || '-' %></td>
+                    <td class="text-end"><%= row.amount.toLocaleString() %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <div id="checkedEmpty" class="text-muted small p-2 <%= checkedEntries.length > 0 ? 'd-none' : '' %>">チェック済みのデータはありません。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const ymValue = <%- JSON.stringify(ymValue) %>;
+      const paymentType = <%- JSON.stringify(selectedPaymentType) %>;
+      const toggleAction = <%- JSON.stringify(toggleAction) %>;
+      const uncheckedTbody = document.getElementById('uncheckedTbody');
+      const checkedTbody = document.getElementById('checkedTbody');
+      const uncheckedEmpty = document.getElementById('uncheckedEmpty');
+      const checkedEmpty = document.getElementById('checkedEmpty');
+      const toggles = document.querySelectorAll('.payment-check-toggle');
+      const rows = document.querySelectorAll('.payment-check-row');
+
+      if (!toggleAction || !paymentType || !toggles.length) return;
+
+      const updateEmptyState = () => {
+        uncheckedEmpty.classList.toggle('d-none', uncheckedTbody.querySelectorAll('tr').length > 0);
+        checkedEmpty.classList.toggle('d-none', checkedTbody.querySelectorAll('tr').length > 0);
+      };
+
+      const moveRow = (checkbox) => {
+        const row = checkbox.closest('tr');
+        if (!row) return;
+        if (checkbox.checked) {
+          checkedTbody.appendChild(row);
+        } else {
+          uncheckedTbody.prepend(row);
+        }
+        updateEmptyState();
+      };
+
+      rows.forEach((row) => {
+        row.addEventListener('click', (event) => {
+          if (event.target.closest('.payment-check-cell')) return;
+          if (event.target.closest('input, button, a, label, select, textarea')) return;
+          const editUrl = row.dataset.editUrl;
+          if (!editUrl) return;
+          window.location.href = editUrl;
+        });
+      });
+
+      toggles.forEach((checkbox) => {
+        checkbox.addEventListener('click', (event) => {
+          event.stopPropagation();
+        });
+        checkbox.addEventListener('change', async () => {
+          const previousChecked = !checkbox.checked;
+          const financeId = checkbox.dataset.financeId;
+          if (!financeId) return;
+
+          checkbox.disabled = true;
+          try {
+            const response = await fetch(toggleAction, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify({
+                ym: ymValue,
+                paymentType,
+                financeId,
+                checked: checkbox.checked
+              })
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.ok) {
+              throw new Error(data.message || '更新に失敗しました');
+            }
+
+            moveRow(checkbox);
+          } catch (err) {
+            checkbox.checked = previousChecked;
+            alert(err.message || '更新に失敗しました');
+          } finally {
+            checkbox.disabled = false;
+          }
+        });
+      });
+    });
+  </script>
+<% } %>

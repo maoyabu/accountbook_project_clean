@@ -9,6 +9,7 @@ const methodOverride = require('method-override');
 const FinanceUser = require('../models/users');
 const FinanceExBudget = require('../models/finance_ex_budget');
 const FinanceMonthlyCalendar = require('../models/finance_monthly_calendar');
+const FinancePaymentTypeCheck = require('../models/finance_payment_type_check');
 const Group = require('../models/groups');
 const dashboardController = require('../controllers/dashboardController');
 const Items = require('../models/finance_items');
@@ -49,6 +50,12 @@ const parseJstDateEnd = (value) => {
 };
 
 const JST_DAY_FORMATTER = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', day: 'numeric' });
+const JST_DATE_FORMATTER = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
 const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
 const normalizeCategoryName = (value) => String(value || '').replace(/\s+/g, '').replace(/　/g, '').trim();
@@ -334,6 +341,21 @@ const parseYearMonth = (ymRaw, fallbackDate = new Date()) => {
     }
   }
   return { year, month };
+};
+
+const formatJstDate = (value) => {
+  const dt = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(dt.getTime())) return '';
+  return JST_DATE_FORMATTER.format(dt).replace(/\//g, '-');
+};
+
+const getFinanceCategoryLabel = (finance) => {
+  const cf = String(finance?.cf || '').trim();
+  if (cf === '支出') return String(finance?.expense_item || '').trim();
+  if (cf === '収入') return String(finance?.income_item || '').trim();
+  if (cf === '控除') return String(finance?.dedu_item || '').trim();
+  if (cf === '貯蓄') return String(finance?.saving_item || '').trim();
+  return '';
 };
 
 const normalizeCalendarDay = (value) => {
@@ -2173,6 +2195,184 @@ router.get('/monthly-stacked', isLoggedIn, catchAsync(async (req, res) => {
 
 //年別支出明細のグラフ表示
 router.get('/yearly-stacked', dashboardController.getYearlyExpenseData);
+
+// 月次支払種別チェック（表示）
+router.get('/payment-check', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const { year, month } = parseYearMonth(req.query.ym, new Date());
+    const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+    const selectedPaymentType = String(req.query.payment_type || '').trim();
+    const groupObjectId = new mongoose.Types.ObjectId(groupId);
+    const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+    const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(year, month, 1, 0, 0, 0, 0);
+
+    const [currentUser, paymentItems] = await Promise.all([
+      FinanceUser.findById(req.user._id).populate('groups'),
+      PaymentItem.find({
+        group: groupObjectId,
+        user: userObjectId,
+        isLive: true
+      })
+        .sort({ display_order: 1 })
+        .lean()
+    ]);
+
+    const paymentTypeOptions = [];
+    const seen = new Set();
+    for (const item of paymentItems) {
+      const name = String(item.paymentItem || '').trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      paymentTypeOptions.push(name);
+    }
+    if (selectedPaymentType && !seen.has(selectedPaymentType)) {
+      paymentTypeOptions.push(selectedPaymentType);
+    }
+
+    let uncheckedEntries = [];
+    let checkedEntries = [];
+
+    if (selectedPaymentType) {
+      const currentPath = (typeof req.originalUrl === 'string' && req.originalUrl.startsWith('/'))
+        ? req.originalUrl
+        : `/export/payment-check?${new URLSearchParams({ ym: ymValue, payment_type: selectedPaymentType }).toString()}`;
+      const [finances, checkStatus] = await Promise.all([
+        Finance.find({
+          group: groupObjectId,
+          user: userObjectId,
+          payment_type: selectedPaymentType,
+          date: { $gte: monthStart, $lt: monthEnd }
+        })
+          .select('date cf income_item expense_item dedu_item saving_item content amount')
+          .sort({ date: 1, entry_date: 1, _id: 1 })
+          .lean(),
+        FinancePaymentTypeCheck.findOne({
+          user: userObjectId,
+          group: groupObjectId,
+          ym: ymValue,
+          paymentType: selectedPaymentType
+        }).lean()
+      ]);
+
+      const checkedIdSet = new Set(
+        (checkStatus?.checkedFinanceIds || []).map((id) => id.toString())
+      );
+
+      finances.forEach((finance) => {
+        const row = {
+          id: finance._id.toString(),
+          date: formatJstDate(finance.date),
+          cf: String(finance.cf || ''),
+          category: getFinanceCategoryLabel(finance),
+          content: String(finance.content || ''),
+          amount: Number(finance.amount) || 0,
+          editUrl: `/finance/${finance._id.toString()}/edit?returnTo=${encodeURIComponent(currentPath)}`
+        };
+
+        if (checkedIdSet.has(row.id)) {
+          checkedEntries.push(row);
+        } else {
+          uncheckedEntries.push(row);
+        }
+      });
+    }
+
+    return res.render('finance/paymentTypeCheck', {
+      page: 'payment-check',
+      currentUser,
+      ymValue,
+      selectedPaymentType,
+      paymentTypeOptions,
+      uncheckedEntries,
+      checkedEntries,
+      formAction: '/export/payment-check',
+      toggleAction: '/export/payment-check/toggle'
+    });
+  } catch (err) {
+    console.error('❌ 月次支払種別チェック画面エラー:', err);
+    return res.status(500).send('月次支払種別チェックの表示に失敗しました');
+  }
+});
+
+// 月次支払種別チェック（チェック状態更新）
+router.post('/payment-check/toggle', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
+    }
+
+    const { year, month } = parseYearMonth(req.body.ym, new Date());
+    const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+    const paymentType = String(req.body.paymentType || '').trim();
+    const financeId = String(req.body.financeId || '').trim();
+    const checked = req.body.checked === true
+      || req.body.checked === 'true'
+      || req.body.checked === 1
+      || req.body.checked === '1'
+      || req.body.checked === 'on';
+
+    if (!paymentType) {
+      return res.status(400).json({ ok: false, message: '支払種別が未指定です' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(financeId)) {
+      return res.status(400).json({ ok: false, message: '対象データが不正です' });
+    }
+
+    const groupObjectId = new mongoose.Types.ObjectId(groupId);
+    const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+    const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(year, month, 1, 0, 0, 0, 0);
+
+    const target = await Finance.findOne({
+      _id: new mongoose.Types.ObjectId(financeId),
+      group: groupObjectId,
+      user: userObjectId,
+      payment_type: paymentType,
+      date: { $gte: monthStart, $lt: monthEnd }
+    }).select('_id').lean();
+
+    if (!target) {
+      return res.status(404).json({ ok: false, message: '対象データが見つかりません' });
+    }
+
+    const filter = {
+      user: userObjectId,
+      group: groupObjectId,
+      ym: ymValue,
+      paymentType
+    };
+
+    if (checked) {
+      await FinancePaymentTypeCheck.findOneAndUpdate(
+        filter,
+        { $addToSet: { checkedFinanceIds: target._id } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } else {
+      const updated = await FinancePaymentTypeCheck.findOneAndUpdate(
+        filter,
+        { $pull: { checkedFinanceIds: target._id } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      if (updated && Array.isArray(updated.checkedFinanceIds) && updated.checkedFinanceIds.length === 0) {
+        await FinancePaymentTypeCheck.deleteOne({ _id: updated._id });
+      }
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('❌ 月次支払種別チェック更新エラー:', err);
+    return res.status(500).json({ ok: false, message: '更新に失敗しました' });
+  }
+});
 
 
 // 年次明細（支出内訳セルのドリルダウン表示）

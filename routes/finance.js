@@ -58,6 +58,12 @@ const pathLib = require('path');
 
 const { isLoggedIn, logAction } = require('../middleware');
 const getListRedirect = (req) => req.session?.financeListReturn || '/finance/list';
+const sanitizeReturnPath = (value, fallback = '') => {
+  const path = String(value || '').trim();
+  if (!path) return fallback;
+  if (!path.startsWith('/') || path.startsWith('//')) return fallback;
+  return path;
+};
 const getPreviousMonthMeta = (baseDate = new Date()) => {
   const target = new Date(baseDate.getFullYear(), baseDate.getMonth() - 1, 1);
   const monthKey = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
@@ -1187,6 +1193,11 @@ router.get('/list', isLoggedIn, async (req, res) => {
 router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
     const { id } = req.params;
     const activeGroupId = req.session.activeGroupId;
+    const queryReturnTo = sanitizeReturnPath(req.query.returnTo, '');
+    if (queryReturnTo) {
+        req.session.financeListReturn = queryReturnTo;
+    }
+    const returnTo = queryReturnTo || getListRedirect(req);
 
     //ObjectId の形式チェック
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -1248,7 +1259,8 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         allUsers,
         currentUser: req.user,
         duplicateWarning: req.query.duplicateWarning === '1',
-        continueEntry: req.query.continueEntry === '1'
+        continueEntry: req.query.continueEntry === '1',
+        returnTo
     });
 }));
 
@@ -1262,6 +1274,10 @@ function getJSTDate() {
 router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
     const activeGroupId = req.session.activeGroupId;
     const { id } = req.params;  // これでURLパラメータのidを取得
+    const returnTo = sanitizeReturnPath(req.body.returnTo, '');
+    if (returnTo) {
+        req.session.financeListReturn = returnTo;
+    }
     const { finance } = req.body;
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
     const { date, cf, amount, payment_type, user } = finance;
@@ -1314,7 +1330,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             saving_cfs,
             pay_cfs,
             whos,
-            allUsers
+            allUsers,
+            returnTo
         });
     }
 
@@ -1412,13 +1429,14 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             pay_cfs,
             whos,
             allUsers,
-            currentUser
+            currentUser,
+            returnTo
         });
     }
 
     req.flash('success', '更新に成功しました');
     await logAction({ req, action: '更新', target: '家計簿' });
-    res.redirect(getListRedirect(req)); // 更新後に一覧ページへリダイレクト
+    res.redirect(returnTo || getListRedirect(req)); // 更新後に一覧ページへリダイレクト
 }));
 
 //◎複製

@@ -1,5 +1,6 @@
 <% layout('layouts/boilerplate') %>
 <% page = 'edit' %>
+<% const returnToValue = (typeof returnTo === 'string') ? returnTo : ''; %>
 
   <div class="container finance-form-container mt-4">
     <div class="card shadow-sm">
@@ -18,6 +19,7 @@
         <form action="/finance/<%= finance._id %>?_method=PUT" method="POST">
           <input type="hidden" name="confirmDuplicate" id="confirmDuplicate" value="0">
           <input type="hidden" name="nextAction" id="nextActionInput" value="update">
+          <input type="hidden" name="returnTo" value="<%= returnToValue %>">
           <div class="form-group">
             <label for="date">年月日</label>
             <input type="date" id="date" name="finance[date]" value="<%= formattedDate %>" class="form-control date-input <%= errors.date ? 'error-field' : '' %>">
