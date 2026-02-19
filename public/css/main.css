@@ -1715,6 +1715,17 @@ table td, table th {
     white-space: nowrap;
 }
 
+.dashboard-calendar-table thead tr:first-child th:nth-child(n+4):nth-child(-n+7),
+.dashboard-calendar-table thead tr:nth-child(2) th:nth-child(-n+8) {
+    background-color: #bfd6ee;
+}
+
+.dashboard-calendar-table thead tr:first-child th:nth-child(1),
+.dashboard-calendar-table thead tr:first-child th:nth-child(2),
+.dashboard-calendar-table thead th.memo-head {
+    background-color: #ffffff;
+}
+
 .dashboard-calendar-table td.day-col,
 .dashboard-calendar-table td.weekday-col {
     min-width: 44px;
@@ -1801,6 +1812,11 @@ table td, table th {
     white-space: nowrap;
 }
 
+.dashboard-calendar-table th.balance-head,
+.dashboard-calendar-table td.balance-col {
+    background-color: #bfd6ee;
+}
+
 .dashboard-calendar-table th.payment-group-head {
     min-width: 220px;
 }
@@ -1829,32 +1845,54 @@ table td, table th {
     white-space: nowrap;
 }
 
+.dashboard-calendar-table th.cash-balance-head,
+.dashboard-calendar-table td.cash-balance-col {
+    background-color: #f5deb3 !important;
+}
+
 .dashboard-calendar-table td.summary-label {
     text-align: center;
 }
 
 .dashboard-calendar-table .mid-total-row td {
-    background-color: #eef3f7;
+    background-color: #eef3f7 !important;
 }
 
 .dashboard-calendar-table .month-total-row td {
-    background-color: #dbe6ef;
+    background-color: #dbe6ef !important;
 }
 
 .dashboard-calendar-table tr.today-row td {
-    background-color: #dff3df;
+    background-color: #dff3df !important;
 }
 
 .dashboard-calendar-table td.day-col.is-saturday,
 .dashboard-calendar-table td.weekday-col.is-saturday,
-.dashboard-calendar-table td.memo-col.is-saturday {
+.dashboard-calendar-table td.memo-col.is-saturday,
+.dashboard-calendar-table td.content-col.is-saturday,
+.dashboard-calendar-table td.amount-col.is-saturday,
+.dashboard-calendar-table td.balance-col.is-saturday {
     background-color: #eaf4ff;
 }
 
 .dashboard-calendar-table td.day-col.is-sunday-holiday,
 .dashboard-calendar-table td.weekday-col.is-sunday-holiday,
-.dashboard-calendar-table td.memo-col.is-sunday-holiday {
+.dashboard-calendar-table td.memo-col.is-sunday-holiday,
+.dashboard-calendar-table td.content-col.is-sunday-holiday,
+.dashboard-calendar-table td.amount-col.is-sunday-holiday,
+.dashboard-calendar-table td.balance-col.is-sunday-holiday {
     background-color: #fdecec;
+}
+
+.dashboard-calendar-table tr:not(.today-row) td.day-col:not(.is-saturday):not(.is-sunday-holiday),
+.dashboard-calendar-table tr:not(.today-row) td.weekday-col:not(.is-saturday):not(.is-sunday-holiday),
+.dashboard-calendar-table tr:not(.today-row) td.memo-col:not(.is-saturday):not(.is-sunday-holiday) {
+    background-color: #ffffff !important;
+}
+
+.dashboard-calendar-table th.payment-group-head,
+.dashboard-calendar-table th.payment-head {
+    background-color: #f5deb3;
 }
 
 .dashboard-calendar-toolbar {

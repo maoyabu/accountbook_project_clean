@@ -41,8 +41,8 @@
             <th colspan="2">控除</th>
             <th colspan="2">食費・調味料</th>
             <th colspan="2">それ以外</th>
-            <th rowspan="2">収支</th>
-            <th colspan="2" class="payment-group-head">支払種別</th>
+            <th rowspan="2" class="balance-head">収支</th>
+            <th colspan="2" class="payment-group-head">支払種別計</th>
             <th rowspan="2" class="cash-balance-head">現金残</th>
           </tr>
           <tr>
@@ -76,15 +76,15 @@
                   <div class="memo-text <%= row.memoText ? '' : 'is-empty' %>"><%= row.memoText || '' %></div>
                 </button>
               </td>
-              <td class="content-col"><div class="content-text"><%= row.income.contentText %></div></td>
-              <td class="amount-col"><%= row.income.amount ? row.income.amount.toLocaleString() : '' %></td>
-              <td class="content-col"><div class="content-text"><%= row.deduction.contentText %></div></td>
-              <td class="amount-col"><%= row.deduction.amount ? row.deduction.amount.toLocaleString() : '' %></td>
-              <td class="content-col"><div class="content-text"><%= row.foodSeasoning.contentText %></div></td>
-              <td class="amount-col"><%= row.foodSeasoning.amount ? row.foodSeasoning.amount.toLocaleString() : '' %></td>
-              <td class="content-col"><div class="content-text"><%= row.otherExpense.contentText %></div></td>
-              <td class="amount-col"><%= row.otherExpense.amount ? row.otherExpense.amount.toLocaleString() : '' %></td>
-              <td class="balance-col"></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.income.contentText %></div></td>
+              <td class="amount-col <%= row.dayToneClass %>"><%= row.income.amount ? row.income.amount.toLocaleString() : '' %></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.deduction.contentText %></div></td>
+              <td class="amount-col <%= row.dayToneClass %>"><%= row.deduction.amount ? row.deduction.amount.toLocaleString() : '' %></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.foodSeasoning.contentText %></div></td>
+              <td class="amount-col <%= row.dayToneClass %>"><%= row.foodSeasoning.amount ? row.foodSeasoning.amount.toLocaleString() : '' %></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.otherExpense.contentText %></div></td>
+              <td class="amount-col <%= row.dayToneClass %>"><%= row.otherExpense.amount ? row.otherExpense.amount.toLocaleString() : '' %></td>
+              <td class="balance-col <%= row.dayToneClass %>"></td>
               <td class="payment-amount-col"><%= row.cashAmount ? row.cashAmount.toLocaleString() : '' %></td>
               <td class="payment-amount-col"><%= row.nonCashAmount ? row.nonCashAmount.toLocaleString() : '' %></td>
               <td class="cash-balance-col"><%= row.cashBalance.toLocaleString() %></td>
