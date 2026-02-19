@@ -175,4 +175,19 @@ router.post('/inquiries/:id/reply', async (req, res, next) => {
   }
 });
 
+// DELETE /api/support/inquiries/:id
+router.delete('/inquiries/:id', async (req, res, next) => {
+  try {
+    const inquiry = await Inquiry.findOne({ _id: req.params.id, user: req.user._id });
+    if (!inquiry) {
+      return res.status(404).json({ error: 'not_found', message: 'お問い合わせが見つかりません' });
+    }
+
+    await Inquiry.deleteOne({ _id: inquiry._id });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
