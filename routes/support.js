@@ -6,16 +6,25 @@ const Qa = require('../models/qa');
 const { sendMail } = require('../Utils/mailer');
 
 
-//ユーザーのSupportページの表示
-router.get('/', isLoggedIn, async (req, res) => {
+//ユーザーのSupportページの表示（未ログインは公開ビュー）
+router.get('/', async (req, res) => {
+  const faqs = await Qa.find({ faq_flag: true }).sort({ update_date: -1 });
+
+  if (!req.user) {
+    return res.render('common/support', {
+      user: null,
+      inquiries: [],
+      hasNewReply: false,
+      faqs
+    });
+  }
+
   const inquiries = await Inquiry.find({ user: req.user._id }).sort({ entry_date: -1 });
 
   // お知らせ表示フラグ：未読の管理者返信があるか
   const hasNewReply = inquiries.some(inq =>
     inq.messages.some(msg => msg.isAdmin && msg.mail_sent && !msg.isRead)
   );
-
-  const faqs = await Qa.find({ faq_flag: true }).sort({ update_date: -1 });
 
   res.render('common/support', {
     user: req.user,

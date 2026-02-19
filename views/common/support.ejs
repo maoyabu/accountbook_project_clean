@@ -49,28 +49,44 @@
 </div>
 
 <h2 class="mt-5 pb-2 text-primary">
-    <i class="fas fa-envelope me-2"></i>お問合せ
+    <i class="fas fa-envelope me-2"></i>お問い合わせ先
 </h2>
 <hr style="border-top: 2px solid var(--bs-primary);">
-<!-- お問合せフォーム -->
-<form action="/support/contact" method="POST" class="my-4">
-  <div class="mb-3">
-    <label for="email" class="form-label">お客様のメールアドレス <span class="text-danger">*</span></label>
-    <input type="email" id="email" name="email" class="form-control" value="<%= user?.email || '' %>" required>
-  </div>
-  <div class="mb-3">
-    <label for="subject" class="form-label">内容の要約 <span class="text-danger">*</span></label>
-    <input type="text" id="subject" name="subject" class="form-control" required>
-  </div>
-  <div class="mb-3">
-    <label for="message" class="form-label">お問合せ内容 <span class="text-danger">*</span></label>
-    <textarea id="message" name="message" class="form-control" rows="5" required></textarea>
-  </div>
-  <button type="submit" class="btn btn-primary">送信</button>
-  <!-- お問合せフォームここまで -->
-</form>
+<div class="mb-4">
+  <p class="mb-2">サポートへのご連絡は以下をご利用ください。</p>
+  <p class="mb-1">
+    メール：<a href="mailto:ma.oyabu@gmail.com">ma.oyabu@gmail.com</a>
+  </p>
+  <% if (!user) { %>
+    <p class="text-muted">※ お問い合わせフォームはログイン後にご利用いただけます。</p>
+  <% } %>
+</div>
 
-<% if (inquiries && inquiries.length > 0) { %>
+<% if (user) { %>
+  <h2 class="mt-4 pb-2 text-primary">
+      <i class="fas fa-envelope me-2"></i>お問合せ
+  </h2>
+  <hr style="border-top: 2px solid var(--bs-primary);">
+  <!-- お問合せフォーム -->
+  <form action="/support/contact" method="POST" class="my-4">
+    <div class="mb-3">
+      <label for="email" class="form-label">お客様のメールアドレス <span class="text-danger">*</span></label>
+      <input type="email" id="email" name="email" class="form-control" value="<%= user?.email || '' %>" required>
+    </div>
+    <div class="mb-3">
+      <label for="subject" class="form-label">内容の要約 <span class="text-danger">*</span></label>
+      <input type="text" id="subject" name="subject" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="message" class="form-label">お問合せ内容 <span class="text-danger">*</span></label>
+      <textarea id="message" name="message" class="form-control" rows="5" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">送信</button>
+    <!-- お問合せフォームここまで -->
+  </form>
+<% } %>
+
+<% if (user && inquiries && inquiries.length > 0) { %>
   <h2 class="mt-5 pb-2 text-primary">
     <i class="fas fa-comments me-2"></i>お問合せ履歴
   </h2>
