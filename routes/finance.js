@@ -1380,7 +1380,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         cf: finance.cf === 'Please Choice' ? '' : finance.cf,
         payment_type: finance.payment_type === 'Please Choice' ? '' : finance.payment_type,
         user: finance.user === 'Please Choice' ? '' : finance.user,
-        group: req.session.activeGroupId,
+        // 編集時は既存レコードの所属グループを維持する
+        group: financeDoc.group,
         memo: finance.memo || '',
         update_date: getJSTDate(),
         month,

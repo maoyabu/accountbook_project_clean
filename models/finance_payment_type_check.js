@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const financePaymentTypeCheckSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  group: { type: Schema.Types.ObjectId, ref: 'Group', required: true, index: true },
+  group: { type: Schema.Types.ObjectId, ref: 'Group', default: null, index: true },
   ym: { type: String, required: true, index: true }, // YYYY-MM
   paymentType: { type: String, required: true, trim: true, index: true },
   checkedFinanceIds: {

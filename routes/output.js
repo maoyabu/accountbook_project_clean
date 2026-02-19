@@ -2199,16 +2199,9 @@ router.get('/yearly-stacked', dashboardController.getYearlyExpenseData);
 // 月次支払種別チェック（表示）
 router.get('/payment-check', isLoggedIn, async (req, res) => {
   try {
-    const groupId = req.session.activeGroupId;
-    if (!groupId) {
-      req.flash('error', 'アクティブなグループが選択されていません');
-      return res.redirect('/group_list');
-    }
-
     const { year, month } = parseYearMonth(req.query.ym, new Date());
     const ymValue = `${year}-${String(month).padStart(2, '0')}`;
     const selectedPaymentType = String(req.query.payment_type || '').trim();
-    const groupObjectId = new mongoose.Types.ObjectId(groupId);
     const userObjectId = new mongoose.Types.ObjectId(req.user._id);
     const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
     const monthEnd = new Date(year, month, 1, 0, 0, 0, 0);
@@ -2216,7 +2209,6 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
     const [currentUser, paymentItems] = await Promise.all([
       FinanceUser.findById(req.user._id).populate('groups'),
       PaymentItem.find({
-        group: groupObjectId,
         user: userObjectId,
         isLive: true
       })
@@ -2245,7 +2237,6 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
         : `/export/payment-check?${new URLSearchParams({ ym: ymValue, payment_type: selectedPaymentType }).toString()}`;
       const [finances, checkStatus] = await Promise.all([
         Finance.find({
-          group: groupObjectId,
           user: userObjectId,
           payment_type: selectedPaymentType,
           date: { $gte: monthStart, $lt: monthEnd }
@@ -2255,7 +2246,7 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
           .lean(),
         FinancePaymentTypeCheck.findOne({
           user: userObjectId,
-          group: groupObjectId,
+          group: null,
           ym: ymValue,
           paymentType: selectedPaymentType
         }).lean()
@@ -2304,11 +2295,6 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
 // 月次支払種別チェック（チェック状態更新）
 router.post('/payment-check/toggle', isLoggedIn, async (req, res) => {
   try {
-    const groupId = req.session.activeGroupId;
-    if (!groupId) {
-      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
-    }
-
     const { year, month } = parseYearMonth(req.body.ym, new Date());
     const ymValue = `${year}-${String(month).padStart(2, '0')}`;
     const paymentType = String(req.body.paymentType || '').trim();
@@ -2326,14 +2312,12 @@ router.post('/payment-check/toggle', isLoggedIn, async (req, res) => {
       return res.status(400).json({ ok: false, message: '対象データが不正です' });
     }
 
-    const groupObjectId = new mongoose.Types.ObjectId(groupId);
     const userObjectId = new mongoose.Types.ObjectId(req.user._id);
     const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
     const monthEnd = new Date(year, month, 1, 0, 0, 0, 0);
 
     const target = await Finance.findOne({
       _id: new mongoose.Types.ObjectId(financeId),
-      group: groupObjectId,
       user: userObjectId,
       payment_type: paymentType,
       date: { $gte: monthStart, $lt: monthEnd }
@@ -2345,7 +2329,7 @@ router.post('/payment-check/toggle', isLoggedIn, async (req, res) => {
 
     const filter = {
       user: userObjectId,
-      group: groupObjectId,
+      group: null,
       ym: ymValue,
       paymentType
     };
