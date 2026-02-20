@@ -55,10 +55,17 @@
 <div class="mb-4">
   <p class="mb-2">サポートへのご連絡はこちらからお願いします。</p>
   <p class="mb-1">
-    <a href="mailto:ma.oyabu@gmail.com" class="text-decoration-none">
+    <a href="mailto:ma.oyabu@gmail.com"
+       class="text-decoration-none"
+       onclick="window.location.href='mailto:ma.oyabu@gmail.com'; return false;">
       こちらからメールでお問い合わせください
     </a>
   </p>
+  <button type="button"
+          class="btn btn-outline-primary btn-sm mt-2"
+          onclick="window.location.href='mailto:ma.oyabu@gmail.com';">
+    メールで問い合わせる
+  </button>
   <% if (!user) { %>
     <p class="text-muted">※ お問い合わせフォームはログイン後にご利用いただけます。</p>
   <% } %>
