@@ -6,7 +6,6 @@ const FinanceUser = require('../../models/users'); // 念のため参照（未�
 
 // 共通ログ
 router.use((req, res, next) => {
-  console.log('[api/groups]', req.method, req.originalUrl, 'Cookie:', req.headers.cookie || '(none)');
   next();
 });
 
@@ -44,6 +43,51 @@ router.get('/', async (req, res, next) => {
 
     res.json(result);
   } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/groups
+ * グループ作成（作成者は管理者扱い）
+ * body: { name }
+ */
+router.post('/', async (req, res, next) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    if (!name) {
+      return res.status(400).json({ error: 'missing_params', message: 'name は必須です' });
+    }
+
+    const user = await FinanceUser.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'not_found', message: 'ユーザーが見つかりません' });
+    }
+
+    const group = await Group.create({
+      group_name: name,
+      createdBy: user._id,
+      members: [user._id],
+      invitedUsers: user.email ? [user.email] : []
+    });
+
+    // ユーザーの参加グループに追加
+    if (!Array.isArray(user.groups)) {
+      user.groups = [];
+    }
+    if (!user.groups.some(gid => String(gid) === String(group._id))) {
+      user.groups.push(group._id);
+      await user.save();
+    }
+
+    // アクティブグループを更新（セッション）
+    req.session.activeGroupId = String(group._id);
+
+    res.json({ id: String(group._id), name: group.group_name || '' });
+  } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json({ error: 'conflict', message: '同じ名前のグループが既に存在します' });
+    }
     next(err);
   }
 });

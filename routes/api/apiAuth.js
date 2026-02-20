@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const FinanceUser = require('../../models/users');
+const crypto = require('crypto');
+const { sendMail } = require('../../Utils/mailer');
 
 // ルーター配下共通の一時ログ
 router.use((req, res, next) => {
-  console.log('[api/auth]', req.method, req.originalUrl, 'Cookie:', req.headers.cookie || '(none)');
   next();
 });
 
@@ -68,6 +69,10 @@ router.post('/login', (req, res, next) => {
     if (!user) {
       return res.status(401).json({ error: 'invalid_credentials', message: info?.message || 'ユーザー名またはパスワードが違います' });
     }
+    if (user.unsubscribe_date || (user.services && user.services.finance === false)) {
+      return res.status(403).json({ error: 'unsubscribed', message: '退会済みのためログインできません' });
+    }
+
     req.login(user, async (err) => {
       if (err) return next(err);
 
@@ -76,13 +81,90 @@ router.post('/login', (req, res, next) => {
         const fresh = await FinanceUser.findById(user._id)
           .select('username email displayname avatar isAdmin'); // 必要なフィールドを明示
         const payload = { token: 'session', user: toUserJSON(fresh || user) };
-        console.log('[api/auth] login response:', JSON.stringify(payload));
         return res.json(payload);
       } catch (dbErr) {
         return next(dbErr);
       }
     });
   })(req, res, next);
+});
+
+// パスワード忘れ（API）
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ error: 'missing_fields', message: 'email は必須です' });
+    }
+
+    const user = await FinanceUser.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'not_found', message: 'このメールアドレスはまだ、登録されていません' });
+    }
+
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1時間有効
+    await user.save();
+
+    const baseUrl = (process.env.BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const resetUrl = `${baseUrl}/reset/${token}`;
+
+    await sendMail({
+      to: user.email,
+      subject: 'パスワードリセット',
+      templateName: 'passwordReset',
+      templateData: {
+        username: user.username,
+        resetUrl
+      }
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// パスワードリセット（API）
+router.post('/reset/:token', async (req, res, next) => {
+  try {
+    const { password, confirm } = req.body || {};
+    if (!password || !confirm) {
+      return res.status(400).json({ error: 'missing_fields', message: 'password, confirm は必須です' });
+    }
+    if (password !== confirm) {
+      return res.status(400).json({ error: 'mismatch', message: 'パスワードが一致しません' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: 'too_short', message: 'パスワードは8文字以上で入力してください' });
+    }
+
+    const user = await FinanceUser.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'invalid_token', message: 'パスワードリセットリンクが無効または期限切れです' });
+    }
+
+    await user.setPassword(password);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    user.update_date = new Date();
+    await user.save();
+
+    req.login(user, (err) => {
+      if (err) return next(err);
+      return res.json({
+        token: 'session',
+        user: toUserJSON(user)
+      });
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ログアウト（必要なら）

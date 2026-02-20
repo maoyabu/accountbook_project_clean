@@ -8,7 +8,6 @@ const { sendMail } = require('../../Utils/mailer');
 
 // 共通ログ
 router.use((req, res, next) => {
-  console.log('[api/support]', req.method, req.originalUrl, 'Cookie:', req.headers.cookie || '(none)');
   next();
 });
 

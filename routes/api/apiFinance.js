@@ -10,7 +10,6 @@ const User = require('../../models/users');                    // ユーザー
 
 // 共通ログ
 router.use((req, res, next) => {
-  console.log('[api/finance]', req.method, req.originalUrl, 'Cookie:', req.headers.cookie || '(none)');
   next();
 });
 
@@ -151,14 +150,6 @@ router.get('/masters', async (req, res, next) => {
       displayname: u.displayname || null
     }));
 
-    console.log('[masters] budgets:', budgets.length);
-    console.log('[masters] items grouped:', {
-      income: grouped.income.length,
-      deduction: grouped.deduction.length,
-      saving: grouped.saving.length
-    });
-    console.log('[masters] paymentItems:', paymentItems.length);
-
     res.json({ budgets, items: grouped, paymentItems, members });
   } catch (err) {
     next(err);
@@ -174,15 +165,11 @@ router.get('/recent', async (req, res, next) => {
     const groupId = String(req.query.group || '').trim();
     const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
 
-    console.log('[api/finance] recent query:', { user: userId, group: groupId, limit });
-
     const query = { user: userId, group: groupId };
     const items = await Finance.find(query)
       .sort({ date: -1, _id: -1 })
       .limit(limit)
       .lean();
-
-    console.log('[api/finance] recent found:', items.length);
 
     const result = items.map(doc => {
       const category =
@@ -223,14 +210,10 @@ router.get('/', async (req, res, next) => {
       return res.status(400).json({ error: 'missing_params', message: 'group は必須です' });
     }
 
-    console.log('[api/finance] all query:', { user: userId, group: groupId, scope: 'group' });
-
     const query = { group: groupId };
     const items = await Finance.find(query)
       .sort({ date: -1, _id: -1 })
       .lean();
-
-    console.log('[api/finance] all found:', items.length);
 
     const result = items.map(doc => {
       const category =
