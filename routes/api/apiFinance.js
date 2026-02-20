@@ -7,6 +7,7 @@ const Item = require('../../models/finance_items');            // 収入/控除/
 const PaymentItem = require('../../models/paymentItems');      // 支払種別
 const Group = require('../../models/groups');                  // グループ
 const User = require('../../models/users');                    // ユーザー
+const FinancePaymentTypeCheck = require('../../models/finance_payment_type_check');
 
 // 共通ログ
 router.use((req, res, next) => {
@@ -151,6 +152,299 @@ router.get('/masters', async (req, res, next) => {
     }));
 
     res.json({ budgets, items: grouped, paymentItems, members });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/finance/payment-check?group=GROUP_ID&ym=YYYY-MM&paymentType=TYPE
+ */
+router.get('/payment-check', async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    const userId = req.user._id;
+    const groupIdRaw = String(req.query.group || '').trim();
+    const ym = String(req.query.ym || '').trim();
+    const paymentType = String(req.query.paymentType || '').trim();
+
+    if (!groupIdRaw || !ym || !paymentType) {
+      return res.status(400).json({ error: 'missing_params', message: 'group, ym, paymentType は必須です' });
+    }
+
+    const ymMatch = ym.match(/^(\d{4})-(\d{2})$/);
+    if (!ymMatch) {
+      return res.status(400).json({ error: 'invalid_ym', message: 'ym はYYYY-MM形式で指定してください' });
+    }
+    const year = Number(ymMatch[1]);
+    const month = Number(ymMatch[2]) - 1;
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 1);
+
+    const groupId = mongoose.Types.ObjectId.isValid(groupIdRaw) ? new mongoose.Types.ObjectId(groupIdRaw) : groupIdRaw;
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) return res.status(404).json({ error: 'not_found', message: 'グループが見つかりません' });
+    const memberIds = Array.isArray(group.members) ? group.members.map(String) : [];
+    if (!memberIds.includes(String(userId))) {
+      return res.status(403).json({ error: 'forbidden', message: 'グループ権限がありません' });
+    }
+
+    const items = await Finance.find({
+      user: userId,
+      group: groupId,
+      payment_type: paymentType,
+      date: { $gte: start, $lt: end }
+    })
+      .sort({ date: 1, _id: 1 })
+      .lean();
+
+    const checkDoc = await FinancePaymentTypeCheck.findOne({
+      user: userId,
+      group: groupId,
+      ym,
+      paymentType
+    }).lean();
+    const checkedIds = (checkDoc?.checkedFinanceIds || []).map(id => String(id));
+
+    const result = items.map(doc => {
+      const category =
+        doc.expense_item ||
+        doc.income_item ||
+        doc.saving_item ||
+        doc.dedu_item ||
+        doc.cf || '';
+      return {
+        id: String(doc._id),
+        date: (doc.date instanceof Date ? doc.date : new Date(doc.date)).toISOString(),
+        cf: doc.cf || '',
+        category,
+        content: doc.content || doc.memo || '',
+        amount: Number(doc.amount || 0),
+        paymentType: doc.payment_type || ''
+      };
+    });
+
+    res.json({ items: result, checkedIds });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/finance/payment-check/toggle
+ * body: { group, ym, paymentType, financeId, checked }
+ */
+router.post('/payment-check/toggle', async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    const userId = req.user._id;
+    const { group, ym, paymentType, financeId, checked } = req.body || {};
+
+    const groupIdRaw = String(group || '').trim();
+    const ymRaw = String(ym || '').trim();
+    const paymentTypeRaw = String(paymentType || '').trim();
+    const financeIdRaw = String(financeId || '').trim();
+
+    if (!groupIdRaw || !ymRaw || !paymentTypeRaw || !financeIdRaw) {
+      return res.status(400).json({ error: 'missing_params', message: 'group, ym, paymentType, financeId は必須です' });
+    }
+
+    const groupId = mongoose.Types.ObjectId.isValid(groupIdRaw) ? new mongoose.Types.ObjectId(groupIdRaw) : groupIdRaw;
+
+    const groupDoc = await Group.findById(groupId).lean();
+    if (!groupDoc) return res.status(404).json({ error: 'not_found', message: 'グループが見つかりません' });
+    const memberIds = Array.isArray(groupDoc.members) ? groupDoc.members.map(String) : [];
+    if (!memberIds.includes(String(userId))) {
+      return res.status(403).json({ error: 'forbidden', message: 'グループ権限がありません' });
+    }
+
+    const finId = mongoose.Types.ObjectId.isValid(financeIdRaw) ? new mongoose.Types.ObjectId(financeIdRaw) : financeIdRaw;
+    const doCheck = checked === true;
+
+    if (doCheck) {
+      await FinancePaymentTypeCheck.findOneAndUpdate(
+        { user: userId, group: groupId, ym: ymRaw, paymentType: paymentTypeRaw },
+        { $addToSet: { checkedFinanceIds: finId } },
+        { upsert: true, new: true }
+      );
+    } else {
+      const updated = await FinancePaymentTypeCheck.findOneAndUpdate(
+        { user: userId, group: groupId, ym: ymRaw, paymentType: paymentTypeRaw },
+        { $pull: { checkedFinanceIds: finId } },
+        { new: true }
+      );
+      if (updated && Array.isArray(updated.checkedFinanceIds) && updated.checkedFinanceIds.length === 0) {
+        await FinancePaymentTypeCheck.deleteOne({ _id: updated._id });
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/finance/budgets?group=GROUP_ID&year=YYYY
+ * - expenseBudgets: finance_ex_budget for group+year
+ * - otherBudgets: finance_items (income/deduction/saving) for group+year
+ * - if none for year, fallback to previous year (per category)
+ */
+router.get('/budgets', async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    const userId = req.user._id;
+    const groupIdRaw = String(req.query.group || '').trim();
+    const yearRaw = String(req.query.year || '').trim();
+
+    if (!groupIdRaw || !yearRaw) {
+      return res.status(400).json({ error: 'missing_params', message: 'group, year は必須です' });
+    }
+
+    const groupId = mongoose.Types.ObjectId.isValid(groupIdRaw) ? new mongoose.Types.ObjectId(groupIdRaw) : groupIdRaw;
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) return res.status(404).json({ error: 'not_found', message: 'グループが見つかりません' });
+    const memberIds = Array.isArray(group.members) ? group.members.map(String) : [];
+    if (!memberIds.includes(String(userId))) {
+      return res.status(403).json({ error: 'forbidden', message: 'グループ権限がありません' });
+    }
+
+    const yearNum = parseInt(yearRaw, 10);
+    const prevYear = isNaN(yearNum) ? '' : String(yearNum - 1);
+
+    const expenseForYear = await Budget.find({ group: groupId, year: yearRaw })
+      .sort({ display_order: 1, expense_item: 1 })
+      .lean();
+    const otherForYear = await Item.find({
+      group: groupId,
+      year: yearRaw,
+      $or: [
+        { la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] } },
+        { cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] } }
+      ]
+    })
+      .sort({ display_order: 1, item: 1 })
+      .lean();
+
+    let expenseSourceYear = yearRaw;
+    let otherSourceYear = yearRaw;
+    let expenseDocs = expenseForYear;
+    let otherDocs = otherForYear;
+
+    if (expenseDocs.length === 0 && prevYear) {
+      const prev = await Budget.find({ group: groupId, year: prevYear })
+        .sort({ display_order: 1, expense_item: 1 })
+        .lean();
+      if (prev.length > 0) {
+        expenseDocs = prev;
+        expenseSourceYear = prevYear;
+      }
+    }
+
+    if (otherDocs.length === 0 && prevYear) {
+      const prev = await Item.find({
+        group: groupId,
+        year: prevYear,
+        $or: [
+          { la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] } },
+          { cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] } }
+        ]
+      })
+        .sort({ display_order: 1, item: 1 })
+        .lean();
+      if (prev.length > 0) {
+        otherDocs = prev;
+        otherSourceYear = prevYear;
+      }
+    }
+
+    const expenseBudgets = expenseDocs.map(doc => ({
+      id: String(doc._id),
+      item: String(doc.expense_item ?? ''),
+      budget: Number(doc.budget ?? 0),
+      display_order: Number(doc.display_order ?? 0)
+    }));
+
+    const otherBudgets = otherDocs.map(doc => ({
+      id: String(doc._id),
+      item: String(doc.item ?? ''),
+      budget: Number(doc.budget ?? 0),
+      display_order: Number(doc.display_order ?? 0),
+      la_cf: String(doc.la_cf ?? doc.cf ?? '')
+    }));
+
+    res.json({
+      year: yearRaw,
+      expenseSourceYear,
+      otherSourceYear,
+      expenseBudgets,
+      otherBudgets
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/finance/budgets
+ * body: { group, year, expenseBudgets: [{ item, budget }], otherBudgets: [{ item, budget, la_cf }] }
+ * - replace budgets for year (group)
+ */
+router.post('/budgets', async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    const userId = req.user._id;
+    const { group, year, expenseBudgets, otherBudgets } = req.body || {};
+
+    const groupIdRaw = String(group || '').trim();
+    const yearRaw = String(year || '').trim();
+    if (!groupIdRaw || !yearRaw) {
+      return res.status(400).json({ error: 'missing_params', message: 'group, year は必須です' });
+    }
+
+    const groupId = mongoose.Types.ObjectId.isValid(groupIdRaw) ? new mongoose.Types.ObjectId(groupIdRaw) : groupIdRaw;
+    const groupDoc = await Group.findById(groupId).lean();
+    if (!groupDoc) return res.status(404).json({ error: 'not_found', message: 'グループが見つかりません' });
+    const memberIds = Array.isArray(groupDoc.members) ? groupDoc.members.map(String) : [];
+    if (!memberIds.includes(String(userId))) {
+      return res.status(403).json({ error: 'forbidden', message: 'グループ権限がありません' });
+    }
+
+    const expenseArray = Array.isArray(expenseBudgets) ? expenseBudgets : [];
+    const otherArray = Array.isArray(otherBudgets) ? otherBudgets : [];
+
+    await Budget.deleteMany({ group: groupId, year: yearRaw });
+    await Item.deleteMany({ group: groupId, year: yearRaw, $or: [
+      { la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] } },
+      { cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] } }
+    ]});
+
+    if (expenseArray.length > 0) {
+      const docs = expenseArray.map((b, index) => ({
+        display_order: Number(b.display_order ?? (index + 1)),
+        year: yearRaw,
+        expense_item: String(b.item ?? ''),
+        budget: Number(b.budget ?? 0),
+        group: groupId
+      })).filter(d => d.expense_item);
+      if (docs.length > 0) await Budget.insertMany(docs);
+    }
+
+    if (otherArray.length > 0) {
+      const docs = otherArray.map((b, index) => ({
+        display_order: Number(b.display_order ?? (index + 1)),
+        la_cf: String(b.la_cf ?? ''),
+        item: String(b.item ?? ''),
+        year: yearRaw,
+        budget: Number(b.budget ?? 0),
+        group: groupId
+      })).filter(d => d.item && d.la_cf);
+      if (docs.length > 0) await Item.insertMany(docs);
+    }
+
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
