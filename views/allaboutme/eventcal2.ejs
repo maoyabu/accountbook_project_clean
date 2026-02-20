@@ -253,24 +253,32 @@
             <label for="diaryDate" class="form-label">年⽉⽇</label>
             <input type="date" class="form-control" id="diaryDate" name="date" value="<%= selectedDate %>" required>
           </div>
-          <div class="mb-2">
+          <div class="mb-2 position-relative">
             <label for="diaryItem" class="form-label">項目</label>
             <input class="form-control" id="diaryItem" name="item" list="diaryItemList" placeholder="選択または入力してください" required>
             <datalist id="diaryItemList">
-              <option value="今日の気分・体調・睡眠"></option>
-              <option value="今日のお食事"></option>
-              <option value="生活サイクル"></option>
-              <option value="日記"></option>
-            </datalist>
-          </div>
-          <div class="mb-2">
-            <label for="diaryEvent" class="form-label">日記</label>
-            <input class="form-control" id="diaryEvent" name="event" list="diaryEventList" placeholder="選択または入力してください" required>
-            <datalist id="diaryEventList">
-              <% (events || []).forEach(ev => { %>
-                <option value="<%= ev.event %>" data-item="<%= ev.item %>"></option>
+              <%
+                const defaultDiaryItems = ['今日の気分・体調・睡眠', '今日のお食事', '生活サイクル', '日記'];
+                const itemOptionSet = new Set(defaultDiaryItems);
+                (events || []).forEach((ev) => {
+                  const itemName = String(ev.item || '').trim();
+                  if (itemName) itemOptionSet.add(itemName);
+                });
+                (diaryEntries || []).forEach((entry) => {
+                  const itemName = String(entry.item || '').trim();
+                  if (itemName) itemOptionSet.add(itemName);
+                });
+                const itemOptions = Array.from(itemOptionSet);
+              %>
+              <% itemOptions.forEach((itemName) => { %>
+                <option value="<%= itemName %>"><%= itemName %></option>
               <% }) %>
             </datalist>
+          </div>
+          <div class="mb-2 position-relative">
+            <label for="diaryEvent" class="form-label">日記</label>
+            <input class="form-control" id="diaryEvent" name="event" list="diaryEventList" placeholder="選択または入力してください" required>
+            <datalist id="diaryEventList"></datalist>
           </div>
           <div class="mb-2">
             <label class="form-label">満足度<i class="fa-regular fa-face-smile"></i>（選択してください）</label>
@@ -558,28 +566,169 @@
     const eventList = document.getElementById('diaryEventList');
     if (!itemInput || !eventInput || !eventList) return;
 
+    const supportsDatalist = (() => {
+      const testInput = document.createElement('input');
+      return Boolean(window.HTMLDataListElement) && ('list' in testInput);
+    })();
+    const ua = navigator.userAgent || '';
+    const isSafariLike = /safari/i.test(ua) && !/chrome|chromium|crios|fxios|edgios|opr\//i.test(ua);
+    const useCustomSuggestions = !supportsDatalist || isSafariLike;
+
     const events = <%- JSON.stringify((events || []).map(ev => ({ item: ev.item, event: ev.event }))) %>;
     window.diaryEntriesData = <%- JSON.stringify(diaryEntries || []) %>;
     window.monthlyDiaryEntriesData = <%- JSON.stringify(monthlyDiaryEntries || []) %>;
+    const defaultDiaryItems = ['今日の気分・体調・睡眠', '今日のお食事', '生活サイクル', '日記'];
+    const itemSeeds = Array.from(new Set(
+      defaultDiaryItems
+        .concat(events.map(ev => String(ev?.item || '').trim()))
+        .concat((window.diaryEntriesData || []).map(entry => String(entry?.item || '').trim()))
+    )).filter(Boolean);
+    const entryEventSeeds = (window.diaryEntriesData || []).map((entry) => ({
+      item: String(entry?.item || '').trim(),
+      event: String(entry?.event || '').trim()
+    }));
+    const eventSeeds = events
+      .map((ev) => ({
+        item: String(ev?.item || '').trim(),
+        event: String(ev?.event || '').trim()
+      }))
+      .concat(entryEventSeeds)
+      .filter((ev) => ev.event);
 
-    const renderEventOptions = (itemValue) => {
+    const getEventCandidateNames = (itemValue, selectedEvent = '') => {
+      const normalizedItem = String(itemValue || '').trim();
+      const normalizedLower = normalizedItem.toLowerCase();
+      let filtered = normalizedItem
+        ? eventSeeds.filter((ev) => String(ev.item || '').toLowerCase().includes(normalizedLower))
+        : eventSeeds;
+      if (filtered.length === 0) filtered = eventSeeds;
+      const seen = new Set();
+      filtered.forEach((ev) => {
+        const eventName = String(ev.event || '').trim();
+        if (!eventName || seen.has(eventName)) return;
+        seen.add(eventName);
+      });
+      if (selectedEvent && !seen.has(selectedEvent)) {
+        seen.add(selectedEvent);
+      }
+      return Array.from(seen);
+    };
+
+    const renderEventOptions = (itemValue, selectedEvent = '') => {
+      const names = getEventCandidateNames(itemValue, selectedEvent);
       eventList.innerHTML = '';
-      const filtered = itemValue
-        ? events.filter(ev => ev.item === itemValue)
-        : events;
-      filtered.forEach(ev => {
+      names.forEach((name) => {
         const option = document.createElement('option');
-        option.value = ev.event;
-        option.dataset.item = ev.item;
+        option.value = name;
+        option.label = name;
+        option.textContent = name;
         eventList.appendChild(option);
       });
+      return names;
+    };
+
+    const createSuggestionBox = (inputEl) => {
+      const box = document.createElement('div');
+      box.className = 'list-group position-absolute w-100 d-none';
+      box.style.zIndex = '1065';
+      box.style.maxHeight = '180px';
+      box.style.overflowY = 'auto';
+      box.style.top = '100%';
+      box.style.left = '0';
+      box.style.marginTop = '4px';
+      inputEl.parentElement.appendChild(box);
+      return box;
+    };
+
+    const hideSuggestionBox = (box) => {
+      if (!box) return;
+      box.classList.add('d-none');
+      box.innerHTML = '';
+    };
+
+    const renderSuggestionBox = (box, names, onPick) => {
+      if (!box) return;
+      box.innerHTML = '';
+      const list = names.slice(0, 30);
+      if (list.length === 0) {
+        hideSuggestionBox(box);
+        return;
+      }
+      list.forEach((name) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action py-2';
+        btn.textContent = name;
+        btn.addEventListener('click', (event) => {
+          event.preventDefault();
+          onPick(name);
+        });
+        box.appendChild(btn);
+      });
+      box.classList.remove('d-none');
     };
 
     renderEventOptions(itemInput.value);
 
-    itemInput.addEventListener('input', () => {
-      renderEventOptions(itemInput.value);
-    });
+    if (useCustomSuggestions) {
+      itemInput.removeAttribute('list');
+      eventInput.removeAttribute('list');
+      const itemSuggestBox = createSuggestionBox(itemInput);
+      const eventSuggestBox = createSuggestionBox(eventInput);
+
+      const showItemSuggestions = () => {
+        const query = String(itemInput.value || '').trim().toLowerCase();
+        const names = itemSeeds.filter((name) => !query || name.toLowerCase().includes(query));
+        renderSuggestionBox(itemSuggestBox, names, (picked) => {
+          itemInput.value = picked;
+          eventInput.value = '';
+          renderEventOptions(itemInput.value);
+          hideSuggestionBox(itemSuggestBox);
+        });
+      };
+
+      const showEventSuggestions = () => {
+        const query = String(eventInput.value || '').trim().toLowerCase();
+        const names = getEventCandidateNames(itemInput.value, eventInput.value)
+          .filter((name) => !query || name.toLowerCase().includes(query));
+        renderSuggestionBox(eventSuggestBox, names, (picked) => {
+          eventInput.value = picked;
+          hideSuggestionBox(eventSuggestBox);
+        });
+      };
+
+      itemInput.addEventListener('focus', showItemSuggestions);
+      itemInput.addEventListener('input', () => {
+        showItemSuggestions();
+        renderEventOptions(itemInput.value);
+        eventInput.value = '';
+      });
+      itemInput.addEventListener('change', () => {
+        renderEventOptions(itemInput.value);
+        eventInput.value = '';
+      });
+      itemInput.addEventListener('blur', () => {
+        setTimeout(() => hideSuggestionBox(itemSuggestBox), 120);
+      });
+
+      eventInput.addEventListener('focus', showEventSuggestions);
+      eventInput.addEventListener('input', showEventSuggestions);
+      eventInput.addEventListener('blur', () => {
+        setTimeout(() => hideSuggestionBox(eventSuggestBox), 120);
+      });
+    } else {
+      itemInput.addEventListener('input', () => {
+        renderEventOptions(itemInput.value);
+        eventInput.value = '';
+      });
+      itemInput.addEventListener('change', () => {
+        renderEventOptions(itemInput.value);
+        eventInput.value = '';
+      });
+      eventInput.addEventListener('focus', () => {
+        renderEventOptions(itemInput.value, eventInput.value);
+      });
+    }
 
     const form = document.querySelector('#diaryEntryModal form');
     const modalTitle = document.getElementById('diaryEntryModalLabel');
@@ -597,7 +746,7 @@
       if (modalTitle) modalTitle.textContent = 'My日記編集';
       if (dateInput) dateInput.value = entry.date || '<%= selectedDate %>';
       if (itemInput) itemInput.value = entry.item || '';
-      renderEventOptions(itemInput.value);
+      renderEventOptions(itemInput ? itemInput.value : '', entry.event || '');
       if (eventInput) eventInput.value = entry.event || '';
       if (rateSelect) rateSelect.value = String(entry.rate || 3);
       if (titleInput) titleInput.value = entry.title || '';

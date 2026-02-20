@@ -121,11 +121,41 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
       });
     }
 
-    const allEvents = await Eventcal_events.find({
+    let allEvents = await Eventcal_events.find({
       user: req.user._id,
       group: groupId
     }).sort({ display_order: 1, entry_date: 1 });
-    const events = allEvents.filter(ev => ev.showInEntryDropdown !== false);
+    if (allEvents.length === 0) {
+      const defaultEvents = [
+        { item: '今日の気分・体調・睡眠', event: '今日の気分' },
+        { item: '今日の気分・体調・睡眠', event: '今日の体調' },
+        { item: '今日の気分・体調・睡眠', event: '今日の睡眠' },
+        { item: '今日のお食事', event: '朝食' },
+        { item: '今日のお食事', event: 'ランチ' },
+        { item: '今日のお食事', event: '夕飯' },
+        { item: '今日のお食事', event: 'おやつ' },
+        { item: '日記', event: '日記' },
+        { item: '生活サイクル', event: '朝食後のお薬' },
+        { item: '生活サイクル', event: '昼食後のお薬' },
+        { item: '生活サイクル', event: '夕食後のお薬' },
+        { item: '生活サイクル', event: 'お散歩' }
+      ];
+      await Eventcal_events.insertMany(defaultEvents.map((def, idx) => ({
+        item: def.item,
+        event: def.event,
+        display_order: idx + 1,
+        excludeFromTags: false,
+        showInEntryDropdown: true,
+        user: req.user._id,
+        group: groupId
+      })));
+      allEvents = await Eventcal_events.find({
+        user: req.user._id,
+        group: groupId
+      }).sort({ display_order: 1, entry_date: 1 });
+    }
+    const visibleEvents = allEvents.filter(ev => ev.showInEntryDropdown !== false);
+    const events = visibleEvents.length > 0 ? visibleEvents : allEvents;
     const excludedTagEventKeySet = new Set(
       allEvents
         .filter(ev => ev.excludeFromTags)
