@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Qa = require('../../models/qa');
 const Inquiry = require('../../models/inquiry');
+const PublicInquiry = require('../../models/publicInquiry');
 const { sendMail } = require('../../Utils/mailer');
 
 // 共通ログ
@@ -16,6 +17,67 @@ function requireLogin(req, res, next) {
   if (req.user && req.user._id) return next();
   return res.status(401).json({ error: 'unauthorized', message: 'ログインが必要です' });
 }
+
+// GET /api/support/public/faq?faq_flag=true
+router.get('/public/faq', async (req, res, next) => {
+  try {
+    const flagRaw = String(req.query.faq_flag ?? '').trim().toLowerCase();
+    let faqFlag = true;
+    if (flagRaw) {
+      faqFlag = ['true', '1', 'yes'].includes(flagRaw);
+    }
+
+    const qas = await Qa.find({ faq_flag: faqFlag })
+      .select('qa_category qa_question qa_answer url')
+      .sort({ update_date: -1 })
+      .lean();
+
+    const result = qas.map(item => ({
+      _id: String(item._id),
+      qa_category: item.qa_category || '',
+      qa_question: item.qa_question || '',
+      qa_answer: item.qa_answer || '',
+      url: item.url || null
+    }));
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/support/public/inquiries
+router.post('/public/inquiries', async (req, res, next) => {
+  try {
+    const { email, title, message } = req.body;
+
+    if (!email || !title || !message) {
+      return res.status(400).json({ error: 'missing_params', message: 'email, title, message は必須です' });
+    }
+
+    const inquiry = await PublicInquiry.create({
+      email,
+      title,
+      message
+    });
+
+    const toEmail = process.env.ADMIN_NOTIFY_EMAIL || 'ma.oyabu@gmail.com';
+    await sendMail({
+      to: toEmail,
+      subject: `[お問い合わせ] ${title}`,
+      templateName: 'otoiawaseAsk',
+      templateData: {
+        email,
+        subject: title,
+        message
+      }
+    });
+
+    res.json({ ok: true, id: String(inquiry._id) });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.use(requireLogin);
 
