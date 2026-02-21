@@ -5,6 +5,9 @@ const regularEntrySchema = new mongoose.Schema({
     day: {
         type: Number
     },
+    month: {
+        type: String
+    },
     cf: {
         type: String,
         required: true

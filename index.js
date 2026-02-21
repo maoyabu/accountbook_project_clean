@@ -105,6 +105,7 @@ const apiGroupsRoutes = require('./routes/api/apiGroups');
 const apiFinanceRoutes = require('./routes/api/apiFinance');
 const apiSupportRoutes = require('./routes/api/apiSupport');
 const apiSettingsRoutes = require('./routes/api/apiSettings');
+const apiMatometeRoutes = require('./routes/api/apiMatomete');
 
 const MessageSetting = require('./models/messageSetting');
 const MessageStatus = require('./models/messageStatus');
@@ -414,6 +415,7 @@ app.use('/api/groups', apiGroupsRoutes);
 app.use('/api/finance', apiFinanceRoutes);
 app.use('/api/support', apiSupportRoutes);
 app.use('/api/settings', apiSettingsRoutes);
+app.use('/api/matomete', apiMatometeRoutes);
 
 app.use('/api', apiCategoryMapping);
 
