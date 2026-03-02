@@ -47,6 +47,18 @@ function cfToJapanese(cfRaw) {
   }
 }
 
+function normalizeTags(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(tag => {
+    const name = typeof tag?.name === 'string' ? tag.name.trim() : '';
+    const category = typeof tag?.category === 'string' ? tag.category.trim() : '';
+    const priceRaw = tag?.price;
+    const price = typeof priceRaw === 'number' ? priceRaw : Number(priceRaw);
+    if (!name || !category || !Number.isFinite(price)) return null;
+    return { name, category, price };
+  }).filter(Boolean);
+}
+
 /**
  * GET /api/finance/masters?group=GROUP_ID&year=YYYY
  * - budgets: Budget.find({ group, year }).sort({ display_order: 1 })
@@ -481,7 +493,8 @@ router.get('/recent', async (req, res, next) => {
         content: doc.content || null,
         cf: doc.cf || null,                 // ここは日本語が返る（保存時に正規化）
         paymentType: doc.payment_type || null,
-        memberId: doc.member_id || (doc.user ? String(doc.user) : null)
+        memberId: doc.member_id || (doc.user ? String(doc.user) : null),
+        tags: Array.isArray(doc.tags) ? doc.tags : []
       };
     });
 
@@ -525,7 +538,8 @@ router.get('/', async (req, res, next) => {
         content: doc.content || null,
         cf: doc.cf || null,
         paymentType: doc.payment_type || null,
-        memberId: doc.member_id || (doc.user ? String(doc.user) : null)
+        memberId: doc.member_id || (doc.user ? String(doc.user) : null),
+        tags: Array.isArray(doc.tags) ? doc.tags : []
       };
     });
 
@@ -553,7 +567,8 @@ router.post('/', async (req, res, next) => {
       cf,           // 'expense' | 'income' | 'deduction' | 'saving' または 日本語 '支出' など
       paymentType,  // 支払種別
       memberId,     // 使用者ID
-      content       // 内容（複数行）
+      content,      // 内容（複数行）
+      tags          // レシート明細（任意）
     } = req.body || {};
 
     if (!group || !date || typeof amount !== 'number') {
@@ -582,6 +597,12 @@ router.post('/', async (req, res, next) => {
       content: (typeof content === 'string' && content.trim().length > 0) ? content.trim() : null,
       entry_date: new Date()
     });
+    if (cfKey === '支出') {
+      const normalizedTags = normalizeTags(tags);
+      if (normalizedTags.length > 0) {
+        doc.tags = normalizedTags;
+      }
+    }
 
     // category の保存先を cf に応じて分岐（cfKey は日本語）
     if (typeof category === 'string' && category.trim().length > 0) {
@@ -628,7 +649,8 @@ router.post('/', async (req, res, next) => {
       content: saved.content || null,
       cf: saved.cf || null,               // 日本語で返す
       paymentType: saved.payment_type || null,
-      memberId: saved.member_id || null
+      memberId: saved.member_id || null,
+      tags: Array.isArray(saved.tags) ? saved.tags : []
     };
 
     res.status(201).json(result);
@@ -664,7 +686,8 @@ router.put('/:id', async (req, res, next) => {
       paymentType,
       memberId,
       content,
-      group
+      group,
+      tags
     } = req.body || {};
 
     const update = {};
@@ -734,6 +757,13 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
+    if (cfForCategory !== '支出') {
+      update.tags = [];
+    }
+    if (typeof tags !== 'undefined') {
+      update.tags = cfForCategory === '支出' ? normalizeTags(tags) : [];
+    }
+
     if (typeof paymentType !== 'undefined') {
       update.payment_type = (typeof paymentType === 'string' && paymentType.trim().length > 0)
         ? paymentType.trim()
@@ -768,7 +798,8 @@ router.put('/:id', async (req, res, next) => {
       content: saved.content || null,
       cf: saved.cf || null,               // 日本語で返す
       paymentType: saved.payment_type || null,
-      memberId: saved.member_id || null
+      memberId: saved.member_id || null,
+      tags: Array.isArray(saved.tags) ? saved.tags : []
     };
 
     res.json(result);
