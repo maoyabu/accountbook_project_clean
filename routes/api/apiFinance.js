@@ -663,10 +663,28 @@ router.put('/:id', async (req, res, next) => {
       cf,
       paymentType,
       memberId,
-      content
+      content,
+      group
     } = req.body || {};
 
     const update = {};
+
+    if (typeof group === 'string' && group.trim().length > 0) {
+      const groupIdRaw = group.trim();
+      if (!mongoose.Types.ObjectId.isValid(groupIdRaw)) {
+        return res.status(400).json({ error: 'invalid_group', message: 'group が不正です' });
+      }
+      const groupId = new mongoose.Types.ObjectId(groupIdRaw);
+      const groupDoc = await Group.findById(groupId).select('members').lean();
+      if (!groupDoc) {
+        return res.status(404).json({ error: 'group_not_found', message: 'グループが見つかりません' });
+      }
+      const members = Array.isArray(groupDoc.members) ? groupDoc.members.map(m => String(m)) : [];
+      if (!members.includes(String(userId))) {
+        return res.status(403).json({ error: 'forbidden', message: 'このグループを操作する権限がありません' });
+      }
+      update.group = groupId;
+    }
 
     if (date) {
       const d = new Date(date);
