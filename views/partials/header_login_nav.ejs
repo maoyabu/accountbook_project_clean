@@ -15,6 +15,9 @@
 <% const activeGroupName = (cu && Array.isArray(cu.groups) && activeGroupStr)
   ? (cu.groups.find(group => group && group._id && group._id.toString() === activeGroupStr)?.group_name || '')
   : ''; %>
+<% const menuAvatar = (cu && typeof cu.avatar === 'string' && (cu.avatar.startsWith('http') || cu.avatar.startsWith('/') || cu.avatar.startsWith('data:')))
+  ? cu.avatar
+  : '/images/def_user_icon.png'; %>
 
 <header id="top-nav" class="theme-<%= activeSvc %>">
   <nav class="navbar top-nav-bar">
@@ -66,7 +69,7 @@
       <div class="menu-section menu-user-section">
         <% if (cu) { %>
           <div class="menu-user d-flex align-items-center gap-2">
-            <img src="<%= cu.avatar %>" alt="" class="menu-avatar">
+            <img src="<%= menuAvatar %>" alt="" class="menu-avatar">
             <div>
               <div class="menu-user-name">
                 <%= cu.displayname ? cu.displayname : cu.username %>

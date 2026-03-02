@@ -57,13 +57,13 @@ const pathLib = require('path');
 
 
 const { isLoggedIn, logAction } = require('../middleware');
-const getListRedirect = (req) => req.session?.financeListReturn || '/finance/list';
 const sanitizeReturnPath = (value, fallback = '') => {
   const path = String(value || '').trim();
   if (!path) return fallback;
   if (!path.startsWith('/') || path.startsWith('//')) return fallback;
   return path;
 };
+const getListRedirect = (req) => sanitizeReturnPath(req.session?.financeListReturn, '/finance/list');
 const getPreviousMonthMeta = (baseDate = new Date()) => {
   const target = new Date(baseDate.getFullYear(), baseDate.getMonth() - 1, 1);
   const monthKey = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
@@ -382,6 +382,114 @@ async function loadCfItems(req, year, startMonth = 1) {
   return { in_items, dedu_cfs, saving_cfs };
 }
 
+const normalizeIdString = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return value._id.toString();
+  return value.toString();
+};
+
+const appendMissingOption = (options = [], value) => {
+  if (!value) return options;
+  return options.includes(value) ? options : [...options, value];
+};
+
+const serializeFinanceUsers = (users = []) => users.map((user) => ({
+  id: normalizeIdString(user._id),
+  name: user.displayname || user.username || '未設定'
+}));
+
+const extractTagsFromRequest = (tagItemsInput) => {
+  if (!tagItemsInput) return [];
+  const tagSource = Array.isArray(tagItemsInput)
+    ? tagItemsInput
+    : Object.values(tagItemsInput);
+  return tagSource
+    .filter(item => item && item.name)
+    .map(item => ({
+      name: item.name,
+      category: item.category || '',
+      price: Number(item.price) || 0
+    }));
+};
+
+async function getFinanceEditableGroupsForUser(userId) {
+  const currentUser = await FinanceUser.findById(userId).populate('groups');
+  const availableGroups = Array.isArray(currentUser?.groups)
+    ? currentUser.groups.filter(group => isGroupServiceEnabled(currentUser, group._id, 'finance'))
+    : [];
+  const availableGroupIds = new Set(availableGroups.map(group => normalizeIdString(group._id)));
+  return { currentUser, availableGroups, availableGroupIds };
+}
+
+async function buildFinanceFormOptions({ groupId, year, preserveValues = null }) {
+  const exExpenseItems = await fetchExpenseItemsByYear(groupId, year);
+  const incomeItems = await fetchItemsByYear(groupId, '収入項目', year);
+  const deductionItems = await fetchItemsByYear(groupId, '控除項目', year);
+  const savingItems = await fetchItemsByYear(groupId, '貯蓄項目', year);
+
+  let inItems = incomeItems.length > 0
+    ? ['Please Choice', ...incomeItems.map(i => i.item)]
+    : [...defaultInItems];
+  let deduItems = deductionItems.length > 0
+    ? ['Please Choice', ...deductionItems.map(i => i.item)]
+    : [...defaultDeduCfs];
+  let savingCfs = savingItems.length > 0
+    ? ['Please Choice', ...savingItems.map(i => i.item)]
+    : [...defaultSavingCfs];
+
+  let exCfs = [...exExpenseItems];
+  if (preserveValues) {
+    exCfs = appendMissingOption(exCfs, preserveValues.expense_item);
+    inItems = appendMissingOption(inItems, preserveValues.income_item);
+    deduItems = appendMissingOption(deduItems, preserveValues.dedu_item);
+    savingCfs = appendMissingOption(savingCfs, preserveValues.saving_item);
+  }
+
+  let allUsers = await FinanceUser.find({ groups: groupId })
+    .select('displayname username servicesByGroup')
+    .sort({ displayname: 1, username: 1 });
+  allUsers = allUsers.filter(user => isGroupServiceEnabled(user, groupId, 'finance'));
+
+  const memberIds = allUsers
+    .map(user => user._id)
+    .filter(Boolean);
+  const rawPayItems = memberIds.length > 0
+    ? await PaymentItem.find({ group: groupId, user: { $in: memberIds } })
+      .sort({ display_order: 1, paymentItem: 1 })
+    : [];
+  const seenPayItems = new Set();
+  let payCfs = ['Please Choice'];
+  rawPayItems.forEach((item) => {
+    if (!item?.paymentItem || seenPayItems.has(item.paymentItem)) return;
+    seenPayItems.add(item.paymentItem);
+    payCfs.push(item.paymentItem);
+  });
+
+  if (preserveValues?.payment_type) {
+    payCfs = appendMissingOption(payCfs, preserveValues.payment_type);
+  }
+  if (preserveValues?.userId) {
+    const selectedUserId = normalizeIdString(preserveValues.userId);
+    const hasSelectedUser = allUsers.some(user => normalizeIdString(user._id) === selectedUserId);
+    if (!hasSelectedUser && mongoose.Types.ObjectId.isValid(selectedUserId)) {
+      const selectedUser = await FinanceUser.findById(selectedUserId).select('displayname username servicesByGroup');
+      if (selectedUser) {
+        allUsers.push(selectedUser);
+      }
+    }
+  }
+
+  return {
+    ex_cfs: exCfs,
+    in_items: inItems,
+    dedu_cfs: deduItems,
+    saving_cfs: savingCfs,
+    pay_cfs: payCfs,
+    allUsers
+  };
+}
+
 function formatDuplicateMessage(entry) {
   const formatDate = (d) => {
     if (!d) return '';
@@ -570,7 +678,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
 
     if (!finance) {
         req.flash('error', 'フォームデータが送信されていません');
-        return res.redirect('finance/entry');
+        return res.redirect('/finance/entry');
     }
 
     // Joi バリデーション（必要であれば validatefinance のロジックを直接ここに書いてもOK）
@@ -721,7 +829,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     }
 
     await logAction({ req, action: '登録', target: '家計簿' });
-    res.redirect(getListRedirect(req));
+    res.redirect('/finance/list');
 }));
 
 // 検索画面の表示
@@ -1192,7 +1300,6 @@ router.get('/list', isLoggedIn, async (req, res) => {
 //◎詳細・編集(edit)画面の表示
 router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
     const { id } = req.params;
-    const activeGroupId = req.session.activeGroupId;
     const queryReturnTo = sanitizeReturnPath(req.query.returnTo, '');
     if (queryReturnTo) {
         req.session.financeListReturn = queryReturnTo;
@@ -1204,25 +1311,38 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         req.flash('error', '無効なIDです');
         return res.redirect('/finance/list');
     }
-    const finance = await Finance.findById(id).populate('user');
-    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
-    const yearForItems = resolveFiscalYearForValue(finance?.date, fiscalStartMonth);
-    await loadCfItems(req, yearForItems, fiscalStartMonth);
-    // グループごとの貯蓄項目を取得
-    const savingItems = await fetchItemsByYear(activeGroupId, '貯蓄項目', yearForItems);
-    let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
-    // 追加: 編集対象の項目が存在しない場合も反映できるようにする
-    if (!saving_cfs.includes(finance.saving_item) && finance.saving_item) {
-        saving_cfs.push(finance.saving_item);
-    }
-    // ex_cfsをfinance_ex_budgetから取得
-    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
-    
+    const finance = await Finance.findById(id).populate('user').populate('group');
     if (!finance) {
         req.flash('error', 'データが存在しません');
-        res.redirect('/finance/list');
-        return;
+        return res.redirect('/finance/list');
     }
+    const { currentUser, availableGroups, availableGroupIds } = await getFinanceEditableGroupsForUser(req.user._id);
+    const financeGroupId = normalizeIdString(finance.group);
+    if (!availableGroupIds.has(financeGroupId)) {
+        req.flash('error', 'このデータを編集する権限がありません');
+        return res.redirect('/finance/list');
+    }
+    const fiscalStartMonth = await getGroupFiscalStartMonth(financeGroupId);
+    const yearForItems = resolveFiscalYearForValue(finance.date, fiscalStartMonth);
+    const {
+      ex_cfs,
+      in_items: formIncomeItems,
+      dedu_cfs: formDeduItems,
+      saving_cfs: formSavingItems,
+      pay_cfs: formPayItems,
+      allUsers
+    } = await buildFinanceFormOptions({
+      groupId: financeGroupId,
+      year: yearForItems,
+      preserveValues: {
+        income_item: finance.income_item,
+        expense_item: finance.expense_item,
+        dedu_item: finance.dedu_item,
+        saving_item: finance.saving_item,
+        payment_type: finance.payment_type,
+        userId: finance.user?._id
+      }
+    });
 
     // 日付を "yyyy-MM-dd" 形式にフォーマット
     const formattedDate = finance.date.toISOString().split('T')[0];
@@ -1240,7 +1360,6 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
     }
     const formattedEntryDate = formatDateTime(finance.entry_date);
     const formattedUpdateDate = formatDateTime(finance.update_date);
-    const allUsers = await FinanceUser.find({ groups: activeGroupId });
     res.render('finance/edit', {
         page: 'edit',
         errors: {},
@@ -1251,13 +1370,14 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         formattedUpdateDate,
         la_cfs,
         ex_cfs,
-        in_items,
-        dedu_cfs,
-        saving_cfs, // ← 新しく取得したsaving_cfsを利用
-        pay_cfs: global.pay_cfs,
+        in_items: formIncomeItems,
+        dedu_cfs: formDeduItems,
+        saving_cfs: formSavingItems,
+        pay_cfs: formPayItems,
         whos,
         allUsers,
-        currentUser: req.user,
+        availableGroups,
+        currentUser,
         duplicateWarning: req.query.duplicateWarning === '1',
         continueEntry: req.query.continueEntry === '1',
         returnTo
@@ -1272,121 +1392,129 @@ function getJSTDate() {
 
 //家計簿編集画面の更新
 router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
-    const activeGroupId = req.session.activeGroupId;
     const { id } = req.params;  // これでURLパラメータのidを取得
     const returnTo = sanitizeReturnPath(req.body.returnTo, '');
     if (returnTo) {
         req.session.financeListReturn = returnTo;
     }
     const { finance } = req.body;
+    const financeInput = finance || {};
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
-    const { date, cf, amount, payment_type, user } = finance;
-    const allUsers = await FinanceUser.find(); // もしくは必要なユーザー情報取得
-
-    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
-    const yearForItems = resolveFiscalYearForValue(date, fiscalStartMonth);
-    await loadCfItems(req, yearForItems, fiscalStartMonth);
-    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
-    const savingItems = await fetchItemsByYear(activeGroupId, '貯蓄項目', yearForItems);
-    let saving_cfs = ['Please Choice', ...savingItems.map(i => i.item)];
-    if (!saving_cfs.includes(finance.saving_item) && finance.saving_item) {
-        saving_cfs.push(finance.saving_item);
+    const { date, cf, amount, payment_type, user } = financeInput;
+    const { currentUser, availableGroups, availableGroupIds } = await getFinanceEditableGroupsForUser(req.user._id);
+    const financeDoc = await Finance.findById(id).populate('user');
+    if (!financeDoc) {
+        req.flash('error', 'データが存在しません');
+        return res.status(404).send("データが見つかりません");
     }
+    const currentGroupId = normalizeIdString(financeDoc.group);
+    if (!availableGroupIds.has(currentGroupId)) {
+        req.flash('error', 'このデータを編集する権限がありません');
+        return res.redirect('/finance/list');
+    }
+    const requestedGroupId = normalizeIdString(financeInput.group) || currentGroupId;
+    const targetGroupId = availableGroupIds.has(requestedGroupId) ? requestedGroupId : currentGroupId;
+    const fiscalStartMonth = await getGroupFiscalStartMonth(targetGroupId);
+    const yearForItems = resolveFiscalYearForValue(date || financeDoc.date, fiscalStartMonth);
+    const {
+      ex_cfs,
+      in_items: formIncomeItems,
+      dedu_cfs: formDeduItems,
+      saving_cfs: formSavingItems,
+      pay_cfs: formPayItems,
+      allUsers
+    } = await buildFinanceFormOptions({
+      groupId: targetGroupId,
+      year: yearForItems
+    });
+    const validUserIds = new Set(allUsers.map(candidate => normalizeIdString(candidate._id)));
 
     let errors = {};
+    const tags = extractTagsFromRequest(req.body.tagItems);
 
     // 各項目のバリデーションをチェック
+    if (!requestedGroupId) {
+        errors.group = "グループは必須です";
+    } else if (!availableGroupIds.has(requestedGroupId)) {
+        errors.group = "選択したグループには変更できません";
+    }
     if (!date) errors.date = "日付は必須です";
     if (!cf || cf === 'Please Choice') errors.cf = "収支区分は必須です。まだ登録は完了していません。";  // cf のチェック
-    if (cf === '支出' && (!finance.expense_item || finance.expense_item === 'Please Choice')) {
+    if (cf === '支出' && (!financeInput.expense_item || financeInput.expense_item === 'Please Choice')) {
         errors.expense_item = "支出区分は必須です。まだ登録は完了していません。";
     }
-    if (cf === '収入' && (!finance.income_item || finance.income_item === 'Please Choice')) {
+    if (cf === '収入' && (!financeInput.income_item || financeInput.income_item === 'Please Choice')) {
         errors.income_item = "収入区分は必須です。まだ登録は完了していません。";
     }
-    if (cf === '控除' && (!finance.dedu_item || finance.dedu_item === 'Please Choice')) {
+    if (cf === '控除' && (!financeInput.dedu_item || financeInput.dedu_item === 'Please Choice')) {
         errors.dedu_item = "控除区分は必須です。まだ登録は完了していません。";
     }
-    if (cf === '貯蓄' && (!finance.saving_item || finance.saving_item === 'Please Choice')) {
+    if (cf === '貯蓄' && (!financeInput.saving_item || financeInput.saving_item === 'Please Choice')) {
         errors.saving_item = "貯蓄区分は必須です。まだ登録は完了していません。";
     }
     if (!amount || amount === '') errors.amount = "金額は必須です";  // amount の空チェック
     if (!payment_type || payment_type === 'Please Choice') errors.payment_type = "支払種別は必須です、まだ登録は完了してません。";
-    if (!user || user === 'Please Choice') errors.user = "対象者は必須です";
+    if (!user || user === 'Please Choice') {
+        errors.user = "対象者は必須です";
+    } else if (!validUserIds.has(normalizeIdString(user))) {
+        errors.user = "選択した使用者はこのグループでは利用できません";
+    }
+    if (payment_type && payment_type !== 'Please Choice' && !formPayItems.includes(payment_type)) {
+        errors.payment_type = "選択した支払種別はこのグループでは利用できません";
+    }
 
     //エラーがあればそのままビューに戻す
     if (Object.keys(errors).length > 0) {
         return res.render('finance/edit', {
             page: 'edit',
             errors,
-            finance: { ...finance, _id: id, tags: req.body.finance.tags || [] },
+            finance: { ...financeDoc.toObject(), ...financeInput, _id: id, group: targetGroupId, tags },
             formattedDate: date,
             formattedEntryDate: '',
             formattedUpdateDate: '',
             la_cfs,
             ex_cfs,
-            in_items,
-            dedu_cfs,
-            saving_cfs,
-            pay_cfs,
+            in_items: formIncomeItems,
+            dedu_cfs: formDeduItems,
+            saving_cfs: formSavingItems,
+            pay_cfs: formPayItems,
             whos,
             allUsers,
+            availableGroups,
+            currentUser,
             returnTo
         });
     }
 
-    if (finance.cf === 'Please Choice') finance.cf = '';
-    if (finance.payment_type === 'Please Choice') finance.payment_type = '';
-    if (finance.user === 'Please Choice') finance.user = '';
-    if (finance.income_item === 'Please Choice') finance.income_item = '';
-    if (finance.expense_item === 'Please Choice') finance.expense_item = '';
-    if (finance.dedu_item === 'Please Choice') finance.dedu_item = '';
+    if (financeInput.cf === 'Please Choice') financeInput.cf = '';
+    if (financeInput.payment_type === 'Please Choice') financeInput.payment_type = '';
+    if (financeInput.user === 'Please Choice') financeInput.user = '';
+    if (financeInput.income_item === 'Please Choice') financeInput.income_item = '';
+    if (financeInput.expense_item === 'Please Choice') financeInput.expense_item = '';
+    if (financeInput.dedu_item === 'Please Choice') financeInput.dedu_item = '';
+    if (financeInput.saving_item === 'Please Choice') financeInput.saving_item = '';
 
     // `date` から month, day を抽出
-    const dateObj = new Date(finance.date);
+    const dateObj = new Date(financeInput.date);
     const month = dateObj.getMonth() + 1;
     const day = dateObj.getDate();
 
-    // 既存のFinanceドキュメントを取得
-    const financeDoc = await Finance.findById(id);
-    if (!financeDoc) {
-        req.flash('error', 'データが存在しません');
-        return res.status(404).send("データが見つかりません");
-    }
-
-    // タグ情報をtagItemsから取得してtags配列を構築
-    let tags = [];
-    if (req.body.tagItems) {
-        // tagItemsが配列またはオブジェクトのいずれか
-        const tagSource = Array.isArray(req.body.tagItems)
-            ? req.body.tagItems
-            : Object.values(req.body.tagItems);
-        tags = tagSource
-            .filter(item => item && item.name)
-            .map(item => ({
-                name: item.name,
-                category: item.category || '',
-                price: Number(item.price) || 0
-            }));
-    }
-
     // 更新
     Object.assign(financeDoc, {
-        ...finance,
-        saving_item: finance.cf === '貯蓄' && finance.saving_item !== 'Please Choice' ? finance.saving_item : '',
-        income_item: finance.income_item === 'Please Choice' || !finance.income_item ? '' : finance.income_item,
-        expense_item: finance.expense_item === 'Please Choice' || !finance.expense_item ? '' : finance.expense_item,
-        dedu_item: finance.dedu_item === 'Please Choice' || !finance.dedu_item ? '' : finance.dedu_item,
-        cf: finance.cf === 'Please Choice' ? '' : finance.cf,
-        payment_type: finance.payment_type === 'Please Choice' ? '' : finance.payment_type,
-        user: finance.user === 'Please Choice' ? '' : finance.user,
-        // 編集時は既存レコードの所属グループを維持する
-        group: financeDoc.group,
-        memo: finance.memo || '',
+        ...financeInput,
+        saving_item: financeInput.cf === '貯蓄' && financeInput.saving_item !== 'Please Choice' ? financeInput.saving_item : '',
+        income_item: financeInput.income_item === 'Please Choice' || !financeInput.income_item ? '' : financeInput.income_item,
+        expense_item: financeInput.expense_item === 'Please Choice' || !financeInput.expense_item ? '' : financeInput.expense_item,
+        dedu_item: financeInput.dedu_item === 'Please Choice' || !financeInput.dedu_item ? '' : financeInput.dedu_item,
+        cf: financeInput.cf === 'Please Choice' ? '' : financeInput.cf,
+        payment_type: financeInput.payment_type === 'Please Choice' ? '' : financeInput.payment_type,
+        user: financeInput.user === 'Please Choice' ? '' : financeInput.user,
+        group: targetGroupId,
+        memo: financeInput.memo || '',
         update_date: getJSTDate(),
         month,
         day,
-        tags // ← ここでtagItemsから抽出したtagsをセット
+        tags
     });
 
     await financeDoc.save();
@@ -1409,9 +1537,25 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
 
         const newFinance = new Finance(clone);
         await newFinance.save();
+        const duplicateGroupId = normalizeIdString(newFinance.group);
+        const duplicateFiscalStartMonth = await getGroupFiscalStartMonth(duplicateGroupId);
+        const duplicateYearForItems = resolveFiscalYearForValue(newFinance.date, duplicateFiscalStartMonth);
+        const {
+          ex_cfs: duplicateExCfs,
+          in_items: duplicateIncomeItems,
+          dedu_cfs: duplicateDeduItems,
+          saving_cfs: duplicateSavingItems,
+          pay_cfs: duplicatePayItems,
+          allUsers: duplicateUsers
+        } = await buildFinanceFormOptions({
+          groupId: duplicateGroupId,
+          year: duplicateYearForItems,
+          preserveValues: {
+            payment_type: newFinance.payment_type,
+            userId: newFinance.user
+          }
+        });
         const formattedDate = newFinance.date.toISOString().split('T')[0];
-        const currentUser = await FinanceUser.findById(req.user._id).populate('groups');
-        const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
         return res.render('finance/edit', {
             page: 'entry',
             errors: {},
@@ -1423,14 +1567,15 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             duplicateWarning: false,
             continueEntry: true,
             la_cfs,
-            ex_cfs,
-            in_items,
-            dedu_cfs,
-            saving_cfs,
-            pay_cfs,
+            ex_cfs: duplicateExCfs,
+            in_items: duplicateIncomeItems,
+            dedu_cfs: duplicateDeduItems,
+            saving_cfs: duplicateSavingItems,
+            pay_cfs: duplicatePayItems,
             whos,
-            allUsers,
+            allUsers: duplicateUsers,
             currentUser,
+            availableGroups,
             returnTo
         });
     }
@@ -2363,35 +2508,37 @@ router.post('/budget/notice-test', isLoggedIn, async (req, res) => {
 // 年度別の区分候補を取得（新規登録/編集のプルダウン更新用）
 router.get('/budget/items', isLoggedIn, async (req, res) => {
   try {
-    const groupId = req.session.activeGroupId;
-    const year = req.query.year;
-    if (!groupId) {
+    const requestedGroupId = normalizeIdString(req.query.groupId) || normalizeIdString(req.session.activeGroupId);
+    const { availableGroupIds } = await getFinanceEditableGroupsForUser(req.user._id);
+    if (!requestedGroupId) {
       return res.status(400).json({ error: 'groupId が不足しています' });
     }
-    if (!year) {
-      return res.status(400).json({ error: 'year が不足しています' });
+    if (!availableGroupIds.has(requestedGroupId)) {
+      return res.status(403).json({ error: 'このグループの候補は取得できません' });
     }
-
-    const ex_cfs = await fetchExpenseItemsByYear(groupId, year);
-    const incomeItems = await fetchItemsByYear(groupId, '収入項目', year);
-    const deduItems = await fetchItemsByYear(groupId, '控除項目', year);
-    const savingItems = await fetchItemsByYear(groupId, '貯蓄項目', year);
-
-    const in_items = incomeItems.length > 0
-      ? ['Please Choice', ...incomeItems.map(i => i.item)]
-      : [...defaultInItems];
-    const dedu_cfs = deduItems.length > 0
-      ? ['Please Choice', ...deduItems.map(i => i.item)]
-      : [...defaultDeduCfs];
-    const saving_cfs = savingItems.length > 0
-      ? ['Please Choice', ...savingItems.map(i => i.item)]
-      : [...defaultSavingCfs];
+    const fiscalStartMonth = await getGroupFiscalStartMonth(requestedGroupId);
+    const targetYear = req.query.year
+      ? String(req.query.year)
+      : resolveFiscalYearForValue(req.query.date, fiscalStartMonth);
+    const {
+      ex_cfs,
+      in_items,
+      dedu_cfs,
+      saving_cfs,
+      pay_cfs,
+      allUsers
+    } = await buildFinanceFormOptions({
+      groupId: requestedGroupId,
+      year: targetYear
+    });
 
     res.json({
       ex_cfs,
       in_items,
       dedu_cfs,
-      saving_cfs
+      saving_cfs,
+      pay_cfs,
+      users: serializeFinanceUsers(allUsers)
     });
   } catch (err) {
     console.error('❌ 年度別区分取得エラー:', err);

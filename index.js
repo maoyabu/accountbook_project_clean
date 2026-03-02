@@ -140,6 +140,11 @@ app.set('views', path.join(__dirname,'views'));
 //publicディレクトリを静的ファイルとして使える様にする
 app.use(express.static(path.join(__dirname,'public')));
 
+const appIconPath = path.join(__dirname, 'public/images/App_icon.png');
+app.get(['/favicon.ico', '/favicon.png', '/apple-touch-icon.png'], (req, res) => {
+  return res.sendFile(appIconPath);
+});
+
 // SECRET が空文字や未設定でも落ちないようにガード
 const secret = (process.env.SECRET && String(process.env.SECRET).trim()) ? String(process.env.SECRET).trim() : 'mysecret';
 
@@ -480,6 +485,7 @@ app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
 });
 
 app.all('*',(req,res,next) => {
+    console.error(`❌ 404 Not Found: ${req.method} ${req.originalUrl}`);
     // res.send('404');
     //エラークラス(ExpressError.js)を使ってハンドリングするやり方
     //nextを呼んでその中にエラーを入れる

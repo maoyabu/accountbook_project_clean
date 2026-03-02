@@ -1,6 +1,8 @@
 <% layout('layouts/boilerplate') %>
 <% page = 'edit' %>
 <% const returnToValue = (typeof returnTo === 'string') ? returnTo : ''; %>
+<% const selectedGroupId = String(finance?.group?._id || finance?.group || ''); %>
+<% const selectedUserId = String(finance?.user?._id || finance?.user || ''); %>
 
   <div class="container finance-form-container mt-4">
     <div class="card shadow-sm">
@@ -21,8 +23,22 @@
           <input type="hidden" name="nextAction" id="nextActionInput" value="update">
           <input type="hidden" name="returnTo" value="<%= returnToValue %>">
           <div class="form-group">
+            <label for="group">グループ</label>
+            <select name="finance[group]" id="group" class="form-control short-input <%= errors.group ? 'error-field' : '' %>">
+              <% (availableGroups || []).forEach(group => { %>
+                <option value="<%= group._id %>" <%= selectedGroupId === group._id.toString() ? 'selected' : '' %>><%= group.group_name %></option>
+              <% }) %>
+            </select>
+            <div class="error-message">
+              <%= errors?.group ? errors.group : '' %>
+            </div>
+          </div>
+          <div class="form-group">
             <label for="date">年月日</label>
             <input type="date" id="date" name="finance[date]" value="<%= formattedDate %>" class="form-control date-input <%= errors.date ? 'error-field' : '' %>">
+            <div class="error-message">
+              <%= errors?.date ? errors.date : '' %>
+            </div>
           </div>
 
           <div class="form-group">
@@ -32,6 +48,9 @@
                 <option value="<%= la_cf %>" <%= finance.cf === la_cf ? 'selected' : '' %>><%= la_cf %></option>
               <% } %>
             </select>
+            <div class="error-message">
+              <%= errors?.cf ? errors.cf : '' %>
+            </div>
           </div>
 
           <div class="form-group category-group mb-2" id="expense_group" style="display: none;">
@@ -98,6 +117,9 @@
           <div class="form-group">
             <label for="amount">金額</label>
             <input class="form-control short-input" type="number" name="finance[amount]" inputmode="numeric" style="ime-mode: inactive;" id="amount" value="<%= ((typeof continueEntry !== 'undefined' && continueEntry) && Number(finance.amount) === 0) ? '' : finance.amount %>" class="<%= errors.amount ? 'error-field' : '' %>">
+            <div class="error-message">
+              <%= errors?.amount ? errors.amount : '' %>
+            </div>
           </div>
 
           <div class="form-group">
@@ -120,10 +142,11 @@
           <div class="form-group">
             <label for="who">使用者</label>
             <select name="finance[user]" id="who" class="form-control short-input <%= errors.user ? 'error-field' : '' %>">
+              <option value="Please Choice" <%= selectedUserId ? '' : 'selected' %>>Please Choice</option>
               <% for (let u of allUsers) {
                 const name = u.displayname || u.username;
               %>
-              <option value="<%= u._id %>" <%= (finance?.user?._id?.toString() === u._id.toString()) ? 'selected' : '' %>><%= name %></option>
+              <option value="<%= u._id %>" <%= selectedUserId === u._id.toString() ? 'selected' : '' %>><%= name %></option>
               <% } %>
             </select>
             <div class="error-message">
@@ -209,6 +232,7 @@
 <script>
   let categories = <%- JSON.stringify(ex_cfs) %>;
   let tagItemCount = <%= finance.tags?.length || 1 %>;
+  const groupSelect = document.getElementById('group');
   const cfSelect = document.getElementById('cf');
   const expenseGroup = document.getElementById('expense_group');
   const incomeGroup = document.getElementById('income_group');
@@ -219,6 +243,7 @@
   const deductionSelect = document.getElementById('dedu_cf');
   const savingSelect = document.getElementById('saving_cf');
   const paymentSelect = document.getElementById('payment_type');
+  const userSelect = document.getElementById('who');
   const dateInput = document.getElementById('date');
   const amountInput = document.getElementById('amount');
 
@@ -232,6 +257,27 @@
       select.appendChild(option);
     });
     if (selectedValue && items.includes(selectedValue)) {
+      select.value = selectedValue;
+    } else {
+      select.value = 'Please Choice';
+    }
+  }
+
+  function setUserOptions(select, users, selectedValue) {
+    if (!select) return;
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = 'Please Choice';
+    placeholder.textContent = 'Please Choice';
+    select.appendChild(placeholder);
+    users.forEach(user => {
+      const option = document.createElement('option');
+      option.value = user.id;
+      option.textContent = user.name;
+      select.appendChild(option);
+    });
+    const values = users.map(user => user.id);
+    if (selectedValue && values.includes(selectedValue)) {
       select.value = selectedValue;
     } else {
       select.value = 'Please Choice';
@@ -260,21 +306,24 @@
     savingSelect.disabled = !hasDate || cfSelect.value !== '貯蓄';
   }
 
-  async function refreshItemsByDate() {
-    const dateValue = dateInput.value;
-    if (!dateValue) {
-      applyDateLockState();
-      return;
+  async function refreshFormOptions() {
+    const params = new URLSearchParams();
+    if (groupSelect?.value) {
+      params.set('groupId', groupSelect.value);
     }
-    const year = new Date(dateValue).getFullYear();
+    if (dateInput.value) {
+      params.set('date', dateInput.value);
+    }
     try {
-      const res = await fetch(`/finance/budget/items?year=${year}`, { headers: { 'Accept': 'application/json' } });
+      const res = await fetch(`/finance/budget/items?${params.toString()}`, { headers: { 'Accept': 'application/json' } });
       if (!res.ok) return;
       const data = await res.json();
       setSelectOptions(expenseSelect, data.ex_cfs || [], expenseSelect.value);
       setSelectOptions(incomeSelect, data.in_items || [], incomeSelect.value);
       setSelectOptions(deductionSelect, data.dedu_cfs || [], deductionSelect.value);
       setSelectOptions(savingSelect, data.saving_cfs || [], savingSelect.value);
+      setSelectOptions(paymentSelect, data.pay_cfs || [], paymentSelect.value);
+      setUserOptions(userSelect, data.users || [], userSelect.value);
       updateTagCategoryOptions(data.ex_cfs || []);
     } catch (err) {
       console.error('❌ 区分の取得に失敗:', err);
@@ -353,6 +402,7 @@
     const cfValue = cfSelect.value;
     clearFieldErrors();
     const missing = [];
+    if (!groupSelect.value) missing.push('group');
     if (!dateInput.value) missing.push('date');
     if (!cfValue || cfValue === 'Please Choice') missing.push('cf');
     if (cfValue === '支出' && (!expenseSelect.value || expenseSelect.value === 'Please Choice')) missing.push('expense');
@@ -361,11 +411,13 @@
     if (cfValue === '貯蓄' && (!savingSelect.value || savingSelect.value === 'Please Choice')) missing.push('saving');
     if (!amountInput.value) missing.push('amount');
     if (!paymentSelect.value || paymentSelect.value === 'Please Choice') missing.push('payment');
+    if (!userSelect.value || userSelect.value === 'Please Choice') missing.push('user');
 
     if (missing.length > 0) {
       event.preventDefault();
       event.stopImmediatePropagation();
       showValidationModal('未入力項目があります、必須項目を入力してから更新か続けて入力してください');
+      if (missing.includes('group')) setFieldError(groupSelect, 'グループは必須です');
       if (missing.includes('date')) setFieldError(dateInput, '日付は必須です');
       if (missing.includes('cf')) setFieldError(cfSelect, '収支区分は必須です。まだ登録は完了していません。');
       if (missing.includes('expense')) setFieldError(expenseSelect, '支出区分は必須です。まだ登録は完了していません。');
@@ -374,6 +426,7 @@
       if (missing.includes('saving')) setFieldError(savingSelect, '貯蓄区分は必須です。まだ登録は完了していません。');
       if (missing.includes('amount')) setFieldError(amountInput, '金額は必須です');
       if (missing.includes('payment')) setFieldError(paymentSelect, '支払種別は必須です、まだ登録は完了してません。');
+      if (missing.includes('user')) setFieldError(userSelect, '対象者は必須です');
       resetSpinners();
     }
   }
@@ -381,11 +434,12 @@
   document.addEventListener('DOMContentLoaded', () => {
     updateCategoryVisibility();
     cfSelect.addEventListener('change', applyDateLockState);
-    dateInput.addEventListener('change', refreshItemsByDate);
-    applyDateLockState();
-    if (dateInput.value) {
-      refreshItemsByDate();
+    if (groupSelect) {
+      groupSelect.addEventListener('change', refreshFormOptions);
     }
+    dateInput.addEventListener('change', refreshFormOptions);
+    applyDateLockState();
+    refreshFormOptions();
     document.querySelectorAll('button[type=\"submit\"]').forEach(b => {
       if (!b.dataset.originalLabel) b.dataset.originalLabel = b.textContent;
     });
