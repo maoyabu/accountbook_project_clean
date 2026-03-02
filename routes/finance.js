@@ -801,6 +801,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         const duplicatedFinance = new Finance(cloneData);
 
         await duplicatedFinance.save(); // ここ！保存する！！
+        const { currentUser, availableGroups } = await getFinanceEditableGroupsForUser(req.user._id);
 
         const formattedDate = duplicatedFinance.date.toISOString().split('T')[0];
         const formattedEntryDate = toJST(new Date()).toLocaleString('ja-JP');
@@ -810,7 +811,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         return res.render('finance/edit', {
             page: 'entry',
             errors: {},
-            finance: duplicatedFinance,
+            finance: { ...duplicatedFinance.toObject(), tags: duplicatedFinance.tags || [] },
             formattedDate,
             formattedEntryDate,
             formattedUpdateDate,
@@ -824,7 +825,9 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             saving_cfs,
             pay_cfs,
             whos,
-            allUsers
+            allUsers,
+            currentUser,
+            availableGroups
         });
     }
 
