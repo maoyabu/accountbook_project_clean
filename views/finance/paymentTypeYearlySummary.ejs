@@ -1,0 +1,146 @@
+<% layout('layouts/boilerplate') %>
+
+<%
+  const formatAmount = (value) => (Number(value) || 0).toLocaleString();
+  const hasRows = Array.isArray(summaryRows) && summaryRows.length > 0;
+%>
+
+<div class="card mt-3 mb-3 rounded">
+  <div class="card-body p-3 text-white" style="background-color: #44616D;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h5 class="mb-1"><i class="fa-solid fa-table-columns me-2"></i>年次支払種別集計</h5>
+        <div class="small opacity-75"><%= year %>年度 / <%= fiscalPeriodLabel %> / 開始月 <%= fiscalStartMonth %>月</div>
+      </div>
+      <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
+        <label for="paymentSummaryYear" class="form-label mb-0 text-white">年度</label>
+        <select id="paymentSummaryYear" name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+          <% (availableYears || []).forEach((value) => { %>
+            <option value="<%= value %>" <%= year === value ? 'selected' : '' %>><%= value %>年度</option>
+          <% }) %>
+        </select>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3 rounded">
+  <div class="card-body p-3">
+    <div class="small text-muted mb-2">金額を押すと、該当条件の明細一覧を表示します。</div>
+    <% if (!hasRows) { %>
+      <div class="alert alert-secondary mb-0">支払種別の設定または対象年度の支出データがありません。</div>
+    <% } else { %>
+      <div class="table-responsive payment-yearly-table-wrap">
+        <table class="table table-bordered table-sm align-middle mb-0 payment-yearly-table">
+          <thead>
+            <tr>
+              <th class="payment-type-col text-start">支払種別</th>
+              <% (fiscalMonths || []).forEach((month) => { %>
+                <th class="text-end"><%= month %>月</th>
+              <% }) %>
+              <th class="text-end">年度合計</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% summaryRows.forEach((row, index) => { %>
+              <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                <th scope="row" class="text-start payment-type-col"><%= row.paymentTypeLabel %></th>
+                <% row.monthCells.forEach((cell) => { %>
+                  <td class="text-end">
+                    <% if (cell.amount > 0 && cell.detailUrl) { %>
+                      <a href="<%= cell.detailUrl %>" class="text-decoration-none"><%= formatAmount(cell.amount) %></a>
+                    <% } else { %>
+                      <span><%= formatAmount(cell.amount) %></span>
+                    <% } %>
+                  </td>
+                <% }) %>
+                <td class="text-end fw-bold">
+                  <% if (row.yearTotal > 0 && row.totalDetailUrl) { %>
+                    <a href="<%= row.totalDetailUrl %>" class="text-decoration-none"><%= formatAmount(row.yearTotal) %></a>
+                  <% } else { %>
+                    <span><%= formatAmount(row.yearTotal) %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+            <tr class="table-warning">
+              <th scope="row" class="text-start payment-type-col">月合計</th>
+              <% monthlyTotalCells.forEach((cell) => { %>
+                <td class="text-end fw-bold">
+                  <% if (cell.amount > 0 && cell.detailUrl) { %>
+                    <a href="<%= cell.detailUrl %>" class="text-decoration-none"><%= formatAmount(cell.amount) %></a>
+                  <% } else { %>
+                    <span><%= formatAmount(cell.amount) %></span>
+                  <% } %>
+                </td>
+              <% }) %>
+              <td class="text-end fw-bold">
+                <% if (grandTotal > 0 && grandTotalDetailUrl) { %>
+                  <a href="<%= grandTotalDetailUrl %>" class="text-decoration-none"><%= formatAmount(grandTotal) %></a>
+                <% } else { %>
+                  <span><%= formatAmount(grandTotal) %></span>
+                <% } %>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<style>
+  .payment-yearly-table-wrap {
+    overflow-x: auto;
+  }
+
+  .payment-yearly-table {
+    min-width: 980px;
+  }
+
+  .payment-yearly-table thead th {
+    background-color: #44616D;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  .payment-yearly-table .payment-type-col {
+    min-width: 12rem;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: inherit;
+  }
+
+  .payment-yearly-table thead .payment-type-col {
+    z-index: 2;
+  }
+
+  .payment-yearly-table tbody th.payment-type-col {
+    color: #1f2933;
+    box-shadow: 1px 0 0 rgba(68, 97, 109, 0.12);
+  }
+
+  .payment-yearly-table tbody tr.table-light th.payment-type-col {
+    background-color: #f8f9fa;
+  }
+
+  .payment-yearly-table tbody tr.table-info th.payment-type-col {
+    background-color: #d9edf7;
+  }
+
+  .payment-yearly-table tbody tr.table-warning th.payment-type-col {
+    background-color: #fff3cd;
+    color: #4d3b00;
+  }
+
+  @media (max-width: 768px) {
+    .payment-yearly-table {
+      min-width: 860px;
+    }
+
+    .payment-yearly-table .payment-type-col {
+      min-width: 9rem;
+    }
+  }
+</style>

@@ -2358,6 +2358,231 @@ router.post('/payment-check/toggle', isLoggedIn, async (req, res) => {
   }
 });
 
+// 年次支払種別集計
+router.get('/payment-summary-yearly', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(req.user._id);
+    const groupObjectId = new mongoose.Types.ObjectId(groupId);
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+    const requestedYear = Number.parseInt(req.query.year, 10);
+    const fiscalMonths = getFiscalMonths(fiscalStartMonth);
+    const monthIndexMap = new Map(fiscalMonths.map((month, index) => [month, index]));
+
+    const [currentUser, paymentItems, availableYearDocs] = await Promise.all([
+      FinanceUser.findById(req.user._id).populate('groups'),
+      PaymentItem.find({
+        user: userObjectId,
+        group: groupObjectId,
+        isLive: true
+      })
+        .sort({ display_order: 1 })
+        .lean(),
+      Finance.aggregate([
+        {
+          $match: {
+            user: userObjectId,
+            group: groupObjectId,
+            cf: '支出'
+          }
+        },
+        {
+          $project: {
+            calendarYear: { $year: { date: '$date', timezone: 'Asia/Tokyo' } },
+            calendarMonth: { $month: { date: '$date', timezone: 'Asia/Tokyo' } }
+          }
+        },
+        {
+          $project: {
+            fiscalYear: {
+              $cond: [
+                { $gte: ['$calendarMonth', fiscalStartMonth] },
+                '$calendarYear',
+                { $subtract: ['$calendarYear', 1] }
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$fiscalYear'
+          }
+        },
+        {
+          $sort: {
+            _id: -1
+          }
+        }
+      ])
+    ]);
+
+    const availableYears = availableYearDocs
+      .map((doc) => Number(doc?._id))
+      .filter((value) => Number.isInteger(value));
+    const year = availableYears.includes(requestedYear)
+      ? requestedYear
+      : (availableYears[0] ?? defaultYear);
+    const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
+
+    const summaryResult = await Finance.aggregate([
+      {
+        $match: {
+          user: userObjectId,
+          group: groupObjectId,
+          cf: '支出',
+          date: {
+            $gte: fiscalRange.start,
+            $lt: fiscalRange.end
+          }
+        }
+      },
+      {
+        $project: {
+          month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
+          payment_type: 1,
+          amount: 1
+        }
+      },
+      {
+        $group: {
+          _id: {
+            month: '$month',
+            payment_type: '$payment_type'
+          },
+          total: { $sum: '$amount' }
+        }
+      },
+      {
+        $sort: {
+          '_id.month': 1,
+          '_id.payment_type': 1
+        }
+      }
+    ]);
+
+    const paymentTypeOrder = [];
+    const paymentTypeMetaMap = new Map();
+    const ensurePaymentType = (rawValue) => {
+      const key = String(rawValue || '').trim();
+      if (paymentTypeMetaMap.has(key)) return paymentTypeMetaMap.get(key);
+      const meta = {
+        key,
+        label: key || '未設定'
+      };
+      paymentTypeMetaMap.set(key, meta);
+      paymentTypeOrder.push(key);
+      return meta;
+    };
+
+    paymentItems.forEach((item) => {
+      ensurePaymentType(item.paymentItem);
+    });
+    summaryResult.forEach((row) => {
+      ensurePaymentType(row?._id?.payment_type);
+    });
+
+    const monthlyGrandTotals = Array.from({ length: 12 }, () => 0);
+    const summaryRowMap = new Map(
+      paymentTypeOrder.map((key) => [
+        key,
+        {
+          paymentTypeKey: key,
+          paymentTypeLabel: paymentTypeMetaMap.get(key)?.label || key || '未設定',
+          monthlyTotals: Array.from({ length: 12 }, () => 0),
+          yearTotal: 0
+        }
+      ])
+    );
+
+    summaryResult.forEach((row) => {
+      const paymentTypeKey = String(row?._id?.payment_type || '').trim();
+      const month = Number(row?._id?.month);
+      const monthIndex = monthIndexMap.get(month);
+      if (monthIndex === undefined) return;
+
+      if (!summaryRowMap.has(paymentTypeKey)) {
+        const meta = ensurePaymentType(paymentTypeKey);
+        summaryRowMap.set(paymentTypeKey, {
+          paymentTypeKey,
+          paymentTypeLabel: meta.label,
+          monthlyTotals: Array.from({ length: 12 }, () => 0),
+          yearTotal: 0
+        });
+      }
+
+      const total = Number(row.total) || 0;
+      const targetRow = summaryRowMap.get(paymentTypeKey);
+      targetRow.monthlyTotals[monthIndex] += total;
+      targetRow.yearTotal += total;
+      monthlyGrandTotals[monthIndex] += total;
+    });
+
+    const buildDetailUrl = ({ month, paymentTypeKey }) => {
+      const params = new URLSearchParams({
+        scope: 'user',
+        year: String(year),
+        cf: '支出'
+      });
+      if (month) params.set('month', String(month));
+      if (paymentTypeKey) params.set('payment_type', paymentTypeKey);
+      return `/export/dashboard/yearly-detail?${params.toString()}`;
+    };
+
+    const summaryRows = paymentTypeOrder.map((key) => {
+      const baseRow = summaryRowMap.get(key);
+      const monthCells = fiscalMonths.map((month, index) => ({
+        month,
+        amount: baseRow?.monthlyTotals?.[index] || 0,
+        detailUrl: key ? buildDetailUrl({ month, paymentTypeKey: key }) : null
+      }));
+      return {
+        paymentTypeKey: key,
+        paymentTypeLabel: baseRow?.paymentTypeLabel || key || '未設定',
+        monthCells,
+        yearTotal: baseRow?.yearTotal || 0,
+        totalDetailUrl: key ? buildDetailUrl({ paymentTypeKey: key }) : null
+      };
+    });
+
+    const monthlyTotalCells = fiscalMonths.map((month, index) => ({
+      month,
+      amount: monthlyGrandTotals[index] || 0,
+      detailUrl: buildDetailUrl({ month })
+    }));
+    const grandTotal = monthlyGrandTotals.reduce((sum, value) => sum + value, 0);
+
+    if (availableYears.length === 0) {
+      availableYears.push(year);
+    }
+
+    const fiscalPeriodLabel = `${fiscalRange.start.getFullYear()}年${fiscalRange.start.getMonth() + 1}月〜${fiscalRange.endInclusive.getFullYear()}年${fiscalRange.endInclusive.getMonth() + 1}月`;
+
+    return res.render('finance/paymentTypeYearlySummary', {
+      page: 'payment-summary-yearly',
+      currentUser,
+      year,
+      availableYears,
+      fiscalStartMonth,
+      fiscalMonths,
+      fiscalPeriodLabel,
+      summaryRows,
+      monthlyTotalCells,
+      grandTotal,
+      grandTotalDetailUrl: buildDetailUrl({}),
+      formAction: '/export/payment-summary-yearly'
+    });
+  } catch (err) {
+    console.error('❌ 年次支払種別集計画面エラー:', err);
+    return res.status(500).send('年次支払種別集計の表示に失敗しました');
+  }
+});
+
 
 // 年次明細（支出内訳セルのドリルダウン表示）
 router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
