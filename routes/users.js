@@ -9,6 +9,7 @@ const { sendMail } = require('../Utils/mailer');
 const Group = require('../models/groups');
 const RegularEntry = require('../models/finance_regularEntry');
 const Log = require('../models/log'); // 上部で読み込み
+const { getSafeReferrerPath } = require('../Utils/safeRedirect');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -321,7 +322,7 @@ router.post('/reset/:token', async (req, res) => {
 
     if (password !== confirm) {
         req.flash('error', 'パスワードが一致しません');
-        return res.redirect('back');
+        return res.redirect(getSafeReferrerPath(req, '/users/forgot-password'));
     }
 
     const user = await FinanceUser.findOne({

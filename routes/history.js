@@ -5,6 +5,7 @@ const HistoryCategory = require('../models/historyCategory');
 const History = require('../models/history'); // 🔹 ルート上部で読み込み済みでなければ追加
 const SharedAccess = require('../models/shared_access');
 const { isLoggedIn } = require('../middleware');
+const { getSafeReferrerPath } = require('../Utils/safeRedirect');
 const multer = require('multer');
 const { getStorage, cloudinary } = require('../cloudinary'); // your configured Cloudinary multer storage
 const upload = () => multer({ storage: getStorage() });
@@ -193,7 +194,7 @@ router.post('/entry', isLoggedIn, upload().array('photos', 10), async (req, res)
         if (!category) {
             console.error('❌ Invalid or missing categoryId:', categoryId);
             req.flash('error', 'カテゴリーが見つかりません');
-            return res.redirect('back');
+            return res.redirect(getSafeReferrerPath(req, '/history/categories'));
         }
 
         const data = {};

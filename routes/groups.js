@@ -7,6 +7,7 @@ const { isLoggedIn, logAction } = require('../middleware');
 const Group = require('../models/groups');
 const FinanceUser = require('../models/users');
 const Budget = require('../models/finance_ex_budget');
+const { getSafeReferrerPath } = require('../Utils/safeRedirect');
 
 const nodemailer = require('nodemailer');
 const { sendMail } = require('../Utils/mailer');
@@ -278,7 +279,7 @@ router.post('/select', isLoggedIn, async (req, res) => {
     return res.redirect(`/group/show/${group._id}`);
   }
   // それ以外の画面からの変更は元の画面へ
-  res.redirect('back');
+  return res.redirect(getSafeReferrerPath(req, '/group_list'));
 });
 
 // グループの詳細画面の表示
