@@ -528,14 +528,14 @@ router.get('/grouped', async (req, res, next) => {
       }
     })
       .sort({ date: -1, _id: -1 })
-      .populate('group', 'name')
+      .populate('group', 'group_name')
       .lean();
 
     const groupedMap = new Map();
     for (const item of items) {
       const group = item.group && typeof item.group === 'object' ? item.group : null;
       const groupId = group && group._id ? String(group._id) : 'unknown';
-      const groupName = group && group.name ? String(group.name) : 'Group';
+      const groupName = group && group.group_name ? String(group.group_name) : 'Group';
 
       if (!groupedMap.has(groupId)) {
         groupedMap.set(groupId, { group: { _id: groupId, name: groupName }, items: [] });
