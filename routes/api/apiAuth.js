@@ -64,7 +64,18 @@ router.post('/signup', async (req, res, next) => {
 });
 
 // ログイン
-router.post('/login', (req, res, next) => {
+router.post('/login', async (req, res, next) => {
+  try {
+    if (!req.body?.username && req.body?.email) {
+      const lookup = await FinanceUser.findOne({ email: req.body.email }).select('username');
+      if (lookup?.username) {
+        req.body.username = lookup.username;
+      }
+    }
+  } catch (err) {
+    return next(err);
+  }
+
   passport.authenticate('local', async (err, user, info) => {
     if (err) return next(err);
     if (!user) {

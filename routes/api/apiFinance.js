@@ -502,14 +502,30 @@ router.get('/grouped', async (req, res, next) => {
     }
 
     const year = Number(match[1]);
-    const month = Number(match[2]) - 1;
+    const month = Number(match[2]);
     const day = Number(match[3]);
-    const start = new Date(year, month, day);
-    const end = new Date(year, month, day + 1);
 
     const items = await Finance.find({
       user: userId,
-      date: { $gte: start, $lt: end }
+      $expr: {
+        $let: {
+          vars: {
+            parts: {
+              $dateToParts: {
+                date: '$date',
+                timezone: 'Asia/Tokyo'
+              }
+            }
+          },
+          in: {
+            $and: [
+              { $eq: ['$$parts.year', year] },
+              { $eq: ['$$parts.month', month] },
+              { $eq: ['$$parts.day', day] }
+            ]
+          }
+        }
+      }
     })
       .sort({ date: -1, _id: -1 })
       .populate('group', 'name')
