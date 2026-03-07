@@ -8,11 +8,26 @@ const PaymentItem = require('../../models/paymentItems');      // 支払種別
 const Group = require('../../models/groups');                  // グループ
 const User = require('../../models/users');                    // ユーザー
 const FinancePaymentTypeCheck = require('../../models/finance_payment_type_check');
+const FinanceApiConfig = require('../../models/finance_api_config');
 const jwt = require('jsonwebtoken');
 
 // 共通ログ
 router.use((req, res, next) => {
   next();
+});
+
+/**
+ * GET /api/finance/config
+ * - Finance APIの接続先URLを返す（認証不要）
+ */
+router.get('/config', async (req, res, next) => {
+  try {
+    const config = await FinanceApiConfig.findOne({}).sort({ updatedAt: -1 }).lean();
+    const url = config?.url || 'https://www.allaboutme.jp';
+    res.json({ url });
+  } catch (err) {
+    next(err);
+  }
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -47,6 +62,33 @@ async function requireLogin(req, res, next) {
 }
 
 router.use(requireLogin);
+
+/**
+ * POST /api/finance/config
+ * - 管理者のみ更新可能
+ */
+router.post('/config', async (req, res, next) => {
+  try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ error: 'forbidden', message: '管理者のみ更新可能です' });
+    }
+    const url = String(req.body?.url || '').trim();
+    if (!url) {
+      return res.status(400).json({ error: 'missing_params', message: 'url は必須です' });
+    }
+    const normalized = url.endsWith('/') ? url.slice(0, -1) : url;
+
+    const doc = await FinanceApiConfig.findOneAndUpdate(
+      {},
+      { url: normalized, updatedBy: req.user._id, updatedAt: new Date() },
+      { new: true, upsert: true }
+    ).lean();
+
+    res.json({ ok: true, url: doc?.url || normalized });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // 日本語 la_cf を英語キーへマッピングする関数（masters 用）
 function mapCfToEnglish(cfRaw) {
