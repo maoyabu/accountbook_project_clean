@@ -8,16 +8,42 @@ const PaymentItem = require('../../models/paymentItems');      // 支払種別
 const Group = require('../../models/groups');                  // グループ
 const User = require('../../models/users');                    // ユーザー
 const FinancePaymentTypeCheck = require('../../models/finance_payment_type_check');
+const jwt = require('jsonwebtoken');
 
 // 共通ログ
 router.use((req, res, next) => {
   next();
 });
 
-// 認証チェック（セッション前提）
-function requireLogin(req, res, next) {
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+
+// 認証チェック（セッション or Bearer）
+async function requireLogin(req, res, next) {
   if (req.user && req.user._id) return next();
-  return res.status(401).json({ error: 'unauthorized', message: 'ログインが必要です' });
+
+  const authHeader = String(req.headers.authorization || '');
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'unauthorized', message: 'ログインが必要です' });
+  }
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const userId = payload?.sub;
+    if (!userId) {
+      return res.status(401).json({ error: 'unauthorized', message: '認証に失敗しました' });
+    }
+
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      return res.status(401).json({ error: 'unauthorized', message: '認証に失敗しました' });
+    }
+
+    req.user = user;
+    return next();
+  } catch (err) {
+    return res.status(401).json({ error: 'unauthorized', message: '認証に失敗しました' });
+  }
 }
 
 router.use(requireLogin);
@@ -457,6 +483,68 @@ router.post('/budgets', async (req, res, next) => {
     }
 
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/finance/grouped?date=YYYY-MM-DD
+ * - 指定日のデータをグループ別に返す（API用）
+ */
+router.get('/grouped', async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const dateRaw = String(req.query.date || '').trim();
+    const match = dateRaw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      return res.status(400).json({ error: 'invalid_date', message: 'date はYYYY-MM-DD形式で指定してください' });
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const start = new Date(year, month, day);
+    const end = new Date(year, month, day + 1);
+
+    const items = await Finance.find({
+      user: userId,
+      date: { $gte: start, $lt: end }
+    })
+      .sort({ date: -1, _id: -1 })
+      .populate('group', 'name')
+      .lean();
+
+    const groupedMap = new Map();
+    for (const item of items) {
+      const group = item.group && typeof item.group === 'object' ? item.group : null;
+      const groupId = group && group._id ? String(group._id) : 'unknown';
+      const groupName = group && group.name ? String(group.name) : 'Group';
+
+      if (!groupedMap.has(groupId)) {
+        groupedMap.set(groupId, { group: { _id: groupId, name: groupName }, items: [] });
+      }
+
+      groupedMap.get(groupId).items.push({
+        _id: String(item._id),
+        date: (item.date instanceof Date ? item.date : new Date(item.date)).toISOString(),
+        cf: item.cf || '',
+        income_item: item.income_item || null,
+        expense_item: item.expense_item || null,
+        dedu_item: item.dedu_item || null,
+        saving_item: item.saving_item || null,
+        content: item.content || null,
+        amount: Number(item.amount || 0),
+        payment_type: item.payment_type || '',
+        memo: item.memo || null,
+        tags: Array.isArray(item.tags) ? item.tags : []
+      });
+    }
+
+    res.json({
+      date: dateRaw,
+      groups: Array.from(groupedMap.values())
+    });
   } catch (err) {
     next(err);
   }

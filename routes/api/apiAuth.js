@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const FinanceUser = require('../../models/users');
 const crypto = require('crypto');
 const { sendMail } = require('../../Utils/mailer');
@@ -10,9 +11,7 @@ router.use((req, res, next) => {
   next();
 });
 
-// もし JWT を使うなら jwt ライブラリを利用
-// const jwt = require('jsonwebtoken');
-// const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
 // ユーザーを JSON に整形（EJS 用の巨大なオブジェクトをそのまま返さない）
 function toUserJSON(user) {
@@ -25,7 +24,11 @@ function toUserJSON(user) {
         isAdmin: Boolean(user.isAdmin),
         // 必要に応じて他のフィールド
       };
-    }
+}
+
+function issueToken(user) {
+  return jwt.sign({ sub: String(user._id) }, JWT_SECRET, { expiresIn: '14d' });
+}
 
 // サインアップ
 router.post('/signup', async (req, res, next) => {
@@ -49,12 +52,10 @@ router.post('/signup', async (req, res, next) => {
     req.login(user, (err) => {
       if (err) return next(err);
 
-      // JWT を返したい場合の例（必要ならコメントアウトを外す）
-      // const token = jwt.sign({ sub: String(user._id) }, JWT_SECRET, { expiresIn: '7d' });
-
       return res.json({
-        token: 'session', // セッションベースの場合のダミー。JWT を使うなら token を上書き
-        user: toUserJSON(user)
+        token: issueToken(user),
+        user: toUserJSON(user),
+        userId: String(user._id)
       });
     });
   } catch (err) {
@@ -80,7 +81,11 @@ router.post('/login', (req, res, next) => {
         // ここで DB から displayname / avatar を含めて再取得する
         const fresh = await FinanceUser.findById(user._id)
           .select('username email displayname avatar isAdmin'); // 必要なフィールドを明示
-        const payload = { token: 'session', user: toUserJSON(fresh || user) };
+        const payload = {
+          token: issueToken(fresh || user),
+          user: toUserJSON(fresh || user),
+          userId: String((fresh || user)._id)
+        };
         return res.json(payload);
       } catch (dbErr) {
         return next(dbErr);
@@ -158,8 +163,9 @@ router.post('/reset/:token', async (req, res, next) => {
     req.login(user, (err) => {
       if (err) return next(err);
       return res.json({
-        token: 'session',
-        user: toUserJSON(user)
+        token: issueToken(user),
+        user: toUserJSON(user),
+        userId: String(user._id)
       });
     });
   } catch (err) {
