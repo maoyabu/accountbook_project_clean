@@ -35,6 +35,7 @@ async function requireLogin(req, res, next) {
   }
 }
 
+
 router.use(requireLogin);
 
 router.get('/recent', async (req, res, next) => {
