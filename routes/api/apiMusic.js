@@ -59,7 +59,7 @@ router.get('/recent', async (req, res, next) => {
     }
 
     const days = Math.min(Math.max(parseInt(req.query.days || '7', 10), 1), 30);
-    const limit = Math.min(Math.max(parseInt(req.query.limit || '100', 10), 1), 100);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || '30', 10), 1), 30);
 
     const url = new URL(APPLE_MUSIC_BASE_URL);
     url.searchParams.set('limit', String(limit));
