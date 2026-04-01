@@ -1,0 +1,52 @@
+<% layout('layouts/boilerplate') %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="fa-regular fa-money-bill-1"></i> <%= groupName %> <%= selectedYear %>年度 グループ予算確認</h5>
+  <a href="/finance/budget?year=<%= encodeURIComponent(selectedYear) %>" class="btn btn-outline-secondary btn-sm">戻る</a>
+</div>
+
+<% if (!hasPersonalData) { %>
+  <div class="alert alert-warning py-2">
+    個人予算データがまだありません。現在は既存のグループ予算を表示しています。
+  </div>
+<% } %>
+
+<% sections.forEach((section) => { %>
+  <div class="card mb-4">
+    <div class="card-header"><strong><%= section.title %></strong></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm mb-0">
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>合計予算</th>
+              <% members.forEach((member) => { %>
+                <th><%= member.name %></th>
+              <% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!section.rows || section.rows.length === 0) { %>
+              <tr>
+                <td colspan="<%= 2 + members.length %>" class="text-center text-muted py-3">
+                  データがありません
+                </td>
+              </tr>
+            <% } %>
+            <% (section.rows || []).forEach((row) => { %>
+              <tr>
+                <td><%= row.item %></td>
+                <td><%= Number(row.total || 0).toLocaleString() %></td>
+                <% members.forEach((member) => { %>
+                  <% const value = row.memberBudgets ? row.memberBudgets[member.id] : undefined; %>
+                  <td><%= typeof value === 'number' ? Number(value).toLocaleString() : '-' %></td>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% }) %>

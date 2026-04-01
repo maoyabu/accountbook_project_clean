@@ -10,6 +10,8 @@ const methodOverride = require('method-override');
 const FinanceUser = require('../models/users');
 const Budget = require('../models/finance_ex_budget');
 const Items = require('../models/finance_items');
+const PersonalBudget = require('../models/finance_ex_budget_personal');
+const PersonalItem = require('../models/finance_items_personal');
 const PaymentItem = require('../models/paymentItems');
 const { correctOcrText } = require('../Utils/gptCorrection');
 const { convertHeicToJpeg } = require('../Utils/imageUtils');
@@ -2287,22 +2289,359 @@ router.post('/year-close/undo', isLoggedIn, async (req, res) => {
   }
 });
 
+const resolveBudgetYear = (value, fallbackYear) => {
+  const raw = String(value || '').trim();
+  if (/^\d{4}$/.test(raw)) return raw;
+  return String(fallbackYear);
+};
+
+const buildDefaultBudgetRows = (names = [], keyField = 'item') => (
+  names.map((name, index) => ({
+    display_order: index + 1,
+    [keyField]: name,
+    budget: 0
+  }))
+);
+
+const sanitizeBudgetRow = (row, keyField) => {
+  const rawKey = row?.[keyField];
+  const key = String(rawKey || '').trim();
+  if (!key) return null;
+  return {
+    display_order: Number.isFinite(Number(row?.display_order)) ? Number(row.display_order) : 9999,
+    [keyField]: key,
+    budget: Number(row?.budget) || 0
+  };
+};
+
+const sanitizeBudgetRowsForForm = (rows = [], keyField) => (
+  rows
+    .map((row, index) => {
+      const normalized = sanitizeBudgetRow(row, keyField);
+      if (!normalized) return null;
+      return {
+        ...normalized,
+        display_order: normalized.display_order < 9999 ? normalized.display_order : index + 1
+      };
+    })
+    .filter(Boolean)
+);
+
+const normalizeBudgetLaCf = (value) => {
+  const raw = String(value || '').trim();
+  if (raw === '収入項目' || raw === 'income') return '収入項目';
+  if (raw === '控除項目' || raw === 'deduction') return '控除項目';
+  if (raw === '貯蓄項目' || raw === 'saving') return '貯蓄項目';
+  return '';
+};
+
+const getFinanceBudgetMembers = async (groupId) => {
+  const groupDoc = await Group.findById(groupId)
+    .populate('members', 'displayname username servicesByGroup')
+    .populate('createdBy', 'displayname username servicesByGroup');
+  if (!groupDoc) return { groupDoc: null, members: [] };
+
+  const memberMap = new Map();
+  const pushMember = (member) => {
+    if (!member) return;
+    if (!isGroupServiceEnabled(member, groupId, 'finance')) return;
+    const id = normalizeIdString(member._id || member);
+    if (!id || memberMap.has(id)) return;
+    memberMap.set(id, {
+      id,
+      name: member.displayname || member.username || '未設定'
+    });
+  };
+
+  (groupDoc.members || []).forEach(pushMember);
+  pushMember(groupDoc.createdBy);
+
+  const members = Array.from(memberMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  return { groupDoc, members };
+};
+
+const seedPersonalBudgetsIfMissing = async ({ groupId, year, members = [] }) => {
+  const yearStr = String(year);
+  if (!groupId || members.length === 0) return false;
+
+  const [expenseExists, itemExists] = await Promise.all([
+    PersonalBudget.exists({ group: groupId, year: yearStr }),
+    PersonalItem.exists({ group: groupId, year: yearStr })
+  ]);
+  if (expenseExists || itemExists) return false;
+
+  const [groupExpenseRows, groupItemRowsForYear] = await Promise.all([
+    Budget.find({ group: groupId, year: yearStr }).sort({ display_order: 1 }).lean(),
+    Items.find({
+      group: groupId,
+      year: yearStr,
+      la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] }
+    }).sort({ la_cf: 1, display_order: 1 }).lean()
+  ]);
+
+  let groupItemRows = groupItemRowsForYear;
+  if (groupItemRows.length === 0) {
+    groupItemRows = await Items.find({
+      group: groupId,
+      year: { $exists: false },
+      la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] }
+    }).sort({ la_cf: 1, display_order: 1 }).lean();
+  }
+
+  if (groupExpenseRows.length === 0 && groupItemRows.length === 0) {
+    return false;
+  }
+
+  const now = new Date();
+  const firstMemberId = members[0]?.id;
+  if (!firstMemberId) return false;
+
+  const expenseSeeds = [];
+  const itemSeeds = [];
+
+  members.forEach((member) => {
+    const isFirstMember = member.id === firstMemberId;
+    groupExpenseRows.forEach((row, index) => {
+      const normalized = sanitizeBudgetRow(row, 'expense_item');
+      if (!normalized) return;
+      expenseSeeds.push({
+        display_order: normalized.display_order < 9999 ? normalized.display_order : index + 1,
+        year: yearStr,
+        expense_item: normalized.expense_item,
+        budget: isFirstMember ? normalized.budget : 0,
+        group: groupId,
+        user: member.id,
+        entry_date: now,
+        update_date: now
+      });
+    });
+
+    groupItemRows.forEach((row, index) => {
+      const normalized = sanitizeBudgetRow(row, 'item');
+      const normalizedLaCf = normalizeBudgetLaCf(row?.la_cf);
+      if (!normalized || !normalizedLaCf) return;
+      itemSeeds.push({
+        display_order: normalized.display_order < 9999 ? normalized.display_order : index + 1,
+        la_cf: normalizedLaCf,
+        item: normalized.item,
+        year: yearStr,
+        budget: isFirstMember ? normalized.budget : 0,
+        group: groupId,
+        user: member.id,
+        entry_date: now,
+        update_date: now
+      });
+    });
+  });
+
+  if (expenseSeeds.length > 0) {
+    await PersonalBudget.insertMany(expenseSeeds);
+  }
+  if (itemSeeds.length > 0) {
+    await PersonalItem.insertMany(itemSeeds);
+  }
+
+  return expenseSeeds.length > 0 || itemSeeds.length > 0;
+};
+
+const aggregateRowsForGroup = (rows = [], keyField, laCf = null) => {
+  const map = new Map();
+  rows.forEach((row) => {
+    if (laCf && String(row?.la_cf || '') !== laCf) return;
+    const normalized = sanitizeBudgetRow(row, keyField);
+    if (!normalized) return;
+    const key = normalized[keyField];
+    const current = map.get(key);
+    if (!current) {
+      map.set(key, {
+        item: key,
+        display_order: normalized.display_order,
+        budget: normalized.budget
+      });
+      return;
+    }
+    current.display_order = Math.min(current.display_order, normalized.display_order);
+    current.budget += normalized.budget;
+  });
+
+  return Array.from(map.values())
+    .sort((a, b) => {
+      if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+      return a.item.localeCompare(b.item, 'ja');
+    })
+    .map((row, index) => ({
+      ...row,
+      display_order: Number.isFinite(row.display_order) && row.display_order < 9999
+        ? row.display_order
+        : index + 1
+    }));
+};
+
+const aggregatePersonalBudgetsToGroup = async ({ groupId, year }) => {
+  const yearStr = String(year);
+  const { members } = await getFinanceBudgetMembers(groupId);
+  const memberObjectIds = members
+    .map((m) => m.id)
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  const personalExpenseQuery = { group: groupId, year: yearStr };
+  const personalItemQuery = { group: groupId, year: yearStr };
+  if (memberObjectIds.length > 0) {
+    personalExpenseQuery.user = { $in: memberObjectIds };
+    personalItemQuery.user = { $in: memberObjectIds };
+  } else {
+    personalExpenseQuery.user = { $in: [] };
+    personalItemQuery.user = { $in: [] };
+  }
+
+  const [personalExpenseRows, personalItemRows] = await Promise.all([
+    PersonalBudget.find(personalExpenseQuery).lean(),
+    PersonalItem.find(personalItemQuery).lean()
+  ]);
+
+  const now = new Date();
+  const expenseRows = aggregateRowsForGroup(personalExpenseRows, 'expense_item').map((row, index) => ({
+    display_order: row.display_order || index + 1,
+    group: groupId,
+    year: yearStr,
+    expense_item: row.item,
+    budget: Number(row.budget) || 0,
+    entry_date: now,
+    update_date: now
+  }));
+
+  const allowedLaCf = new Set(['収入項目', '控除項目', '貯蓄項目']);
+  const itemMap = new Map();
+  personalItemRows.forEach((doc) => {
+    const la_cf = String(doc?.la_cf || '').trim();
+    if (!allowedLaCf.has(la_cf)) return;
+    const normalized = sanitizeBudgetRow(doc, 'item');
+    if (!normalized) return;
+    const key = `${la_cf}::${normalized.item}`;
+    const current = itemMap.get(key);
+    if (!current) {
+      itemMap.set(key, {
+        la_cf,
+        item: normalized.item,
+        display_order: normalized.display_order,
+        budget: normalized.budget
+      });
+      return;
+    }
+    current.display_order = Math.min(current.display_order, normalized.display_order);
+    current.budget += normalized.budget;
+  });
+
+  const itemRows = Array.from(itemMap.values())
+    .sort((a, b) => {
+      if (a.la_cf !== b.la_cf) return a.la_cf.localeCompare(b.la_cf, 'ja');
+      if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+      return a.item.localeCompare(b.item, 'ja');
+    })
+    .map((row, index) => ({
+      display_order: Number.isFinite(row.display_order) && row.display_order < 9999
+        ? row.display_order
+        : index + 1,
+      group: groupId,
+      year: yearStr,
+      la_cf: row.la_cf,
+      item: row.item,
+      budget: Number(row.budget) || 0,
+      entry_date: now,
+      update_date: now
+    }));
+
+  await Budget.deleteMany({ group: groupId, year: yearStr });
+  if (expenseRows.length > 0) {
+    await Budget.insertMany(expenseRows);
+  }
+
+  await Items.deleteMany({
+    group: groupId,
+    year: yearStr,
+    la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] }
+  });
+  if (itemRows.length > 0) {
+    await Items.insertMany(itemRows);
+  }
+};
+
+const buildMemberBreakdownRows = ({ docs = [], members = [], keyField, laCf = null }) => {
+  const memberIds = members.map((member) => member.id);
+  const memberSet = new Set(memberIds);
+  const map = new Map();
+
+  docs.forEach((doc) => {
+    if (laCf && String(doc?.la_cf || '') !== laCf) return;
+    const normalized = sanitizeBudgetRow(doc, keyField);
+    if (!normalized) return;
+    const userId = normalizeIdString(doc?.user);
+    if (!userId || !memberSet.has(userId)) return;
+
+    const key = normalized[keyField];
+    let row = map.get(key);
+    if (!row) {
+      row = {
+        item: key,
+        total: 0,
+        display_order: normalized.display_order,
+        memberBudgets: {}
+      };
+      memberIds.forEach((id) => {
+        row.memberBudgets[id] = 0;
+      });
+      map.set(key, row);
+    }
+
+    row.display_order = Math.min(row.display_order, normalized.display_order);
+    row.total += normalized.budget;
+    row.memberBudgets[userId] = (row.memberBudgets[userId] || 0) + normalized.budget;
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+    return a.item.localeCompare(b.item, 'ja');
+  });
+};
+
+const buildGroupOnlyRows = ({ docs = [], keyField, laCf = null }) => {
+  const rows = aggregateRowsForGroup(docs, keyField, laCf);
+  return rows.map((row) => ({
+    item: row.item,
+    total: row.budget,
+    display_order: row.display_order,
+    memberBudgets: {}
+  }));
+};
 
 //予算関連ルート
 //予算設定のトップ画面表示
 router.get('/budget', isLoggedIn, async (req, res) => {
   const activeGroupId = req.session.activeGroupId;
+  if (!activeGroupId) {
+    req.flash('error', 'アクティブなグループが選択されていません');
+    return res.redirect('/group_list');
+  }
+
   const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
-  const selectedYear = getCurrentFiscalYear(fiscalStartMonth); // 現在の年度を初期値に
-  const [matometeSetting, noticeSetting, groupDoc] = await Promise.all([
+  const selectedYear = resolveBudgetYear(req.query.year, getCurrentFiscalYear(fiscalStartMonth));
+  const [{ groupDoc, members }, matometeSetting, noticeSetting] = await Promise.all([
+    getFinanceBudgetMembers(activeGroupId),
     MatometeSetting.findOne({ group: activeGroupId }),
-    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId }),
-    Group.findById(activeGroupId).select('financeWalletManagementEnabled')
+    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId })
   ]);
+
+  if (!groupDoc) {
+    req.flash('error', 'グループ情報が見つかりません');
+    return res.redirect('/group_list');
+  }
 
   res.render('finance/budgetTop', {
     activeGroupId,
     selectedYear,
+    members,
+    groupName: groupDoc.group_name || 'グループ',
     page: 'budget',
     fiscalStartMonth,
     noticeSettings: {
@@ -2322,6 +2661,84 @@ router.get('/budget', isLoggedIn, async (req, res) => {
       walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
     }
   });
+});
+
+// グループ予算確認画面
+router.get('/budget/group-summary', isLoggedIn, async (req, res) => {
+  try {
+    const activeGroupId = req.session.activeGroupId;
+    if (!activeGroupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const selectedYear = resolveBudgetYear(req.query.year, getCurrentFiscalYear(fiscalStartMonth));
+    const { groupDoc, members } = await getFinanceBudgetMembers(activeGroupId);
+    if (!groupDoc) {
+      req.flash('error', 'グループ情報が見つかりません');
+      return res.redirect('/finance/budget');
+    }
+
+    await seedPersonalBudgetsIfMissing({
+      groupId: activeGroupId,
+      year: selectedYear,
+      members
+    });
+
+    const memberObjectIds = members
+      .map((member) => member.id)
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    const personalExpenseQuery = { group: activeGroupId, year: selectedYear };
+    const personalItemQuery = { group: activeGroupId, year: selectedYear };
+    if (memberObjectIds.length > 0) {
+      personalExpenseQuery.user = { $in: memberObjectIds };
+      personalItemQuery.user = { $in: memberObjectIds };
+    } else {
+      personalExpenseQuery.user = { $in: [] };
+      personalItemQuery.user = { $in: [] };
+    }
+
+    const [personalExpenseRows, personalItemRows, groupExpenseRows, groupItemRows] = await Promise.all([
+      PersonalBudget.find(personalExpenseQuery).lean(),
+      PersonalItem.find(personalItemQuery).lean(),
+      Budget.find({ group: activeGroupId, year: selectedYear }).lean(),
+      Items.find({ group: activeGroupId, year: selectedYear }).lean()
+    ]);
+
+    const hasPersonalData = personalExpenseRows.length > 0 || personalItemRows.length > 0;
+    const expenseRows = hasPersonalData
+      ? buildMemberBreakdownRows({ docs: personalExpenseRows, members, keyField: 'expense_item' })
+      : buildGroupOnlyRows({ docs: groupExpenseRows, keyField: 'expense_item' });
+    const incomeRows = hasPersonalData
+      ? buildMemberBreakdownRows({ docs: personalItemRows, members, keyField: 'item', laCf: '収入項目' })
+      : buildGroupOnlyRows({ docs: groupItemRows, keyField: 'item', laCf: '収入項目' });
+    const deductionRows = hasPersonalData
+      ? buildMemberBreakdownRows({ docs: personalItemRows, members, keyField: 'item', laCf: '控除項目' })
+      : buildGroupOnlyRows({ docs: groupItemRows, keyField: 'item', laCf: '控除項目' });
+    const savingRows = hasPersonalData
+      ? buildMemberBreakdownRows({ docs: personalItemRows, members, keyField: 'item', laCf: '貯蓄項目' })
+      : buildGroupOnlyRows({ docs: groupItemRows, keyField: 'item', laCf: '貯蓄項目' });
+
+    res.render('finance/budgetGroupSummary', {
+      selectedYear,
+      groupName: groupDoc.group_name || 'グループ',
+      members,
+      hasPersonalData,
+      sections: [
+        { title: '収入項目', rows: incomeRows },
+        { title: '控除項目', rows: deductionRows },
+        { title: '貯蓄項目', rows: savingRows },
+        { title: '支出項目', rows: expenseRows }
+      ]
+    });
+  } catch (err) {
+    console.error('❌ グループ予算確認の取得エラー:', err);
+    req.flash('error', 'グループ予算確認の取得に失敗しました');
+    res.redirect('/finance/budget');
+  }
 });
 
 // 予算通知設定の保存
@@ -2552,156 +2969,163 @@ router.get('/budget/items', isLoggedIn, async (req, res) => {
 // 年度予算登録画面の表示
 router.post('/budget/setup', isLoggedIn, async (req, res) => {
   try {
-    const { groupId, year } = req.body;
-    if (!groupId || !year) {
-      return res.status(400).send('groupId または year が不足しています');
+    const activeGroupId = normalizeIdString(req.session.activeGroupId);
+    const requestedGroupId = normalizeIdString(req.body.groupId) || activeGroupId;
+    if (!activeGroupId || !requestedGroupId || activeGroupId !== requestedGroupId) {
+      req.flash('error', '対象グループの予算設定はできません');
+      return res.redirect('/finance/budget');
+    }
+    const year = resolveBudgetYear(req.body.year, new Date().getFullYear());
+    const requestedUserId = normalizeIdString(req.body.userId) || normalizeIdString(req.user._id);
+
+    const { members } = await getFinanceBudgetMembers(activeGroupId);
+    const targetMember = members.find((member) => member.id === requestedUserId);
+    if (!targetMember) {
+      req.flash('error', '対象ユーザーがグループに見つかりません');
+      return res.redirect(`/finance/budget?year=${encodeURIComponent(year)}`);
     }
 
-    const existingBudgets = await Budget.find({ group: groupId, year });
+    await seedPersonalBudgetsIfMissing({
+      groupId: activeGroupId,
+      year,
+      members
+    });
 
-    const budgetItems = existingBudgets.length > 0
-      ? existingBudgets
-      : ex_cfs.map((item, i) => ({
-          display_order: i + 1,
-          expense_item: item,
-          budget: 0
-        }));
+    let personalExpenseRows = await PersonalBudget.find({
+      group: activeGroupId,
+      user: requestedUserId,
+      year
+    }).sort({ display_order: 1 });
+    if (personalExpenseRows.length === 0) {
+      personalExpenseRows = await Budget.find({ group: activeGroupId, year }).sort({ display_order: 1 });
+    }
+    const budgetItems = personalExpenseRows.length > 0
+      ? sanitizeBudgetRowsForForm(personalExpenseRows, 'expense_item')
+      : buildDefaultBudgetRows(ex_cfs, 'expense_item');
 
-    let incomeItems = await Items.find({ group: groupId, la_cf: '収入項目', year }).sort({ display_order: 1 });
-    if (incomeItems.length === 0) {
-      incomeItems = await Items.find({ group: groupId, la_cf: '収入項目', year: { $exists: false } }).sort({ display_order: 1 });
-    }
-    let deduItems = await Items.find({ group: groupId, la_cf: '控除項目', year }).sort({ display_order: 1 });
-    if (deduItems.length === 0) {
-      deduItems = await Items.find({ group: groupId, la_cf: '控除項目', year: { $exists: false } }).sort({ display_order: 1 });
-    }
-    let savingItems = await Items.find({ group: groupId, la_cf: '貯蓄項目', year }).sort({ display_order: 1 });
-    if (savingItems.length === 0) {
-      savingItems = await Items.find({ group: groupId, la_cf: '貯蓄項目', year: { $exists: false } }).sort({ display_order: 1 });
-    }
+    const loadPersonalItems = async (laCf, defaults) => {
+      let rows = await PersonalItem.find({
+        group: activeGroupId,
+        user: requestedUserId,
+        la_cf: laCf,
+        year
+      }).sort({ display_order: 1 });
+      if (rows.length === 0) {
+        rows = await Items.find({ group: activeGroupId, la_cf: laCf, year }).sort({ display_order: 1 });
+      }
+      if (rows.length === 0) {
+        rows = await Items.find({ group: activeGroupId, la_cf: laCf, year: { $exists: false } }).sort({ display_order: 1 });
+      }
+      if (rows.length === 0) {
+        return buildDefaultBudgetRows(defaults, 'item');
+      }
+      return sanitizeBudgetRowsForForm(rows, 'item');
+    };
 
-    // res.render() に渡しているか確認
+    const [incomeItems, deduItems, savingItems] = await Promise.all([
+      loadPersonalItems('収入項目', defaultInItems.slice(1)),
+      loadPersonalItems('控除項目', defaultDeduCfs.slice(1)),
+      loadPersonalItems('貯蓄項目', defaultSavingCfs.slice(1))
+    ]);
+
     res.render('finance/budget', {
-    groupId,
-    year,
-    budgetItems,
-    incomeItems,
-    deduItems,
-    savingItems,
-    layout: false
+      groupId: activeGroupId,
+      year,
+      userId: requestedUserId,
+      targetUserName: targetMember.name,
+      budgetItems,
+      incomeItems,
+      deduItems,
+      savingItems
     });
   } catch (err) {
     console.error('❌ /budget/setup でエラー:', err);
-    res.status(500).send('内部エラーが発生しました');
+    req.flash('error', '個人予算画面の表示に失敗しました');
+    res.redirect('/finance/budget');
   }
 });
 
 //支出項目、収入・控除・貯蓄項目　予算の保存
 router.post('/budget/save', isLoggedIn, async (req, res) => {
-  const { groupId, year, items, incomeItems, deduItems, savingItems } = req.body;
+  try {
+    const activeGroupId = normalizeIdString(req.session.activeGroupId);
+    const requestedGroupId = normalizeIdString(req.body.groupId) || activeGroupId;
+    if (!activeGroupId || !requestedGroupId || activeGroupId !== requestedGroupId) {
+      req.flash('error', '対象グループの予算保存はできません');
+      return res.redirect('/finance/budget');
+    }
+    const year = resolveBudgetYear(req.body.year, new Date().getFullYear());
+    const targetUserId = normalizeIdString(req.body.userId) || normalizeIdString(req.user._id);
+    const { members } = await getFinanceBudgetMembers(activeGroupId);
+    if (!members.some((member) => member.id === targetUserId)) {
+      req.flash('error', '対象ユーザーがグループに見つかりません');
+      return res.redirect(`/finance/budget?year=${encodeURIComponent(year)}`);
+    }
 
-  // 既存削除（上書き保存）
-  await Budget.deleteMany({ group: groupId, year });
-  await Items.deleteMany({ group: groupId, year });
-
-  // 支出項目
-  const entries = Array.isArray(items) ? items : Object.values(items);
-  const newEntries = entries.map((item, index) => ({
-      display_order: item.display_order || index + 1,
-      group: groupId,
+    await PersonalBudget.deleteMany({ group: activeGroupId, year, user: targetUserId });
+    await PersonalItem.deleteMany({
+      group: activeGroupId,
       year,
-      expense_item: item.expense_item,
-      budget: Number(item.budget),
-      entry_date: new Date(),
-      update_date: new Date()
-  }));
-  await Budget.insertMany(newEntries);
-
-  // 収入・控除・貯蓄項目の登録
-  const allItems = [];
-
-  const incomeArray = Array.isArray(incomeItems) ? incomeItems : Object.values(incomeItems || {});
-  incomeArray.forEach((item, idx) => {
-    if (item.item && item.item.trim()) {
-      allItems.push({
-        display_order: item.display_order || idx + 1,
-        group: groupId,
-        year,
-        la_cf: '収入項目',
-        item: item.item.trim(),
-        budget: Number(item.budget),
-        entry_date: new Date(),
-        update_date: new Date()
-      });
-    }
-  });
-
-  const deduArray = Array.isArray(deduItems) ? deduItems : Object.values(deduItems || {});
-  deduArray.forEach((item, idx) => {
-    if (item.item && item.item.trim()) {
-      allItems.push({
-        display_order: item.display_order || idx + 1,
-        group: groupId,
-        year,
-        la_cf: '控除項目',
-        item: item.item.trim(),
-        budget: Number(item.budget),
-        entry_date: new Date(),
-        update_date: new Date()
-      });
-    }
-  });
-// 貯蓄項目の登録
-    const savingArray = Array.isArray(savingItems) ? savingItems : Object.values(savingItems || {});
-    savingArray.forEach((item, idx) => {
-        if (item.item && item.item.trim()) {
-        allItems.push({
-            display_order: item.display_order || idx + 1,
-            group: groupId,
-            year,
-            la_cf: '貯蓄項目',
-            item: item.item.trim(),
-            budget: Number(item.budget),
-            entry_date: new Date(),
-            update_date: new Date()
-        });
-        }
+      user: targetUserId,
+      la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目', 'income', 'deduction', 'saving'] }
     });
 
-  if (allItems.length > 0) {
-    await Items.insertMany(allItems);
-  }
+    const now = new Date();
+    const expenseArray = Array.isArray(req.body.items) ? req.body.items : Object.values(req.body.items || {});
+    const personalExpenseRows = expenseArray
+      .map((row) => sanitizeBudgetRow(row, 'expense_item'))
+      .filter(Boolean)
+      .map((row, index) => ({
+        display_order: row.display_order < 9999 ? row.display_order : index + 1,
+        group: activeGroupId,
+        user: targetUserId,
+        year,
+        expense_item: row.expense_item,
+        budget: row.budget,
+        entry_date: now,
+        update_date: now
+      }));
+    if (personalExpenseRows.length > 0) {
+      await PersonalBudget.insertMany(personalExpenseRows);
+    }
 
-  req.flash('success', '予算を保存しました');
-  await logAction({ req, action: '保存', target: '年度予算' });
-  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
-  const [matometeSetting, noticeSetting, groupDoc] = await Promise.all([
-    MatometeSetting.findOne({ group: groupId }),
-    FinanceBudgetNoticeSetting.findOne({ group: groupId }),
-    Group.findById(groupId).select('financeWalletManagementEnabled')
-  ]);
-  res.render('finance/budgetTop', {
-      activeGroupId: groupId,
-      selectedYear: year,
-      page: 'budget',
-      fiscalStartMonth,
-      noticeSettings: {
-        enabled: req.user?.financeBudgetNoticeEnabled !== false,
-        thresholds: Array.isArray(req.user?.financeBudgetNoticeThresholds) && req.user.financeBudgetNoticeThresholds.length > 0
-          ? req.user.financeBudgetNoticeThresholds
-          : [50, 80, 90],
-        matometeReminderDays: Number.isInteger(matometeSetting?.reminderDays)
-          ? matometeSetting.reminderDays
-          : 7,
-        matometeReminderHour: Number.isInteger(matometeSetting?.reminderHour)
-          ? matometeSetting.reminderHour
-          : 8,
-        budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
-          ? noticeSetting.noticeHour
-          : 8,
-        walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
-      }
-  });
+    const buildPersonalItems = (rowsInput, laCf) => {
+      const rows = Array.isArray(rowsInput) ? rowsInput : Object.values(rowsInput || {});
+      return rows
+        .map((row) => sanitizeBudgetRow(row, 'item'))
+        .filter(Boolean)
+        .map((row, index) => ({
+          display_order: row.display_order < 9999 ? row.display_order : index + 1,
+          group: activeGroupId,
+          user: targetUserId,
+          year,
+          la_cf: laCf,
+          item: row.item,
+          budget: row.budget,
+          entry_date: now,
+          update_date: now
+        }));
+    };
+
+    const personalItemRows = [
+      ...buildPersonalItems(req.body.incomeItems, '収入項目'),
+      ...buildPersonalItems(req.body.deduItems, '控除項目'),
+      ...buildPersonalItems(req.body.savingItems, '貯蓄項目')
+    ];
+    if (personalItemRows.length > 0) {
+      await PersonalItem.insertMany(personalItemRows);
+    }
+
+    await aggregatePersonalBudgetsToGroup({ groupId: activeGroupId, year });
+
+    req.flash('success', '個人予算を保存し、グループ予算を再計算しました');
+    await logAction({ req, action: '保存', target: '個人年度予算' });
+    return res.redirect(`/finance/budget?year=${encodeURIComponent(year)}`);
+  } catch (err) {
+    console.error('❌ /budget/save でエラー:', err);
+    req.flash('error', '個人予算の保存に失敗しました');
+    return res.redirect('/finance/budget');
+  }
 });
 
 // 支払い方法登録画面の表示

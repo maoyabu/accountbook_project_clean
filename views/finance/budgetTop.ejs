@@ -9,21 +9,37 @@
 </div>
 <h5 class="mb-2"><i class="fa-regular fa-money-bill-1"></i> 年度毎の予算設定</h5>
 <div class="p-3 border rounded bg-light mb-4">
-    <form id="budgetSetupForm" action="/finance/budget/setup" method="POST" class="mb-3">
+  <form action="/finance/budget" method="GET" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+    <label for="budgetYear" class="form-label mb-0">年度</label>
+    <input type="text" id="budgetYear" name="year" placeholder="例: 2026" value="<%= selectedYear %>" required class="form-control form-control-sm" style="max-width: 8rem;">
+    <button type="submit" class="btn btn-primary btn-sm">表示</button>
+    <a href="/finance/budget/group-summary?year=<%= encodeURIComponent(selectedYear) %>" class="btn btn-outline-secondary btn-sm">グループ予算を確認</a>
+  </form>
+
+  <div class="mb-2 fw-bold"><%= groupName %> メンバー個人予算設定</div>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <% (members || []).forEach((member) => { %>
+      <form action="/finance/budget/setup" method="POST" class="d-inline">
         <input type="hidden" name="groupId" value="<%= activeGroupId %>">
-        <label for="budgetYear">年度:</label>
-        <input type="text" id="budgetYear" name="year" placeholder="例: 2025" value="<%= selectedYear %>" required>
-        <button type="submit" class="btn btn-primary btn-sm">予算を作成／編集</button>
-    </form>
-    <form action="/finance/budget/fiscal-start-month" method="POST" class="d-flex align-items-center gap-2">
-        <label for="fiscalStartMonth" class="form-label mb-0">年度の開始月</label>
-        <select id="fiscalStartMonth" name="fiscal_start_month" class="form-select form-select-sm" style="max-width: 7rem;">
-            <% for (let m = 1; m <= 12; m++) { %>
-                <option value="<%= m %>" <%= (fiscalStartMonth || 1) === m ? 'selected' : '' %>><%= m %>月</option>
-            <% } %>
-        </select>
-        <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
-    </form>
+        <input type="hidden" name="year" value="<%= selectedYear %>">
+        <input type="hidden" name="userId" value="<%= member.id %>">
+        <button type="submit" class="btn btn-outline-primary btn-sm"><%= member.name %> の予算設定</button>
+      </form>
+    <% }) %>
+    <% if (!members || members.length === 0) { %>
+      <div class="text-muted small">予算設定対象のメンバーがいません。</div>
+    <% } %>
+  </div>
+
+  <form action="/finance/budget/fiscal-start-month" method="POST" class="d-flex align-items-center gap-2">
+    <label for="fiscalStartMonth" class="form-label mb-0">年度の開始月</label>
+    <select id="fiscalStartMonth" name="fiscal_start_month" class="form-select form-select-sm" style="max-width: 7rem;">
+      <% for (let m = 1; m <= 12; m++) { %>
+        <option value="<%= m %>" <%= (fiscalStartMonth || 1) === m ? 'selected' : '' %>><%= m %>月</option>
+      <% } %>
+    </select>
+    <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
+  </form>
 </div>
 <h5 class="mb-2"><i class="fa-solid fa-wallet"></i> お財布管理</h5>
 <div class="p-3 border rounded bg-light mb-4">

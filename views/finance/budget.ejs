@@ -6,11 +6,18 @@
       ガイド
     </a>
   </div>
-  <div class="card-header text-white mt-2 mb-0" style="background-color: #44616D;"><i class="fa-regular fa-money-bill-1"></i> 収入・控除・貯蓄の項目と予算の設定</div>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="card-header text-white mt-2 mb-0 flex-grow-1" style="background-color: #44616D;">
+      <i class="fa-regular fa-money-bill-1"></i>
+      <%= year %>年度 <%= targetUserName || '個人' %> の予算設定
+    </div>
+    <a href="/finance/budget?year=<%= encodeURIComponent(year) %>" class="btn btn-outline-secondary btn-sm ms-2 mt-2">戻る</a>
+  </div>
   <div class="p-3 border rounded bg-light mt-0">
     <form id="budgetForm" action="/finance/budget/save" method="POST">
       <input type="hidden" name="groupId" value="<%= groupId %>">
       <input type="hidden" name="year" value="<%= year %>">
+      <input type="hidden" name="userId" value="<%= userId %>">
       <!-- 収入項目 -->
       <h6 class="mt-1"><strong>収入項目</strong></h6>
       <table class="table table-bordered">
@@ -100,59 +107,22 @@
 
 <script>
 function addRowTo(sectionId) {
-  const tbody = document.getElementById(sectionId + 'TableBody');
-  const index = tbody.children.length;
-  // 新しいdisplay_orderを決定
-  let maxOrder = 0;
-  for (let i = 0; i < tbody.children.length; i++) {
-    const input = tbody.children[i].querySelector('input[name^="' + sectionId + '"][name$="[display_order]"]');
-    if (input && !isNaN(input.value)) {
-      const val = parseInt(input.value);
-      if (val > maxOrder) maxOrder = val;
-    }
-  }
-  const newOrder = maxOrder + 1;
-
-  const newRow = document.createElement('tr');
-  newRow.innerHTML = `
-    <td>
-      <input type="number" name="${sectionId}[${index}][display_order]" value="${newOrder}" class="form-control" required>
-    </td>
-    <td>
-      <input type="text" name="${sectionId}[${index}][item]" class="form-control" required>
-    </td>
-    <td>
-      <input type="number" name="${sectionId}[${index}][budget]" value="0" class="form-control" required>
-    </td>
-    <td>
-      <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">削除</button>
-    </td>
-  `;
-  tbody.appendChild(newRow);
-}
-
-function addRowTo(sectionId) {
-  // sectionIdに応じて、<tbody>のIDと項目名のキーを決定する
   const isExpense = sectionId === 'items';
   const tbodyId = isExpense ? 'budgetTableBody' : sectionId + 'TableBody';
   const itemNameKey = isExpense ? 'expense_item' : 'item';
 
   const tbody = document.getElementById(tbodyId);
-  // tbodyが見つからない場合はエラーを出力して処理を中断
   if (!tbody) {
-    console.error('Error: tbody element not found with id: ' + tbodyId);
+    console.error(`Error: tbody element not found with id: ${tbodyId}`);
     return;
   }
 
   const index = tbody.children.length;
-
-  // 新しいdisplay_orderを決定
   let maxOrder = 0;
-  // `[name^="${sectionId}"]` のようにテンプレートリテラルを使うと確実
   const selector = `input[name^="${sectionId}"][name$="[display_order]"]`;
   for (let i = 0; i < tbody.children.length; i++) {
     const input = tbody.children[i].querySelector(selector);
-    if (input && input.value) { // input.valueが空でないこともチェック
+    if (input && input.value) {
       const val = parseInt(input.value, 10);
       if (!isNaN(val) && val > maxOrder) {
         maxOrder = val;
@@ -162,8 +132,6 @@ function addRowTo(sectionId) {
   const newOrder = maxOrder + 1;
 
   const newRow = document.createElement('tr');
-  // 項目名のキー（expense_item or item）を動的に設定する
-  // 削除ボタンも他と合わせてアイコンにする
   newRow.innerHTML = `
     <td>
       <input type="number" name="${sectionId}[${index}][display_order]" value="${newOrder}" class="form-control" required>
@@ -180,8 +148,6 @@ function addRowTo(sectionId) {
   `;
   tbody.appendChild(newRow);
 }
-
-// addRow関数は不要になったので削除します。
 
 function removeRow(button) {
   const row = button.closest('tr');
