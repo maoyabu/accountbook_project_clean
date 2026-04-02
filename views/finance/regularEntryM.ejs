@@ -91,42 +91,150 @@
 
 <hr>
 <div class="card shadow-sm mb-4">
-    <div class="card-header text-white mb-1" style="background-color: #44616D;">
-        <h5>【登録済】まとめて入力項目</h5>
+  <div class="card-header text-white mb-1" style="background-color: #44616D;">
+    <h5>【登録済】まとめて入力項目（有効）</h5>
+  </div>
+  <% if (!regularEntries || regularEntries.length === 0) { %>
+    <p class="px-3 py-2 mb-0">登録されている有効な項目はありません。</p>
+  <% } else { %>
+    <table class="table table-bordered table-sm w-100 mt-1 small">
+      <thead>
+        <tr>
+          <th>区分</th>
+          <th>項目</th>
+          <th style="width:30px;">内容</th>
+          <th>金額</th>
+          <th>支払種別</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% regularEntries.forEach(entry => { %>
+          <tr>
+            <td><%= entry.cf %></td>
+            <td><%= entry.income_item || entry.expense_item || entry.dedu_item || entry.saving_item %></td>
+            <td><%= entry.content %></td>
+            <td class="text-end">¥<%= Number(entry.amount || 0).toLocaleString() %></td>
+            <td><%= entry.payment_type %></td>
+            <td class="d-flex gap-1">
+              <a href="/matomete/regular-entry/edit/<%= entry._id %>" class="btn btn-warning btn-sm me-1"><i class="fas fa-edit"></i></a>
+              <form action="/matomete/regular-entry/<%= entry._id %>?_method=DELETE" method="POST" onsubmit="return confirm('この項目を無効化します。後で復活できます。実行しますか？')">
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <div class="px-3 pb-3">
+    <details>
+      <summary class="fw-bold">削除済み項目を表示（<%= (deletedRegularEntries || []).length %>件）</summary>
+      <div class="mt-2">
+        <% if (!deletedRegularEntries || deletedRegularEntries.length === 0) { %>
+          <p class="mb-0">削除済み項目はありません。</p>
+        <% } else { %>
+          <table class="table table-bordered table-sm w-100 small mb-0">
+            <thead>
+              <tr>
+                <th>区分</th>
+                <th>項目</th>
+                <th>内容</th>
+                <th>金額</th>
+                <th>支払種別</th>
+                <th>削除日時</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% deletedRegularEntries.forEach(entry => { %>
+                <tr class="table-light">
+                  <td><%= entry.cf %></td>
+                  <td><%= entry.income_item || entry.expense_item || entry.dedu_item || entry.saving_item %></td>
+                  <td><%= entry.content %></td>
+                  <td class="text-end">¥<%= Number(entry.amount || 0).toLocaleString() %></td>
+                  <td><%= entry.payment_type %></td>
+                  <td><%= entry.disabledAt ? new Date(entry.disabledAt).toLocaleString('ja-JP') : '-' %></td>
+                  <td>
+                    <form action="/matomete/regular-entry/<%= entry._id %>/restore" method="POST">
+                      <button type="submit" class="btn btn-success btn-sm">復活</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #44616D;">
+    <h5 class="mb-0">まとめて入力項目バックアップ</h5>
+    <div class="d-flex gap-2">
+      <form action="/matomete/regular-entry/backup/create" method="POST" onsubmit="return confirm('現在のまとめて入力項目をバックアップします。実行しますか？')">
+        <button type="submit" class="btn btn-sm btn-light">現在の項目をバックアップ</button>
+      </form>
+      <form action="/matomete/regular-entry/backup/clear-all" method="POST" onsubmit="return confirm('バックアップを全件クリアします。元に戻せません。実行しますか？')">
+        <button type="submit" class="btn btn-sm btn-danger" <%= (!regularEntryBackups || regularEntryBackups.length === 0) ? 'disabled' : '' %>>バックアップ全件クリア</button>
+      </form>
     </div>
-    <% if (regularEntries.length === 0) { %>
-        <p>登録されている項目はありません。</p>
+  </div>
+  <div class="card-body">
+    <% if (!regularEntryBackups || regularEntryBackups.length === 0) { %>
+      <p class="mb-0">バックアップはまだありません。</p>
     <% } else { %>
-      <table class="table table-bordered table-sm w-100 mt-1 small">
-        <thead>
-            <tr>
-            <th>区分</th>
-            <th>項目</th>
-            <th style="width:30px;">内容</th>
-            <th>金額</th>
-            <th>支払種別</th>
-            <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% regularEntries.forEach(entry => { %>
-            <tr>
-                <td><%= entry.cf %></td>
-                <td><%= entry.income_item || entry.expense_item || entry.dedu_item || entry.saving_item %></td>
-                <td><%= entry.content %></td>
-                <td class="text-end">¥<%= entry.amount.toLocaleString() %></td>
-                <td><%= entry.payment_type %></td>
-                <td class="d-flex gap-1">
-                  <a href="/matomete/regular-entry/edit/<%= entry._id %>" class="btn btn-warning btn-sm me-1"><i class="fas fa-edit"></i></a>
-                  <form action="/matomete/regular-entry/<%= entry._id %>?_method=DELETE" method="POST" onsubmit="return confirm('削除してもよろしいですか？')">
-                      <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
-                  </form>
-                </td>
-            </tr>
-            <% }) %>
-        </tbody>
-        </table>
+      <% regularEntryBackups.forEach((backup, idx) => { %>
+        <details class="mb-2">
+          <summary>
+            <strong><%= backup.backupName || `バックアップ ${idx + 1}` %></strong>
+            / <%= backup.backupType === 'delete' ? '削除時自動' : '手動' %>
+            / <%= backup.entry_date ? new Date(backup.entry_date).toLocaleString('ja-JP') : '-' %>
+            / <%= Number(backup.entryCount || (backup.entries || []).length) %>件
+          </summary>
+          <div class="mt-2">
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <form action="/matomete/regular-entry/backup/<%= backup._id %>/restore" method="POST" onsubmit="return confirm('このバックアップ内容を復元します。実行しますか？')">
+                <button type="submit" class="btn btn-outline-success btn-sm">このバックアップを復元</button>
+              </form>
+              <form action="/matomete/regular-entry/backup/<%= backup._id %>/clear" method="POST" onsubmit="return confirm('このバックアップをクリアします。元に戻せません。実行しますか？')">
+                <button type="submit" class="btn btn-outline-danger btn-sm">このバックアップをクリア</button>
+              </form>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm w-100 small mb-0">
+                <thead>
+                  <tr>
+                    <th>区分</th>
+                    <th>項目</th>
+                    <th>内容</th>
+                    <th>金額</th>
+                    <th>支払種別</th>
+                    <th>状態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% (backup.entries || []).forEach(entry => { %>
+                    <tr>
+                      <td><%= entry.cf %></td>
+                      <td><%= entry.income_item || entry.expense_item || entry.dedu_item || entry.saving_item %></td>
+                      <td><%= entry.content %></td>
+                      <td class="text-end">¥<%= Number(entry.amount || 0).toLocaleString() %></td>
+                      <td><%= entry.payment_type %></td>
+                      <td><%= entry.isDisabled ? '削除済み' : '有効' %></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      <% }) %>
     <% } %>
+  </div>
 </div>
 <div class="text-center mt-4">
   <a href="/matomete/regular-entry/push" class="btn btn-success btn-lg mb-2" style="width: 80%;">

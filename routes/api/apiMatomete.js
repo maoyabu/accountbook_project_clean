@@ -112,7 +112,7 @@ router.get('/regular-entry', async (req, res) => {
     const userId = ensureObjectId(req.user._id);
     const groupId = ensureObjectId(groupIdRaw);
 
-    const query = { group: groupId, user: userId };
+    const query = { group: groupId, user: userId, isDisabled: { $ne: true } };
     if (ym) {
       query.$or = [
         { month: ym },
@@ -161,6 +161,7 @@ router.get('/regular-entry/manage', async (req, res) => {
     const entries = await RegularEntry.find({
       group: groupId,
       user: userId,
+      isDisabled: { $ne: true },
       $or: [
         { month: ym },
         { month: { $exists: false } },
@@ -217,7 +218,10 @@ router.post('/regular-entry/create', async (req, res) => {
       user: userId,
       group: groupId,
       day,
-      month: ym
+      month: ym,
+      isDisabled: false,
+      disabledAt: null,
+      disabledBy: null
     };
 
     await RegularEntry.create(payload);
@@ -262,7 +266,11 @@ router.put('/regular-entry/:id', async (req, res) => {
       month: ym
     };
 
-    await RegularEntry.findOneAndUpdate({ _id: id, user: userId, group: groupId }, payload, { new: true });
+    await RegularEntry.findOneAndUpdate(
+      { _id: id, user: userId, group: groupId, isDisabled: { $ne: true } },
+      payload,
+      { new: true }
+    );
     return res.json({ ok: true });
   } catch (err) {
     console.error('❌ regular-entry update api error:', err);
@@ -280,7 +288,16 @@ router.delete('/regular-entry/:id', async (req, res) => {
     }
     const userId = ensureObjectId(req.user._id);
     const groupId = ensureObjectId(groupIdRaw);
-    await RegularEntry.deleteOne({ _id: id, user: userId, group: groupId });
+    await RegularEntry.findOneAndUpdate(
+      { _id: id, user: userId, group: groupId, isDisabled: { $ne: true } },
+      {
+        isDisabled: true,
+        disabledAt: new Date(),
+        disabledBy: userId,
+        update_date: new Date()
+      },
+      { new: true }
+    );
     return res.json({ ok: true });
   } catch (err) {
     console.error('❌ regular-entry delete api error:', err);
@@ -313,7 +330,7 @@ router.post('/regular-entry/update', async (req, res) => {
 
     const [existingEntries, allRegulars] = await Promise.all([
       Finance.find({ group: groupId, user: userId, date: { $gte: startOfMonth, $lte: endOfMonth } }).lean(),
-      RegularEntry.find({ group: groupId, user: userId }).lean()
+      RegularEntry.find({ group: groupId, user: userId, isDisabled: { $ne: true } }).lean()
     ]);
 
     const existingKeys = new Set(existingEntries.map(makeKey));
@@ -419,7 +436,7 @@ router.post('/regular-entry/update/confirm', async (req, res) => {
 
     const [existingEntries, allRegulars] = await Promise.all([
       Finance.find({ group: groupId, user: userId, date: { $gte: startOfMonth, $lte: endOfMonth } }).lean(),
-      RegularEntry.find({ group: groupId, user: userId }).lean()
+      RegularEntry.find({ group: groupId, user: userId, isDisabled: { $ne: true } }).lean()
     ]);
 
     const regularEntriesMap = {};

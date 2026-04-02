@@ -44,8 +44,29 @@ const regularEntrySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Group',
         required: true
+    },
+    isDisabled: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    disabledAt: {
+        type: Date
+    },
+    disabledBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    entry_date: {
+        type: Date,
+        default: Date.now
+    },
+    update_date: {
+        type: Date
     }
 });
+
+regularEntrySchema.index({ group: 1, user: 1, isDisabled: 1 });
 
 // 🔹 更新時に update_date を自動設定する
 regularEntrySchema.pre('findOneAndUpdate', function (next) {

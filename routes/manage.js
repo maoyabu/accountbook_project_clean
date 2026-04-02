@@ -77,7 +77,7 @@ const sendReminders = async () => {
       for (const user of users) {
         if (user.isMail === false) continue;
         if (!user.email) continue;
-        const entryCount = await RegularEntry.countDocuments({ user: user._id });
+        const entryCount = await RegularEntry.countDocuments({ user: user._id, isDisabled: { $ne: true } });
         if (entryCount === 0) continue;
   
         await sendMail({
@@ -128,7 +128,8 @@ cron.schedule('0 * * * *', async () => {
 
         const entryCount = await RegularEntry.countDocuments({
           user: user._id,
-          group: group._id
+          group: group._id,
+          isDisabled: { $ne: true }
         });
         if (entryCount === 0) continue;
 
