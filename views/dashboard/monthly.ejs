@@ -38,22 +38,22 @@
             <th class="text-dark th-cumulative-highlight">累計合計</th>
             <th class="text-dark th-cumulative-highlight">累計予算</th>
             <th class="text-dark th-cumulative-highlight">累計予算差</th>
-            <th class="text-dark th-cumulative-highlight col-cumulative-diff-rate">累計予算差（％）</th>
+            <th class="text-dark th-cumulative-highlight col-cumulative-diff-rate">累計（％）</th>
           </tr>
         </thead>
         <tbody>
           <% 
             let totalSum = 0, totalBudget = 0, totalDiff = 0;
             let cumTotalSum = 0, cumBudgetSum = 0, cumDiffSum = 0;
-            const getBudgetDiffPercentValue = (diff, budget) => (
-              budget ? ((diff / budget) * 100) : null
+            const getBudgetRatePercentValue = (total, budget) => (
+              budget ? ((total / budget) * 100) : null
             );
-            const formatBudgetDiffPercent = (diff, budget) => {
-              const value = getBudgetDiffPercentValue(diff, budget);
+            const formatBudgetRatePercent = (total, budget) => {
+              const value = getBudgetRatePercentValue(total, budget);
               return value === null ? '-' : `${value.toFixed(1)}%`;
             };
-            const getBudgetDiffRateMeta = (diff, budget) => {
-              const value = getBudgetDiffPercentValue(diff, budget);
+            const getBudgetDiffRateMeta = (total, budget) => {
+              const value = getBudgetRatePercentValue(total, budget);
               if (value === null) return null;
 
               const absValue = Math.abs(value);
@@ -97,7 +97,7 @@
               cumTotalSum += cum.total;
               cumBudgetSum += cum.budget;
               cumDiffSum += cum.diff;
-              const cumRateMeta = getBudgetDiffRateMeta(cum.diff, cum.budget);
+              const cumRateMeta = getBudgetDiffRateMeta(cum.total, cum.budget);
           %>
             <tr>
               <td class="text-start"><%= item %></td>
@@ -129,12 +129,12 @@
                       </div>
                     </div>
                   <% } %>
-                  <span class="dashboard-monthly-rate-value"><%= formatBudgetDiffPercent(cum.diff, cum.budget) %></span>
+                  <span class="dashboard-monthly-rate-value"><%= formatBudgetRatePercent(cum.total, cum.budget) %></span>
                 </div>
               </td>
             </tr>
           <% } %>
-          <% const totalRateMeta = getBudgetDiffRateMeta(cumDiffSum, cumBudgetSum); %>
+          <% const totalRateMeta = getBudgetDiffRateMeta(cumTotalSum, cumBudgetSum); %>
           <tr class="table-primary fw-bold">
             <td class="text-start">合計</td>
             <td class="text-end"><%= totalSum.toLocaleString() %></td>
@@ -157,7 +157,7 @@
                     </div>
                   </div>
                 <% } %>
-                <span class="dashboard-monthly-rate-value"><%= formatBudgetDiffPercent(cumDiffSum, cumBudgetSum) %></span>
+                <span class="dashboard-monthly-rate-value"><%= formatBudgetRatePercent(cumTotalSum, cumBudgetSum) %></span>
               </div>
             </td>
           </tr>
