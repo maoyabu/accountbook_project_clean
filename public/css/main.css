@@ -978,20 +978,35 @@ hr {
     inset: 0 auto 0 0;
     border-radius: inherit;
 }
-.dashboard-monthly-rate-visual.is-positive .dashboard-monthly-rate-bar {
+.dashboard-monthly-rate-visual.tone-green .dashboard-monthly-rate-bar {
+    background: linear-gradient(90deg, #7ccf8a 0%, #2da44e 100%);
+}
+.dashboard-monthly-rate-visual.tone-cyan .dashboard-monthly-rate-bar {
     background: linear-gradient(90deg, #7fd3e2 0%, #0dcaf0 100%);
 }
-.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-main {
+.dashboard-monthly-rate-visual.tone-orange .dashboard-monthly-rate-bar {
+    background: linear-gradient(90deg, #ffc36b 0%, #f59e0b 100%);
+}
+.dashboard-monthly-rate-visual.tone-red .dashboard-monthly-rate-main {
     background: rgba(217, 48, 37, 0.14);
 }
-.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-extra {
+.dashboard-monthly-rate-visual.tone-red .dashboard-monthly-rate-extra {
     background: rgba(217, 48, 37, 0.08);
     box-shadow: inset 1px 0 0 rgba(217, 48, 37, 0.22);
 }
-.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-bar {
+.dashboard-monthly-rate-visual.tone-red .dashboard-monthly-rate-bar {
     background: linear-gradient(90deg, #f5a4a0 0%, #dc3545 100%);
 }
-.dashboard-monthly-rate-visual.has-overflow .dashboard-monthly-rate-overflow {
+.dashboard-monthly-rate-visual.tone-green.has-overflow .dashboard-monthly-rate-overflow {
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(45, 164, 78, 0.95) 0,
+        rgba(45, 164, 78, 0.95) 6px,
+        rgba(124, 207, 138, 0.9) 6px,
+        rgba(124, 207, 138, 0.9) 12px
+    );
+}
+.dashboard-monthly-rate-visual.tone-cyan.has-overflow .dashboard-monthly-rate-overflow {
     background: repeating-linear-gradient(
         135deg,
         rgba(13, 202, 240, 0.95) 0,
@@ -1000,7 +1015,16 @@ hr {
         rgba(127, 211, 226, 0.9) 12px
     );
 }
-.dashboard-monthly-rate-visual.is-negative.has-overflow .dashboard-monthly-rate-overflow {
+.dashboard-monthly-rate-visual.tone-orange.has-overflow .dashboard-monthly-rate-overflow {
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(245, 158, 11, 0.95) 0,
+        rgba(245, 158, 11, 0.95) 6px,
+        rgba(255, 195, 107, 0.9) 6px,
+        rgba(255, 195, 107, 0.9) 12px
+    );
+}
+.dashboard-monthly-rate-visual.tone-red.has-overflow .dashboard-monthly-rate-overflow {
     background: repeating-linear-gradient(
         135deg,
         rgba(220, 53, 69, 0.95) 0,
@@ -1018,7 +1042,7 @@ hr {
     width: 0.28rem;
     background: rgba(68, 97, 109, 0.28);
 }
-.dashboard-monthly-rate-visual.is-negative.is-capped .dashboard-monthly-rate-extra::after {
+.dashboard-monthly-rate-visual.tone-red.is-capped .dashboard-monthly-rate-extra::after {
     background: rgba(220, 53, 69, 0.32);
 }
 .dashboard-monthly-rate-value {

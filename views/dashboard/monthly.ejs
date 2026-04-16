@@ -57,10 +57,22 @@
               if (value === null) return null;
 
               const absValue = Math.abs(value);
+              let toneClass = 'tone-cyan';
+              if (value < 0 || value >= 100) {
+                toneClass = 'tone-red';
+              } else if (value < 50) {
+                toneClass = 'tone-green';
+              } else if (value < 85) {
+                toneClass = 'tone-cyan';
+              } else {
+                toneClass = 'tone-orange';
+              }
+
               return {
                 mainWidth: Math.min(absValue, 100),
                 overflowWidth: Math.min(Math.max(absValue - 100, 0), 100),
                 directionClass: value < 0 ? 'is-negative' : 'is-positive',
+                toneClass,
                 isOverflow: absValue > 100,
                 isCapped: absValue > 200
               };
@@ -104,7 +116,7 @@
               <td class="text-end"><%= cum.budget.toLocaleString() %></td>
               <td class="text-end <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= cum.diff.toLocaleString() %></td>
               <td class="text-end col-cumulative-diff-rate <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>">
-                <div class="dashboard-monthly-rate-visual <%= cumRateMeta ? `${cumRateMeta.directionClass}${cumRateMeta.isOverflow ? ' has-overflow' : ''}${cumRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
+                <div class="dashboard-monthly-rate-visual <%= cumRateMeta ? `${cumRateMeta.directionClass} ${cumRateMeta.toneClass}${cumRateMeta.isOverflow ? ' has-overflow' : ''}${cumRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
                   <% if (cumRateMeta) { %>
                     <div class="dashboard-monthly-rate-bar-wrap" aria-hidden="true">
                       <div class="dashboard-monthly-rate-main">
@@ -132,7 +144,7 @@
             <td class="text-end"><%= cumBudgetSum.toLocaleString() %></td>
             <td class="text-end"><%= cumDiffSum.toLocaleString() %></td>
             <td class="text-end col-cumulative-diff-rate <%= cumDiffSum < 0 ? 'text-danger' : '' %>">
-              <div class="dashboard-monthly-rate-visual <%= totalRateMeta ? `${totalRateMeta.directionClass}${totalRateMeta.isOverflow ? ' has-overflow' : ''}${totalRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
+              <div class="dashboard-monthly-rate-visual <%= totalRateMeta ? `${totalRateMeta.directionClass} ${totalRateMeta.toneClass}${totalRateMeta.isOverflow ? ' has-overflow' : ''}${totalRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
                 <% if (totalRateMeta) { %>
                   <div class="dashboard-monthly-rate-bar-wrap" aria-hidden="true">
                     <div class="dashboard-monthly-rate-main">
