@@ -924,6 +924,19 @@ hr {
     color: #000000 !important;            /* black text */
     font-weight: 700;
 }
+.dashboard-monthly thead tr:nth-child(2) th {
+    vertical-align: middle;
+}
+.dashboard-monthly .col-cumulative-diff-rate {
+    width: 6.5rem;
+    max-width: 6.5rem;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+}
+.dashboard-monthly tbody td.col-cumulative-diff-rate,
+.dashboard-monthly tfoot td.col-cumulative-diff-rate {
+    white-space: nowrap;
+}
 .d-button {
     display: block;
     margin: 20px auto;

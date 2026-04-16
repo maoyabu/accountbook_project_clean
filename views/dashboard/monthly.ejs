@@ -29,7 +29,7 @@
           <tr>
             <th class="text-dark align-middle" rowspan="2">項目</th>
             <th class="text-dark" colspan="3"><%= month %>月</th>
-            <th class="text-dark th-period-highlight" colspan="3"><%= fiscalRangeLabel || `${fiscalStartMonth || 1}月〜${month}月` %></th>
+            <th class="text-dark th-period-highlight" colspan="4"><%= fiscalRangeLabel || `${fiscalStartMonth || 1}月〜${month}月` %></th>
           </tr>
           <tr>
             <th class="text-dark">合計</th>
@@ -38,12 +38,16 @@
             <th class="text-dark th-cumulative-highlight">累計合計</th>
             <th class="text-dark th-cumulative-highlight">累計予算</th>
             <th class="text-dark th-cumulative-highlight">累計予算差</th>
+            <th class="text-dark th-cumulative-highlight col-cumulative-diff-rate">累計予算差（％）</th>
           </tr>
         </thead>
         <tbody>
           <% 
             let totalSum = 0, totalBudget = 0, totalDiff = 0;
             let cumTotalSum = 0, cumBudgetSum = 0, cumDiffSum = 0;
+            const formatBudgetDiffPercent = (diff, budget) => (
+              budget ? `${((diff / budget) * 100).toFixed(1)}%` : '-'
+            );
 
             const combinedItems = expenseItems.map(monthItem => {
               const cumItem = cumulativeItems.find(c => c.item === monthItem.item) || { total: 0, budget: 0, diff: 0 };
@@ -81,6 +85,7 @@
               </td>
               <td class="text-end"><%= cum.budget.toLocaleString() %></td>
               <td class="text-end <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= cum.diff.toLocaleString() %></td>
+              <td class="text-end col-cumulative-diff-rate <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= formatBudgetDiffPercent(cum.diff, cum.budget) %></td>
             </tr>
           <% } %>
           <tr class="table-primary fw-bold">
@@ -91,6 +96,7 @@
             <td class="text-end"><%= cumTotalSum.toLocaleString() %></td>
             <td class="text-end"><%= cumBudgetSum.toLocaleString() %></td>
             <td class="text-end"><%= cumDiffSum.toLocaleString() %></td>
+            <td class="text-end col-cumulative-diff-rate"><%= formatBudgetDiffPercent(cumDiffSum, cumBudgetSum) %></td>
           </tr>
         </tbody>
       </table>
