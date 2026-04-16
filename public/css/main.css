@@ -928,14 +928,125 @@ hr {
     vertical-align: middle;
 }
 .dashboard-monthly .col-cumulative-diff-rate {
-    width: 6.5rem;
-    max-width: 6.5rem;
+    width: 9rem;
+    min-width: 9rem;
+    max-width: 9rem;
     padding-left: 0.35rem;
     padding-right: 0.35rem;
 }
 .dashboard-monthly tbody td.col-cumulative-diff-rate,
 .dashboard-monthly tfoot td.col-cumulative-diff-rate {
-    white-space: nowrap;
+    white-space: normal;
+    vertical-align: middle;
+}
+.dashboard-monthly-rate-visual {
+    position: relative;
+    min-height: 2.05rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.12rem;
+}
+.dashboard-monthly-rate-bar-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.08rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24%;
+    gap: 4px;
+    align-items: center;
+    height: 0.78rem;
+}
+.dashboard-monthly-rate-main,
+.dashboard-monthly-rate-extra {
+    position: relative;
+    height: 100%;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.dashboard-monthly-rate-main {
+    background: rgba(68, 97, 109, 0.16);
+}
+.dashboard-monthly-rate-extra {
+    background: rgba(68, 97, 109, 0.08);
+    box-shadow: inset 1px 0 0 rgba(68, 97, 109, 0.22);
+}
+.dashboard-monthly-rate-bar,
+.dashboard-monthly-rate-overflow {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: inherit;
+}
+.dashboard-monthly-rate-visual.is-positive .dashboard-monthly-rate-bar {
+    background: linear-gradient(90deg, #7fd3e2 0%, #0dcaf0 100%);
+}
+.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-main {
+    background: rgba(217, 48, 37, 0.14);
+}
+.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-extra {
+    background: rgba(217, 48, 37, 0.08);
+    box-shadow: inset 1px 0 0 rgba(217, 48, 37, 0.22);
+}
+.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-bar {
+    background: linear-gradient(90deg, #f5a4a0 0%, #dc3545 100%);
+}
+.dashboard-monthly-rate-visual.has-overflow .dashboard-monthly-rate-overflow {
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(13, 202, 240, 0.95) 0,
+        rgba(13, 202, 240, 0.95) 6px,
+        rgba(127, 211, 226, 0.9) 6px,
+        rgba(127, 211, 226, 0.9) 12px
+    );
+}
+.dashboard-monthly-rate-visual.is-negative.has-overflow .dashboard-monthly-rate-overflow {
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(220, 53, 69, 0.95) 0,
+        rgba(220, 53, 69, 0.95) 6px,
+        rgba(245, 164, 160, 0.9) 6px,
+        rgba(245, 164, 160, 0.9) 12px
+    );
+}
+.dashboard-monthly-rate-visual.is-capped .dashboard-monthly-rate-extra::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0.28rem;
+    background: rgba(68, 97, 109, 0.28);
+}
+.dashboard-monthly-rate-visual.is-negative.is-capped .dashboard-monthly-rate-extra::after {
+    background: rgba(220, 53, 69, 0.32);
+}
+.dashboard-monthly-rate-value {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.9rem;
+    padding: 0.06rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 1px 2px rgba(68, 97, 109, 0.14);
+    line-height: 1.1;
+    transform: translateY(-0.08rem);
+}
+.dashboard-monthly-rate-visual.is-negative .dashboard-monthly-rate-value {
+    color: #b42318;
+}
+.dashboard-monthly-rate-visual.is-empty {
+    min-height: auto;
+}
+.dashboard-monthly-rate-visual.is-empty .dashboard-monthly-rate-value {
+    min-width: auto;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
 }
 .d-button {
     display: block;

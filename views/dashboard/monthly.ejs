@@ -45,9 +45,26 @@
           <% 
             let totalSum = 0, totalBudget = 0, totalDiff = 0;
             let cumTotalSum = 0, cumBudgetSum = 0, cumDiffSum = 0;
-            const formatBudgetDiffPercent = (diff, budget) => (
-              budget ? `${((diff / budget) * 100).toFixed(1)}%` : '-'
+            const getBudgetDiffPercentValue = (diff, budget) => (
+              budget ? ((diff / budget) * 100) : null
             );
+            const formatBudgetDiffPercent = (diff, budget) => {
+              const value = getBudgetDiffPercentValue(diff, budget);
+              return value === null ? '-' : `${value.toFixed(1)}%`;
+            };
+            const getBudgetDiffRateMeta = (diff, budget) => {
+              const value = getBudgetDiffPercentValue(diff, budget);
+              if (value === null) return null;
+
+              const absValue = Math.abs(value);
+              return {
+                mainWidth: Math.min(absValue, 100),
+                overflowWidth: Math.min(Math.max(absValue - 100, 0), 100),
+                directionClass: value < 0 ? 'is-negative' : 'is-positive',
+                isOverflow: absValue > 100,
+                isCapped: absValue > 200
+              };
+            };
 
             const combinedItems = expenseItems.map(monthItem => {
               const cumItem = cumulativeItems.find(c => c.item === monthItem.item) || { total: 0, budget: 0, diff: 0 };
@@ -68,6 +85,7 @@
               cumTotalSum += cum.total;
               cumBudgetSum += cum.budget;
               cumDiffSum += cum.diff;
+              const cumRateMeta = getBudgetDiffRateMeta(cum.diff, cum.budget);
           %>
             <tr>
               <td class="text-start"><%= item %></td>
@@ -85,9 +103,26 @@
               </td>
               <td class="text-end"><%= cum.budget.toLocaleString() %></td>
               <td class="text-end <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= cum.diff.toLocaleString() %></td>
-              <td class="text-end col-cumulative-diff-rate <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>"><%= formatBudgetDiffPercent(cum.diff, cum.budget) %></td>
+              <td class="text-end col-cumulative-diff-rate <%= cum.diff < 0 ? 'text-danger fw-bold' : '' %>" style="<%= cum.diff < 0 ? 'background-color: #f8d7da;' : '' %>">
+                <div class="dashboard-monthly-rate-visual <%= cumRateMeta ? `${cumRateMeta.directionClass}${cumRateMeta.isOverflow ? ' has-overflow' : ''}${cumRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
+                  <% if (cumRateMeta) { %>
+                    <div class="dashboard-monthly-rate-bar-wrap" aria-hidden="true">
+                      <div class="dashboard-monthly-rate-main">
+                        <span class="dashboard-monthly-rate-bar" style="width: <%= cumRateMeta.mainWidth %>%;"></span>
+                      </div>
+                      <div class="dashboard-monthly-rate-extra">
+                        <% if (cumRateMeta.isOverflow) { %>
+                          <span class="dashboard-monthly-rate-overflow" style="width: <%= cumRateMeta.overflowWidth %>%;"></span>
+                        <% } %>
+                      </div>
+                    </div>
+                  <% } %>
+                  <span class="dashboard-monthly-rate-value"><%= formatBudgetDiffPercent(cum.diff, cum.budget) %></span>
+                </div>
+              </td>
             </tr>
           <% } %>
+          <% const totalRateMeta = getBudgetDiffRateMeta(cumDiffSum, cumBudgetSum); %>
           <tr class="table-primary fw-bold">
             <td class="text-start">合計</td>
             <td class="text-end"><%= totalSum.toLocaleString() %></td>
@@ -96,7 +131,23 @@
             <td class="text-end"><%= cumTotalSum.toLocaleString() %></td>
             <td class="text-end"><%= cumBudgetSum.toLocaleString() %></td>
             <td class="text-end"><%= cumDiffSum.toLocaleString() %></td>
-            <td class="text-end col-cumulative-diff-rate"><%= formatBudgetDiffPercent(cumDiffSum, cumBudgetSum) %></td>
+            <td class="text-end col-cumulative-diff-rate <%= cumDiffSum < 0 ? 'text-danger' : '' %>">
+              <div class="dashboard-monthly-rate-visual <%= totalRateMeta ? `${totalRateMeta.directionClass}${totalRateMeta.isOverflow ? ' has-overflow' : ''}${totalRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
+                <% if (totalRateMeta) { %>
+                  <div class="dashboard-monthly-rate-bar-wrap" aria-hidden="true">
+                    <div class="dashboard-monthly-rate-main">
+                      <span class="dashboard-monthly-rate-bar" style="width: <%= totalRateMeta.mainWidth %>%;"></span>
+                    </div>
+                    <div class="dashboard-monthly-rate-extra">
+                      <% if (totalRateMeta.isOverflow) { %>
+                        <span class="dashboard-monthly-rate-overflow" style="width: <%= totalRateMeta.overflowWidth %>%;"></span>
+                      <% } %>
+                    </div>
+                  </div>
+                <% } %>
+                <span class="dashboard-monthly-rate-value"><%= formatBudgetDiffPercent(cumDiffSum, cumBudgetSum) %></span>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
