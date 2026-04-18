@@ -35,9 +35,9 @@
             <th class="text-dark">合計</th>
             <th class="text-dark">予算</th>
             <th class="text-dark">予算差</th>
-            <th class="text-dark th-cumulative-highlight">累計合計</th>
-            <th class="text-dark th-cumulative-highlight">累計予算</th>
-            <th class="text-dark th-cumulative-highlight">累計予算差</th>
+            <th class="text-dark th-cumulative-highlight">累計</th>
+            <th class="text-dark th-cumulative-highlight">予算累計</th>
+            <th class="text-dark th-cumulative-highlight">予算-累計</th>
             <th class="text-dark th-cumulative-highlight col-cumulative-diff-rate">累計（％）</th>
           </tr>
         </thead>
@@ -87,7 +87,7 @@
               };
             });
 
-            for (let data of combinedItems) {
+            combinedItems.forEach((data) => {
               const { item, month: monData, cumulative: cum } = data;
 
               totalSum += monData.total;
@@ -97,6 +97,38 @@
               cumTotalSum += cum.total;
               cumBudgetSum += cum.budget;
               cumDiffSum += cum.diff;
+            });
+
+            const totalRateMeta = getBudgetDiffRateMeta(cumTotalSum, cumBudgetSum);
+          %>
+          <tr class="table-primary fw-bold">
+            <td class="text-start">合計</td>
+            <td class="text-end"><%= totalSum.toLocaleString() %></td>
+            <td class="text-end"><%= totalBudget.toLocaleString() %></td>
+            <td class="text-end"><%= totalDiff.toLocaleString() %></td>
+            <td class="text-end"><%= cumTotalSum.toLocaleString() %></td>
+            <td class="text-end"><%= cumBudgetSum.toLocaleString() %></td>
+            <td class="text-end"><%= cumDiffSum.toLocaleString() %></td>
+            <td class="text-end col-cumulative-diff-rate <%= cumDiffSum < 0 ? 'text-danger' : '' %>">
+              <div class="dashboard-monthly-rate-visual <%= totalRateMeta ? `${totalRateMeta.directionClass} ${totalRateMeta.toneClass}${totalRateMeta.isOverflow ? ' has-overflow' : ''}${totalRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
+                <% if (totalRateMeta) { %>
+                  <div class="dashboard-monthly-rate-bar-wrap" aria-hidden="true">
+                    <div class="dashboard-monthly-rate-main">
+                      <span class="dashboard-monthly-rate-bar" style="width: <%= totalRateMeta.mainWidth %>%;"></span>
+                    </div>
+                    <div class="dashboard-monthly-rate-extra">
+                      <% if (totalRateMeta.isOverflow) { %>
+                        <span class="dashboard-monthly-rate-overflow" style="width: <%= totalRateMeta.overflowWidth %>%;"></span>
+                      <% } %>
+                    </div>
+                  </div>
+                <% } %>
+                <span class="dashboard-monthly-rate-value"><%= formatBudgetRatePercent(cumTotalSum, cumBudgetSum) %></span>
+              </div>
+            </td>
+          </tr>
+          <% for (let data of combinedItems) {
+              const { item, month: monData, cumulative: cum } = data;
               const cumRateMeta = getBudgetDiffRateMeta(cum.total, cum.budget);
           %>
             <tr>
@@ -134,33 +166,6 @@
               </td>
             </tr>
           <% } %>
-          <% const totalRateMeta = getBudgetDiffRateMeta(cumTotalSum, cumBudgetSum); %>
-          <tr class="table-primary fw-bold">
-            <td class="text-start">合計</td>
-            <td class="text-end"><%= totalSum.toLocaleString() %></td>
-            <td class="text-end"><%= totalBudget.toLocaleString() %></td>
-            <td class="text-end"><%= totalDiff.toLocaleString() %></td>
-            <td class="text-end"><%= cumTotalSum.toLocaleString() %></td>
-            <td class="text-end"><%= cumBudgetSum.toLocaleString() %></td>
-            <td class="text-end"><%= cumDiffSum.toLocaleString() %></td>
-            <td class="text-end col-cumulative-diff-rate <%= cumDiffSum < 0 ? 'text-danger' : '' %>">
-              <div class="dashboard-monthly-rate-visual <%= totalRateMeta ? `${totalRateMeta.directionClass} ${totalRateMeta.toneClass}${totalRateMeta.isOverflow ? ' has-overflow' : ''}${totalRateMeta.isCapped ? ' is-capped' : ''}` : 'is-empty' %>">
-                <% if (totalRateMeta) { %>
-                  <div class="dashboard-monthly-rate-bar-wrap" aria-hidden="true">
-                    <div class="dashboard-monthly-rate-main">
-                      <span class="dashboard-monthly-rate-bar" style="width: <%= totalRateMeta.mainWidth %>%;"></span>
-                    </div>
-                    <div class="dashboard-monthly-rate-extra">
-                      <% if (totalRateMeta.isOverflow) { %>
-                        <span class="dashboard-monthly-rate-overflow" style="width: <%= totalRateMeta.overflowWidth %>%;"></span>
-                      <% } %>
-                    </div>
-                  </div>
-                <% } %>
-                <span class="dashboard-monthly-rate-value"><%= formatBudgetRatePercent(cumTotalSum, cumBudgetSum) %></span>
-              </div>
-            </td>
-          </tr>
         </tbody>
       </table>
     </div>
