@@ -3303,9 +3303,19 @@ padding-left: 10px;
 }
 
 .budget-summary-rate {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   font-weight: 700;
   color: #2c3e57;
   font-size: 0.95rem;
+}
+
+.budget-summary-amount {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6c7a8f;
 }
 
 .budget-summary-tag {

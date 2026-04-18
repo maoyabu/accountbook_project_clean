@@ -16,6 +16,9 @@
                 <div class="budget-summary-title">支出予算の到達率</div>
                 <div class="budget-summary-rate <%= budgetSummary.totalRate > budgetSummary.dayRate ? 'is-over' : '' %>">
                   <span class="budget-summary-tag <%= budgetSummary.totalRate > budgetSummary.dayRate ? 'is-over' : '' %>">予算到達率　<%= budgetSummary.totalRate %>%</span>
+                  <span class="budget-summary-amount">
+                    実績 / 予算　<%= Number(budgetSummary.totalActual || 0).toLocaleString() %> / <%= Number(budgetSummary.totalBudget || 0).toLocaleString() %>
+                  </span>
                 </div>
               </div>
               <div class="budget-summary-subtitle">支出項目別の予算到達率</div>
