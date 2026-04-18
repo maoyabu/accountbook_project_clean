@@ -927,6 +927,20 @@ hr {
 .dashboard-monthly thead tr:nth-child(2) th {
     vertical-align: middle;
 }
+.dashboard-monthly tbody tr.dashboard-monthly-total-row > td {
+    background-color: #4f8298 !important;
+    border-color: #3c6476;
+    color: #ffffff !important;
+}
+.dashboard-monthly tbody tr.dashboard-monthly-total-row > td a {
+    color: #ffffff !important;
+}
+.dashboard-monthly tbody tr.dashboard-monthly-total-row > td .dashboard-monthly-rate-value {
+    color: #000000 !important;
+}
+.dashboard-monthly tbody tr.dashboard-monthly-total-row > td.text-danger .dashboard-monthly-rate-value {
+    color: #b42318 !important;
+}
 .dashboard-monthly .col-cumulative-diff-rate {
     width: 9rem;
     min-width: 9rem;
