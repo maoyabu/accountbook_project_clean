@@ -392,6 +392,23 @@ function getBudgetMonthCount(targetYear, startMonth = 1, baseDate = new Date()) 
     return 12;
 }
 
+function getMonthlyCumulativeMeta(calendarYear, calendarMonth, fiscalStartMonth = 1) {
+    const selectedDate = new Date(calendarYear, calendarMonth - 1, 1, 0, 0, 0, 0);
+    const fiscalYear = getFiscalYearForDate(selectedDate, fiscalStartMonth) ?? calendarYear;
+    const fiscalRange = getFiscalYearRange(fiscalYear, fiscalStartMonth);
+    const endOfSelectedMonth = new Date(calendarYear, calendarMonth, 0, 23, 59, 59, 999);
+    const budgetMonthCount = (getFiscalMonthIndex(calendarMonth, fiscalStartMonth) ?? 0) + 1;
+    const label = `${fiscalRange.start.getFullYear()}年${fiscalRange.start.getMonth() + 1}月〜${endOfSelectedMonth.getFullYear()}年${endOfSelectedMonth.getMonth() + 1}月`;
+
+    return {
+        fiscalYear,
+        start: fiscalRange.start,
+        end: endOfSelectedMonth,
+        budgetMonthCount,
+        label
+    };
+}
+
 async function getGroupFiscalStartMonth(groupId) {
     if (!groupId) return 1;
     const group = await Group.findById(groupId).select('financeFiscalStartMonth');
@@ -605,10 +622,8 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
-  const fiscalYear = getFiscalYearForDate(start, fiscalStartMonth) ?? year;
-  const fiscalRange = getFiscalYearRange(fiscalYear, fiscalStartMonth);
-  const fiscalRangeLabel = `${fiscalRange.start.getFullYear()}年${fiscalRange.start.getMonth() + 1}月〜${fiscalRange.endInclusive.getFullYear()}年${fiscalRange.endInclusive.getMonth() + 1}月`;
-  const fiscalMonthIndex = (getFiscalMonthIndex(month, fiscalStartMonth) ?? 0) + 1;
+  const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
+  const fiscalYear = cumulativeMeta.fiscalYear;
 
   const finances = await Finance.find({
     user: userId,
@@ -651,9 +666,9 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     })
     .sort((a, b) => a.display_order - b.display_order);
 
-  // === 累計集計: 年度開始月から年度末まで ===
-  const startOfYear = fiscalRange.start;
-  const endOfCurrentMonth = fiscalRange.endInclusive;
+  // === 累計集計: 年度開始月から表示中の月まで ===
+  const startOfYear = cumulativeMeta.start;
+  const endOfCurrentMonth = cumulativeMeta.end;
 
   const cumulativeFinances = await Finance.find({
     user: userId,
@@ -672,7 +687,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   const cumulativeItems = Object.keys(budgetMap).map(item => {
     const total = cumulativeSummary[item] || 0;
     const monthlyBudget = budgetMap[item];
-    const budget = monthlyBudget * 12;
+    const budget = monthlyBudget * cumulativeMeta.budgetMonthCount;
     return {
       item,
       total,
@@ -693,7 +708,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     titlePrefix: `${req.user.displayname}さん`,
     viewType: 'user',
     fiscalStartMonth,
-    fiscalRangeLabel,
+    cumulativeRangeLabel: cumulativeMeta.label,
     fiscalYear
   });
 });
@@ -1019,10 +1034,8 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
 
   const groupId = req.session.activeGroupId;
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
-  const fiscalYear = getFiscalYearForDate(start, fiscalStartMonth) ?? year;
-  const fiscalRange = getFiscalYearRange(fiscalYear, fiscalStartMonth);
-  const fiscalRangeLabel = `${fiscalRange.start.getFullYear()}年${fiscalRange.start.getMonth() + 1}月〜${fiscalRange.endInclusive.getFullYear()}年${fiscalRange.endInclusive.getMonth() + 1}月`;
-  const fiscalMonthIndex = (getFiscalMonthIndex(month, fiscalStartMonth) ?? 0) + 1;
+  const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
+  const fiscalYear = cumulativeMeta.fiscalYear;
 
   const finances = await Finance.find({
     group: groupId,
@@ -1067,9 +1080,9 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     })
     .sort((a, b) => a.display_order - b.display_order);
 
-  // === 累計集計: 年度開始月から年度末まで ===
-  const startOfYear = fiscalRange.start;
-  const endOfCurrentMonth = fiscalRange.endInclusive;
+  // === 累計集計: 年度開始月から表示中の月まで ===
+  const startOfYear = cumulativeMeta.start;
+  const endOfCurrentMonth = cumulativeMeta.end;
 
   const cumulativeFinances = await Finance.find({
     group: groupId,
@@ -1087,7 +1100,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   const cumulativeItems = Object.keys(budgetMap).map(item => {
     const total = cumulativeSummary[item] || 0;
     const monthlyBudget = budgetMap[item];
-    const budget = monthlyBudget * 12;
+    const budget = monthlyBudget * cumulativeMeta.budgetMonthCount;
     return {
       item,
       total,
@@ -1119,7 +1132,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     titlePrefix: `${groupName}`,
     viewType: 'group',
     fiscalStartMonth,
-    fiscalRangeLabel,
+    cumulativeRangeLabel: cumulativeMeta.label,
     fiscalYear
   });
 });
