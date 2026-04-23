@@ -8,6 +8,7 @@ const fs = require('fs');
 const methodOverride = require('method-override');
 const FinanceUser = require('../models/users');
 const FinanceExBudget = require('../models/finance_ex_budget');
+const FinanceExBudgetPersonal = require('../models/finance_ex_budget_personal');
 const FinanceMonthlyCalendar = require('../models/finance_monthly_calendar');
 const FinancePaymentTypeCheck = require('../models/finance_payment_type_check');
 const Group = require('../models/groups');
@@ -644,10 +645,14 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     }
   }
 
-  const budgets = await FinanceExBudget.find({ group: groupId, year: String(fiscalYear) });
+  const budgets = await FinanceExBudgetPersonal.find({
+    group: groupId,
+    user: userId,
+    year: String(fiscalYear)
+  });
   const budgetMap = {};
   for (let b of budgets) {
-    budgetMap[b.expense_item] = b.budget || 0;
+    budgetMap[b.expense_item] = Number(b.budget) || 0;
   }
 
   const expenseItems = Object.keys(budgetMap)
