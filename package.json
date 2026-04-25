@@ -46,7 +46,8 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.mjs"
   },
   "engines": {
     "node": "20.x"
