@@ -637,6 +637,7 @@ router.get('/recent', async (req, res, next) => {
         amount: Number(doc.amount || 0),
         memo: doc.memo || null,
         content: doc.content || null,
+        subTag: doc.sub_tag || null,
         cf: doc.cf || null,                 // ここは日本語が返る（保存時に正規化）
         paymentType: doc.payment_type || null,
         memberId: doc.member_id || (doc.user ? String(doc.user) : null),
@@ -682,6 +683,7 @@ router.get('/', async (req, res, next) => {
         amount: Number(doc.amount || 0),
         memo: doc.memo || null,
         content: doc.content || null,
+        subTag: doc.sub_tag || null,
         cf: doc.cf || null,
         paymentType: doc.payment_type || null,
         memberId: doc.member_id || (doc.user ? String(doc.user) : null),
@@ -714,6 +716,7 @@ router.post('/', async (req, res, next) => {
       paymentType,  // 支払種別
       memberId,     // 使用者ID
       content,      // 内容（複数行）
+      sub_tag,      // サブタグ（任意）
       tags          // レシート明細（任意）
     } = req.body || {};
 
@@ -741,6 +744,7 @@ router.post('/', async (req, res, next) => {
       payment_type: (typeof paymentType === 'string' && paymentType.trim().length > 0) ? paymentType.trim() : 'cash',
       member_id: (typeof memberId === 'string' && memberId.trim().length > 0) ? memberId.trim() : null,
       content: (typeof content === 'string' && content.trim().length > 0) ? content.trim() : null,
+      sub_tag: (typeof sub_tag === 'string' && sub_tag.trim().length > 0) ? sub_tag.trim() : null,
       entry_date: new Date()
     });
     if (cfKey === '支出') {
@@ -793,6 +797,7 @@ router.post('/', async (req, res, next) => {
       amount: Number(saved.amount || 0),
       memo: saved.memo || null,
       content: saved.content || null,
+      subTag: saved.sub_tag || null,
       cf: saved.cf || null,               // 日本語で返す
       paymentType: saved.payment_type || null,
       memberId: saved.member_id || null,
@@ -832,6 +837,7 @@ router.put('/:id', async (req, res, next) => {
       paymentType,
       memberId,
       content,
+      sub_tag,
       group,
       tags
     } = req.body || {};
@@ -875,6 +881,10 @@ router.put('/:id', async (req, res, next) => {
 
     if (typeof content !== 'undefined') {
       update.content = (typeof content === 'string' && content.trim().length > 0) ? content.trim() : null;
+    }
+
+    if (typeof sub_tag !== 'undefined') {
+      update.sub_tag = (typeof sub_tag === 'string' && sub_tag.trim().length > 0) ? sub_tag.trim() : null;
     }
 
     // cf を日本語へ正規化（指定があれば更新）
@@ -942,6 +952,7 @@ router.put('/:id', async (req, res, next) => {
       amount: Number(saved.amount || 0),
       memo: saved.memo || null,
       content: saved.content || null,
+      subTag: saved.sub_tag || null,
       cf: saved.cf || null,               // 日本語で返す
       paymentType: saved.payment_type || null,
       memberId: saved.member_id || null,
