@@ -415,6 +415,44 @@ const extractTagsFromRequest = (tagItemsInput) => {
     }));
 };
 
+const normalizeSubTag = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const getFrequentFinanceTags = async (groupId) => {
+  if (!groupId) return [];
+  const rows = await Finance.aggregate([
+    {
+      $match: {
+        group: new mongoose.Types.ObjectId(groupId),
+        sub_tag: { $exists: true, $nin: ['', null] }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          category: '$expense_item',
+          tag: '$sub_tag'
+        },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { count: -1, '_id.tag': 1 } }
+  ]);
+
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const tag = normalizeSubTag(row?._id?.tag);
+    if (!tag) return;
+    const category = row?._id?.category || '';
+    if (!grouped.has(category)) grouped.set(category, []);
+    const tags = grouped.get(category);
+    if (tags.length < 12 && !tags.some(item => item.name === tag)) {
+      tags.push({ name: tag, count: row.count || 0 });
+    }
+  });
+
+  return Array.from(grouped.entries()).map(([category, tags]) => ({ category, tags }));
+};
+
 async function getFinanceEditableGroupsForUser(userId) {
   const currentUser = await FinanceUser.findById(userId).populate('groups');
   const availableGroups = Array.isArray(currentUser?.groups)
@@ -488,7 +526,8 @@ async function buildFinanceFormOptions({ groupId, year, preserveValues = null })
     dedu_cfs: deduItems,
     saving_cfs: savingCfs,
     pay_cfs: payCfs,
-    allUsers
+    allUsers,
+    common_tags: await getFrequentFinanceTags(groupId)
   };
 }
 
@@ -590,6 +629,7 @@ router.get('/entry', isLoggedIn, async(req, res) => {
     // MongoDBからデータを取得（activeGroupIDで絞り込み）
     const allUsers = await FinanceUser.find({ groups: activeGroupId });
     const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
+    const common_tags = await getFrequentFinanceTags(activeGroupId);
 
     res.render('finance/entry', {
         page: 'entry',
@@ -603,7 +643,8 @@ router.get('/entry', isLoggedIn, async(req, res) => {
         allUsers,
         formData: {},   // 初期値として空のオブジェクトを渡す
         errors: {},     // 初期値として空のオブジェクトを渡す
-        duplicateWarning: false
+        duplicateWarning: false,
+        common_tags
     });
 });
 
@@ -620,6 +661,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     const { finance } = req.body;
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
     const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
+    const common_tags = await getFrequentFinanceTags(activeGroupId);
     let errors = {};
 
     let extractedAmount = null;
@@ -674,7 +716,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             whos,
             allUsers,
             ocrAmount: extractedAmount || '',
-            duplicateWarning: false
+            duplicateWarning: false,
+            common_tags
         });
     }
 
@@ -734,7 +777,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         whos,
         allUsers,
         ocrAmount: extractedAmount || '',
-        duplicateWarning: true
+        duplicateWarning: true,
+        common_tags
       });
     }
 
@@ -749,6 +793,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         entry_date: toJST(new Date()),
         update_date: toJST(new Date()),
         memo: finance.memo || '',
+        sub_tag: normalizeSubTag(finance.sub_tag),
         tags: Array.isArray(req.body.finance.tags)
             ? req.body.finance.tags.map((name, i) => ({
                 name,
@@ -794,6 +839,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         delete cloneData.entry_date;
         delete cloneData.update_date;
         delete cloneData.tags;
+        cloneData.sub_tag = '';
         cloneData.income_item = '';
         cloneData.expense_item = '';
         cloneData.dedu_item = '';
@@ -829,7 +875,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             whos,
             allUsers,
             currentUser,
-            availableGroups
+            availableGroups,
+            common_tags
         });
     }
 
@@ -905,7 +952,7 @@ router.get('/search', isLoggedIn, async (req, res) => {
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 router.post('/search', catchAsync(async (req, res) => {
-    const { date, date2, cf, expense_item, income_item, dedu_item, saving_item, payment_type, user, keyword } = req.body;
+    const { date, date2, cf, expense_item, income_item, dedu_item, saving_item, payment_type, user, keyword, sub_tag } = req.body;
 
     // 検索クエリ用のオブジェクト
     let query = {};
@@ -967,6 +1014,9 @@ router.post('/search', catchAsync(async (req, res) => {
     if (payment_type && payment_type !== 'Please Choice') {
         query.payment_type = payment_type;
     }
+    if (sub_tag && sub_tag !== 'Please Choice') {
+        query.sub_tag = sub_tag;
+    }
     if (user && user !== 'Please Choice' && mongoose.Types.ObjectId.isValid(user)) {
         query.user = new mongoose.Types.ObjectId(user);
     }
@@ -1007,6 +1057,9 @@ router.post('/search', catchAsync(async (req, res) => {
     await loadCfItems(req, yearForItems, fiscalStartMonth);
     const budgetItems = await Budget.find({ group: activeGroupId, year: String(yearForItems) });
     const ex_cfs = budgetItems.map(item => item.expense_item);
+    const sub_tag_options = (await Finance.distinct('sub_tag', { group: new mongoose.Types.ObjectId(activeGroupId) }))
+      .filter(v => v && v !== 'Please Choice')
+      .sort();
 
     res.render('finance/search_results', {
         finances,
@@ -1017,6 +1070,7 @@ router.post('/search', catchAsync(async (req, res) => {
         filters: {
           from: date || '', to: date2 || '',
           payment_type: (payment_type && payment_type !== 'Please Choice') ? payment_type : 'Please Choice',
+          sub_tag: sub_tag || '',
           user: (user && mongoose.Types.ObjectId.isValid(user)) ? user : '',
           cf, expense_item, income_item, dedu_item, saving_item,
           keyword: keyword || ''
@@ -1027,7 +1081,8 @@ router.post('/search', catchAsync(async (req, res) => {
         ex_cfs,
         in_items,
         dedu_cfs,
-        saving_cfs
+        saving_cfs,
+        sub_tag_options
         }); 
 }));
 
@@ -1044,6 +1099,7 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
   const income_item = pick(req.query.income_item);
   const dedu_item = pick(req.query.dedu_item);
   const saving_item = pick(req.query.saving_item);
+  const sub_tag = pick(req.query.sub_tag);
   const keyword = pick(req.query.keyword);
   const activeGroupId = req.session.activeGroupId;
   if (!activeGroupId) {
@@ -1082,6 +1138,7 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
     query.saving_item = saving_item;
   }
   if (payment_type && payment_type !== 'Please Choice') query.payment_type = payment_type;
+  if (sub_tag && sub_tag !== 'Please Choice') query.sub_tag = sub_tag;
   if (user && mongoose.Types.ObjectId.isValid(user)) query.user = new mongoose.Types.ObjectId(user);
   if (keyword && keyword.trim()) {
     query.content = { $regex: escapeRegExp(keyword.trim()), $options: 'i' };
@@ -1115,6 +1172,9 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
   await loadCfItems(req, yearForItems, fiscalStartMonth);
   const budgetItems = await Budget.find({ group: activeGroupId, year: String(yearForItems) });
   const ex_cfs = budgetItems.map(item => item.expense_item);
+  const sub_tag_options = (await Finance.distinct('sub_tag', { group: new mongoose.Types.ObjectId(activeGroupId) }))
+    .filter(v => v && v !== 'Please Choice')
+    .sort();
 
   res.render('finance/search_results', {
     finances,
@@ -1130,6 +1190,7 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
       income_item: income_item || '',
       dedu_item: dedu_item || '',
       saving_item: saving_item || '',
+      sub_tag: sub_tag || '',
       keyword: keyword || ''
     },
     pay_cfs: mergedPayCfs,
@@ -1138,7 +1199,8 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
     ex_cfs,
     in_items,
     dedu_cfs,
-    saving_cfs
+    saving_cfs,
+    sub_tag_options
   });
 }));
 
@@ -1163,6 +1225,7 @@ router.get('/list', isLoggedIn, async (req, res) => {
     const selectedCf = req.query.cf || '';
     const selectedCategory = req.query.category || '';
     const selectedPayment = req.query.payment_type || '';
+    const selectedSubTag = req.query.sub_tag || '';
     const selectedKeyword = req.query.keyword || '';
     const selectedDateFrom = req.query.date_from || '';
     const selectedDateTo = req.query.date_to || '';
@@ -1191,6 +1254,9 @@ router.get('/list', isLoggedIn, async (req, res) => {
     }
     if (selectedPayment) {
       andConditions.push({ payment_type: selectedPayment });
+    }
+    if (selectedSubTag) {
+      andConditions.push({ sub_tag: selectedSubTag });
     }
     if (selectedKeyword && selectedKeyword.trim()) {
       andConditions.push({ content: { $regex: escapeRegExp(selectedKeyword.trim()), $options: 'i' } });
@@ -1268,6 +1334,7 @@ router.get('/list', isLoggedIn, async (req, res) => {
     ];
     const categoryOptions = [...new Set(categoryOptionsRaw.filter(v => v && v !== 'Please Choice'))];
     const paymentOptions = (await Finance.distinct('payment_type', baseCondition)).filter(v => v && v !== 'Please Choice');
+    const subTagOptions = (await Finance.distinct('sub_tag', baseCondition)).filter(v => v && v !== 'Please Choice');
 
     res.render('finance/list', {
       finances,
@@ -1284,6 +1351,7 @@ router.get('/list', isLoggedIn, async (req, res) => {
         cf: selectedCf,
         category: selectedCategory,
         payment: selectedPayment,
+        sub_tag: selectedSubTag,
         keyword: selectedKeyword,
         date_from: selectedDateFrom,
         date_to: selectedDateTo,
@@ -1292,7 +1360,8 @@ router.get('/list', isLoggedIn, async (req, res) => {
       filterOptions: {
         cfs: cfOptions,
         categories: categoryOptions,
-        payments: paymentOptions
+        payments: paymentOptions,
+        sub_tags: subTagOptions
       }
     });
 
@@ -1335,7 +1404,8 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
       dedu_cfs: formDeduItems,
       saving_cfs: formSavingItems,
       pay_cfs: formPayItems,
-      allUsers
+      allUsers,
+      common_tags
     } = await buildFinanceFormOptions({
       groupId: financeGroupId,
       year: yearForItems,
@@ -1385,7 +1455,8 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         currentUser,
         duplicateWarning: req.query.duplicateWarning === '1',
         continueEntry: req.query.continueEntry === '1',
-        returnTo
+        returnTo,
+        common_tags
     });
 }));
 
@@ -1427,7 +1498,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
       dedu_cfs: formDeduItems,
       saving_cfs: formSavingItems,
       pay_cfs: formPayItems,
-      allUsers
+      allUsers,
+      common_tags
     } = await buildFinanceFormOptions({
       groupId: targetGroupId,
       year: yearForItems
@@ -1487,7 +1559,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             allUsers,
             availableGroups,
             currentUser,
-            returnTo
+            returnTo,
+            common_tags
         });
     }
 
@@ -1516,6 +1589,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         user: financeInput.user === 'Please Choice' ? '' : financeInput.user,
         group: targetGroupId,
         memo: financeInput.memo || '',
+        sub_tag: normalizeSubTag(financeInput.sub_tag),
         update_date: getJSTDate(),
         month,
         day,
@@ -1532,6 +1606,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         const clone = updatedFinance.toObject();
         delete clone._id;
         delete clone.tags;
+        clone.sub_tag = '';
         clone.entry_date = getJSTDate();
         clone.update_date = getJSTDate();
         clone.income_item = '';
@@ -1551,7 +1626,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
           dedu_cfs: duplicateDeduItems,
           saving_cfs: duplicateSavingItems,
           pay_cfs: duplicatePayItems,
-          allUsers: duplicateUsers
+          allUsers: duplicateUsers,
+          common_tags: duplicateCommonTags
         } = await buildFinanceFormOptions({
           groupId: duplicateGroupId,
           year: duplicateYearForItems,
@@ -1581,7 +1657,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             allUsers: duplicateUsers,
             currentUser,
             availableGroups,
-            returnTo
+            returnTo,
+            common_tags: duplicateCommonTags
         });
     }
 
@@ -2946,7 +3023,8 @@ router.get('/budget/items', isLoggedIn, async (req, res) => {
       dedu_cfs,
       saving_cfs,
       pay_cfs,
-      allUsers
+      allUsers,
+      common_tags
     } = await buildFinanceFormOptions({
       groupId: requestedGroupId,
       year: targetYear
@@ -2958,7 +3036,8 @@ router.get('/budget/items', isLoggedIn, async (req, res) => {
       dedu_cfs,
       saving_cfs,
       pay_cfs,
-      users: serializeFinanceUsers(allUsers)
+      users: serializeFinanceUsers(allUsers),
+      common_tags
     });
   } catch (err) {
     console.error('❌ 年度別区分取得エラー:', err);

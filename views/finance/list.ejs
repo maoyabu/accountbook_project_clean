@@ -56,6 +56,15 @@
         </select>
       </div>
       <div class="d-flex flex-column">
+        <label for="subTagFilter" class="form-label mb-1">タグ</label>
+        <select name="sub_tag" id="subTagFilter" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="">全て</option>
+          <% (filterOptions?.sub_tags || []).forEach(tag => { %>
+            <option value="<%= tag %>" <%= selectedFilters?.sub_tag === tag ? 'selected' : '' %>><%= tag %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="d-flex flex-column">
         <label for="keywordFilter" class="form-label mb-1">内容</label>
         <input type="text" name="keyword" id="keywordFilter" class="form-control form-control-sm w-auto" value="<%= selectedFilters?.keyword || '' %>" placeholder="フリーワード">
       </div>
@@ -111,6 +120,7 @@
   .table-fixed th.col-amount, .table-fixed td.col-amount { width: 100px; text-align: right; }
   /* 種別 */
   .table-fixed th.col-type, .table-fixed td.col-type { width: 110px; }
+  .table-fixed th.col-tag, .table-fixed td.col-tag { width: 90px; }
   /* 使用者（漢字2文字=4ch + 余白） */
   .table-fixed th.col-user, .table-fixed td.col-user {
     width: calc(4ch + 8px);
@@ -125,6 +135,7 @@
   /* <=992px: 種別・使用者を非表示 */
   @media (max-width: 992px) {
     .table-fixed th.col-type, .table-fixed td.col-type,
+    .table-fixed th.col-tag, .table-fixed td.col-tag,
     .table-fixed th.col-user, .table-fixed td.col-user { display: none !important; }
     .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
   }
@@ -156,6 +167,7 @@
         <th class="col-cf">区分</th>
         <th class="hide-on-mobile col-class">区分</th>
         <th class="col-content">内容</th>
+        <th class="hide-on-mobile col-tag">タグ</th>
         <th class="col-amount">金額</th>
         <th class="hide-on-mobile col-type">種別</th>
         <th class="col-user">使用</th>
@@ -174,6 +186,7 @@
             <%= finance.saving_item === 'Please Choice' ? '' : finance.saving_item %>
           </td>
           <td class="limited-text4 col-content"><%= finance.content %></td>
+          <td class="hide-on-mobile col-tag"><%= finance.sub_tag || '' %></td>
           <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
           <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
           <td class="limited-text2 col-user"><%= finance.user?.displayname || '不明' %></td>

@@ -125,6 +125,37 @@
                   <%= diff.toLocaleString() %>
                 </td>
               </tr>
+              <%
+                const tagSet = new Set();
+                Array.from({ length: 12 }, (_, i) => i + 1).forEach((monthNo) => {
+                  const tagMap = (monthlyExpenseTagDetail?.[monthNo]?.[item]) || {};
+                  Object.keys(tagMap).forEach(tag => tagSet.add(tag));
+                });
+                const tagList = Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ja'));
+              %>
+              <% tagList.forEach((tag) => { %>
+                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                  <td class="sticky-col text-start ps-4">└ <%= tag %></td>
+                  <td class="sticky-col2"></td>
+                  <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; const tagAmount = monthlyExpenseTagDetail?.[mIndex]?.[item]?.[tag] || 0; %>
+                    <td>
+                      <a
+                        href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tag) %>"
+                        class="text-decoration-none">
+                        <%= tagAmount.toLocaleString() %>
+                      </a>
+                    </td>
+                  <% }) %>
+                  <td class="fw-bold">
+                    <a
+                      href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tag) %>"
+                      class="text-decoration-none">
+                      <%= Array.from({ length: 12 }, (_, i) => monthlyExpenseTagDetail?.[i+1]?.[item]?.[tag] || 0).reduce((a, b) => a + b, 0).toLocaleString() %>
+                    </a>
+                  </td>
+                  <td></td>
+                </tr>
+              <% }) %>
             <% }) %>
           </tbody>
         </table>

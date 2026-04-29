@@ -12,7 +12,7 @@
   </div>
   <div class="sr-body">
   <% if ((typeof enableFilterBar !== 'undefined' && enableFilterBar) || page === 'search') { %>
-  <form method="GET" action="<%= page === 'search' ? '/finance/search/results' : '/export/dashboard/yearly-detail' %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2 w-100">
+  <form method="GET" action="<%= page === 'search' ? '/finance/search/results' : (page === 'monthly-detail' ? '/export/dashboard/monthly-detail' : '/export/dashboard/yearly-detail') %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2 w-100">
     <!-- 基本条件を維持する隠しフィールド -->
     <% if (page !== 'search') { %>
       <!-- finance/search 用: 元の検索条件を維持 -->
@@ -103,6 +103,15 @@
       </select>
     </div>
     <div>
+      <label class="form-label mb-1">タグ</label>
+      <select name="sub_tag" class="form-select form-select-sm">
+        <option value="">すべて</option>
+        <% (typeof sub_tag_options !== 'undefined' ? sub_tag_options : []).forEach(tag => { %>
+          <option value="<%= tag %>" <%= (filters?.sub_tag || '') === tag ? 'selected' : '' %>><%= tag %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
       <label class="form-label mb-1">使用</label>
       <select name="user" class="form-select form-select-sm">
         <option value="">すべて</option>
@@ -116,7 +125,7 @@
       <% if (page === 'search') { %>
         <a class="btn btn-sm btn-outline-secondary" href="/finance/search/results">リセット</a>
       <% } else { %>
-        <a class="btn btn-sm btn-outline-secondary" href="/export/dashboard/yearly-detail?scope=<%= filters?.scope %>&year=<%= filters?.year %><%= filters?.month ? ('&month=' + filters.month) : '' %><%= filters?.cf ? ('&cf=' + encodeURIComponent(filters.cf)) : '' %>&item=<%= encodeURIComponent(filters?.item || '') %>">リセット</a>
+        <a class="btn btn-sm btn-outline-secondary" href="<%= page === 'monthly-detail' ? '/export/dashboard/monthly-detail' : '/export/dashboard/yearly-detail' %>?scope=<%= filters?.scope %>&year=<%= filters?.year %><%= filters?.month ? ('&month=' + filters.month) : '' %><%= filters?.cf ? ('&cf=' + encodeURIComponent(filters.cf)) : '' %>&item=<%= encodeURIComponent(filters?.item || '') %>">リセット</a>
       <% } %>
     </div>
   </form>
@@ -200,6 +209,7 @@
       max-width: calc(8ch + 8px);
     }
     .table-fixed th.col-amount, .table-fixed td.col-amount { width: 100px; text-align: right; }
+    .table-fixed th.col-tag,    .table-fixed td.col-tag    { width: 90px; }
     .table-fixed th.col-type,   .table-fixed td.col-type   { width: 110px; }
     /* 使用者列は漢字2文字(=半角4文字)相当 + 両側に隙間 */
     .table-fixed th.col-user,
@@ -217,6 +227,8 @@
     /* 992px以下: 種別・使用者は非表示（優先度低） */
     @media (max-width: 992px) {
       .table-fixed th.col-type,
+      .table-fixed th.col-tag,
+      .table-fixed td.col-tag,
       .table-fixed td.col-type,
       .table-fixed th.col-user,
       .table-fixed td.col-user { display: none !important; }
@@ -255,6 +267,7 @@
           <th class="col-cf">区分</th>
           <th class="hide-on-mobile col-class">区分</th>
           <th class="col-content">内容</th>
+          <th class="hide-on-mobile col-tag">タグ</th>
           <th class="col-amount">金額</th>
           <th class="hide-on-mobile col-type">種別</th>
           <th class="col-user">使用</th>
@@ -273,6 +286,7 @@
               <%= finance.saving_item === 'Please Choice' ? '' : finance.saving_item %>
             </td>
             <td class="limited-text4 col-content"><%= finance.content %></td>
+            <td class="hide-on-mobile col-tag"><%= finance.sub_tag || '' %></td>
             <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
             <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
             <td class="limited-text2 col-user"><%= finance.user?.displayname || '' %></td>

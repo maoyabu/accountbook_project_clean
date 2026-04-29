@@ -111,6 +111,20 @@
           </div>
 
           <div class="form-group">
+            <label for="sub_tag">タグ</label>
+            <input
+              type="text"
+              name="finance[sub_tag]"
+              id="sub_tag"
+              class="form-control short-input"
+              value="<%= finance.sub_tag || '' %>"
+              list="commonTagDatalist"
+              placeholder="例: 水道、ガス、電気、ガソリン">
+            <datalist id="commonTagDatalist"></datalist>
+            <div id="commonTagButtons" class="d-flex flex-wrap gap-2 mt-2"></div>
+          </div>
+
+          <div class="form-group">
             <label for="content">内容</label>
             <textarea class="form-control" name="finance[content]" inputmode="text" style="ime-mode: active;" id="content" rows="3" cols="40" placeholder="内容を入力してください"><%= finance.content %></textarea>
           </div>
@@ -231,6 +245,7 @@
 </div>
 <script>
   let categories = <%- JSON.stringify(ex_cfs) %>;
+  let commonTags = <%- JSON.stringify(typeof common_tags !== 'undefined' ? common_tags : []) %>;
   let tagItemCount = <%= finance.tags?.length || 1 %>;
   const groupSelect = document.getElementById('group');
   const cfSelect = document.getElementById('cf');
@@ -246,6 +261,9 @@
   const userSelect = document.getElementById('who');
   const dateInput = document.getElementById('date');
   const amountInput = document.getElementById('amount');
+  const subTagInput = document.getElementById('sub_tag');
+  const commonTagButtons = document.getElementById('commonTagButtons');
+  const commonTagDatalist = document.getElementById('commonTagDatalist');
 
   function setSelectOptions(select, items, selectedValue) {
     if (!select) return;
@@ -293,6 +311,45 @@
     });
   }
 
+  function getSelectedCategoryForTags() {
+    return cfSelect.value === '支出' ? expenseSelect.value : '';
+  }
+
+  function getCommonTagsForCurrentCategory() {
+    const selectedCategory = getSelectedCategoryForTags();
+    const matched = commonTags.find(group => group.category === selectedCategory);
+    const fallback = commonTags.find(group => !group.category);
+    const tagMap = new Map();
+    [...(matched?.tags || []), ...(fallback?.tags || [])].forEach(tag => {
+      if (tag?.name && !tagMap.has(tag.name)) tagMap.set(tag.name, tag);
+    });
+    return Array.from(tagMap.values()).slice(0, 12);
+  }
+
+  function renderCommonTags() {
+    const tags = getCommonTagsForCurrentCategory();
+    if (commonTagDatalist) {
+      commonTagDatalist.innerHTML = '';
+      tags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag.name;
+        commonTagDatalist.appendChild(option);
+      });
+    }
+    if (!commonTagButtons) return;
+    commonTagButtons.innerHTML = '';
+    tags.forEach(tag => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-sm btn-outline-secondary';
+      button.textContent = tag.name;
+      button.addEventListener('click', () => {
+        if (subTagInput) subTagInput.value = tag.name;
+      });
+      commonTagButtons.appendChild(button);
+    });
+  }
+
   function applyDateLockState() {
     const hasDate = Boolean(dateInput.value);
     cfSelect.disabled = !hasDate;
@@ -304,6 +361,7 @@
     incomeSelect.disabled = !hasDate || cfSelect.value !== '収入';
     deductionSelect.disabled = !hasDate || cfSelect.value !== '控除';
     savingSelect.disabled = !hasDate || cfSelect.value !== '貯蓄';
+    renderCommonTags();
   }
 
   async function refreshFormOptions() {
@@ -325,6 +383,8 @@
       setSelectOptions(paymentSelect, data.pay_cfs || [], paymentSelect.value);
       setUserOptions(userSelect, data.users || [], userSelect.value);
       updateTagCategoryOptions(data.ex_cfs || []);
+      commonTags = data.common_tags || commonTags;
+      renderCommonTags();
     } catch (err) {
       console.error('❌ 区分の取得に失敗:', err);
     } finally {
@@ -361,6 +421,7 @@
       default:
         break;
     }
+    renderCommonTags();
   }
 
   function showValidationModal(message) {
@@ -434,6 +495,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     updateCategoryVisibility();
     cfSelect.addEventListener('change', applyDateLockState);
+    expenseSelect.addEventListener('change', renderCommonTags);
     if (groupSelect) {
       groupSelect.addEventListener('change', refreshFormOptions);
     }

@@ -11,6 +11,7 @@ module.exports.financeSchema = Joi.object({
     dedu_item: Joi.string().allow(''),
     saving_item: Joi.string().allow(''),
     content: Joi.string().allow(''),
+    sub_tag: Joi.string().allow(''),
     amount: Joi.number().required(),
     payment_type: Joi.string().required(),
     user: Joi.string().required(),

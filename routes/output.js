@@ -1170,7 +1170,8 @@ router.get('/dashboard/yearly-m', async (req, res) => {
           month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
-          expense_item: 1
+          expense_item: 1,
+          sub_tag: 1
         }
       },
       {
@@ -1178,7 +1179,8 @@ router.get('/dashboard/yearly-m', async (req, res) => {
           _id: {
             month: '$month',
             cf: '$cf',
-            expense_item: '$expense_item'
+            expense_item: '$expense_item',
+            sub_tag: '$sub_tag'
           },
           total: { $sum: '$amount' }
         }
@@ -1190,14 +1192,16 @@ router.get('/dashboard/yearly-m', async (req, res) => {
 
     const monthlySummary = {};
     const monthlyExpensesDetail = {};
+    const monthlyExpenseTagDetail = {};
 
     for (let m = 1; m <= 12; m++) {
       monthlySummary[m] = { 支出: 0, 控除: 0, 収入: 0, 貯蓄: 0 };
       monthlyExpensesDetail[m] = {};
+      monthlyExpenseTagDetail[m] = {};
     }
 
     result.forEach(r => {
-      const { month, cf, expense_item } = r._id;
+      const { month, cf, expense_item, sub_tag } = r._id;
       const fiscalMonth = monthIndexMap.get(month);
       if (!fiscalMonth) return;
       const total = r.total;
@@ -1209,6 +1213,14 @@ router.get('/dashboard/yearly-m', async (req, res) => {
           monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
         monthlyExpensesDetail[fiscalMonth][expense_item] += total;
+        const tag = (sub_tag || '').trim();
+        if (tag) {
+          if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) {
+            monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
+          }
+          monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
+            (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
+        }
       }
     });
     // Dynamically build ex_cfs from budget items
@@ -1278,6 +1290,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
       year,
       monthlySummary,
       monthlyExpensesDetail,
+      monthlyExpenseTagDetail,
       budgetMap,
       cumulativeBudgetMap,
       ex_cfs,
@@ -1323,7 +1336,8 @@ router.get('/dashboard/yearly-g', async (req, res) => {
           month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
-          expense_item: 1
+          expense_item: 1,
+          sub_tag: 1
         }
       },
       {
@@ -1331,7 +1345,8 @@ router.get('/dashboard/yearly-g', async (req, res) => {
           _id: {
             month: '$month',
             cf: '$cf',
-            expense_item: '$expense_item'
+            expense_item: '$expense_item',
+            sub_tag: '$sub_tag'
           },
           total: { $sum: '$amount' }
         }
@@ -1343,14 +1358,16 @@ router.get('/dashboard/yearly-g', async (req, res) => {
 
     const monthlySummary = {};
     const monthlyExpensesDetail = {};
+    const monthlyExpenseTagDetail = {};
 
     for (let m = 1; m <= 12; m++) {
       monthlySummary[m] = { 支出: 0, 控除: 0, 収入: 0, 貯蓄: 0 };
       monthlyExpensesDetail[m] = {};
+      monthlyExpenseTagDetail[m] = {};
     }
 
     result.forEach(r => {
-      const { month, cf, expense_item } = r._id;
+      const { month, cf, expense_item, sub_tag } = r._id;
       const fiscalMonth = monthIndexMap.get(month);
       if (!fiscalMonth) return;
       const total = r.total;
@@ -1362,6 +1379,14 @@ router.get('/dashboard/yearly-g', async (req, res) => {
           monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
         monthlyExpensesDetail[fiscalMonth][expense_item] += total;
+        const tag = (sub_tag || '').trim();
+        if (tag) {
+          if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) {
+            monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
+          }
+          monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
+            (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
+        }
       }
     });
 
@@ -1442,6 +1467,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       year,
       monthlySummary,
       monthlyExpensesDetail,
+      monthlyExpenseTagDetail,
       budgetMap,
       cumulativeBudgetMap,
       ex_cfs,
@@ -2612,7 +2638,7 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
     }
 
     const { year, month, item, scope, cf } = req.query;
-    const { from, to, payment_type, user } = req.query;
+    const { from, to, payment_type, user, sub_tag } = req.query;
 
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
@@ -2679,6 +2705,9 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
     if (payment_type && payment_type !== 'Please Choice') {
       query.payment_type = payment_type;
     }
+    if (sub_tag && sub_tag !== 'Please Choice') {
+      query.sub_tag = sub_tag;
+    }
     if (user && mongoose.Types.ObjectId.isValid(user)) {
       query.user = new mongoose.Types.ObjectId(user);
     }
@@ -2698,6 +2727,9 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
     // グループメンバー
     const group = await Group.findById(groupId).populate('members');
     const whos = group?.members || [];
+    const sub_tag_options = (await Finance.distinct('sub_tag', { group: new mongoose.Types.ObjectId(groupId) }))
+      .filter(v => v && v !== 'Please Choice')
+      .sort();
 
     return res.render('finance/search_results', {
       finances,
@@ -2709,10 +2741,12 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
         scope, year: y, month: m, item, cf: cfValue,
         from: from || '', to: to || '',
         payment_type: payment_type || 'Please Choice',
+        sub_tag: sub_tag || '',
         user: user || ''
       },
       pay_cfs,
-      whos
+      whos,
+      sub_tag_options
     });
   } catch (err) {
     console.error('❌ 年次明細ドリルダウン エラー:', err);
@@ -2730,7 +2764,7 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
     }
 
     const { year, month, item, scope, fy } = req.query;
-    const { from, to, payment_type, user, cumulative } = req.query;
+    const { from, to, payment_type, user, cumulative, sub_tag } = req.query;
 
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
@@ -2778,6 +2812,9 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
     if (payment_type && payment_type !== 'Please Choice') {
       query.payment_type = payment_type;
     }
+    if (sub_tag && sub_tag !== 'Please Choice') {
+      query.sub_tag = sub_tag;
+    }
     if (user && mongoose.Types.ObjectId.isValid(user)) {
       query.user = new mongoose.Types.ObjectId(user);
     }
@@ -2795,6 +2832,9 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
 
     const group = await Group.findById(groupId).populate('members');
     const whos = group?.members || [];
+    const sub_tag_options = (await Finance.distinct('sub_tag', { group: new mongoose.Types.ObjectId(groupId) }))
+      .filter(v => v && v !== 'Please Choice')
+      .sort();
 
     return res.render('finance/search_results', {
       finances,
@@ -2806,10 +2846,12 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
         scope, year: y, month: m, item,
         from: from || '', to: to || '',
         payment_type: payment_type || 'Please Choice',
+        sub_tag: sub_tag || '',
         user: user || ''
       },
       pay_cfs,
-      whos
+      whos,
+      sub_tag_options
     });
   } catch (err) {
     console.error('❌ 月次明細ドリルダウン エラー:', err);

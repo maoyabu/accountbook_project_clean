@@ -33,6 +33,9 @@ const financeSchema = new mongoose.Schema({
     content: {
         type: String
     },
+    sub_tag: {
+        type: String
+    },
     amount: {
         type: Number,
         required: true
