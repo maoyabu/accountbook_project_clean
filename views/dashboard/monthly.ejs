@@ -17,10 +17,11 @@
         </form>
       </div>
       <ul class="list-group">
-        <li class="list-group-item">収入合計：<strong><%= totalIncome.toLocaleString() %></strong></li>
-        <li class="list-group-item">支出合計（支出＋控除）：<strong><%= totalExpense.toLocaleString() %></strong></li>
-        <li class="list-group-item">貯蓄合計：<strong><%= totalSaving.toLocaleString() %></strong></li>
-        <li class="list-group-item">収支（収入 - 支出 - 貯蓄）：<strong><%= balance.toLocaleString() %></strong></li>
+        <li class="list-group-item">収入：<strong><%= totalIncome.toLocaleString() %></strong></li>
+        <li class="list-group-item">控除：<strong><%= totalDeduction.toLocaleString() %></strong></li>
+        <li class="list-group-item">貯蓄：<strong><%= totalSaving.toLocaleString() %></strong></li>
+        <li class="list-group-item">支出：<strong><%= totalExpense.toLocaleString() %></strong></li>
+        <li class="list-group-item">収支（収入 - 控除 - 貯蓄 - 支出）：<strong><%= balance.toLocaleString() %></strong></li>
       </ul>
     </div>
   </div>

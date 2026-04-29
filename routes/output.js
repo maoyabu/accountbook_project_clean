@@ -633,14 +633,15 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     date: { $gte: start, $lt: end }
   });
 
-  let totalIncome = 0, totalExpense = 0, totalSaving = 0;
+  let totalIncome = 0, totalDeduction = 0, totalSaving = 0, totalExpense = 0;
   let expenseSummary = {};
   let expenseTagSummary = {};
 
   for (let f of finances) {
     if (f.cf === '収入') totalIncome += f.amount;
     else if (f.cf === '貯蓄') totalSaving += f.amount;
-    else if (f.cf === '支出' || f.cf === '控除') {
+    else if (f.cf === '控除') totalDeduction += f.amount;
+    else if (f.cf === '支出') {
       totalExpense += f.amount;
       const item = f.expense_item || '未分類';
       const tag = (f.sub_tag || '').trim() || '他';
@@ -689,7 +690,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   let cumulativeSummary = {};
   let cumulativeTagSummary = {};
   for (let f of cumulativeFinances) {
-    if (f.cf === '支出' || f.cf === '控除') {
+    if (f.cf === '支出') {
       const item = f.expense_item || '未分類';
       const tag = (f.sub_tag || '').trim() || '他';
       cumulativeSummary[item] = (cumulativeSummary[item] || 0) + f.amount;
@@ -713,9 +714,10 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   res.render('dashboard/monthly', {
     year, month,
     totalIncome,
+    totalDeduction,
     totalExpense,
     totalSaving,
-    balance: totalIncome - totalExpense - totalSaving,
+    balance: totalIncome - totalDeduction - totalSaving - totalExpense,
     expenseItems,
     cumulativeItems,
     expenseTagSummary,
@@ -1061,14 +1063,15 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   });
 
   // 集計
-  let totalIncome = 0, totalExpense = 0, totalSaving = 0;
+  let totalIncome = 0, totalDeduction = 0, totalSaving = 0, totalExpense = 0;
   let expenseSummary = {};
   let expenseTagSummary = {};
 
   for (let f of finances) {
     if (f.cf === '収入') totalIncome += f.amount;
     else if (f.cf === '貯蓄') totalSaving += f.amount;
-    else if (f.cf === '支出' || f.cf === '控除') {
+    else if (f.cf === '控除') totalDeduction += f.amount;
+    else if (f.cf === '支出') {
       totalExpense += f.amount;
       const item = f.expense_item || '未分類';
       const tag = (f.sub_tag || '').trim() || '他';
@@ -1114,7 +1117,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   let cumulativeSummary = {};
   let cumulativeTagSummary = {};
   for (let f of cumulativeFinances) {
-    if (f.cf === '支出' || f.cf === '控除') {
+    if (f.cf === '支出') {
       const item = f.expense_item || '未分類';
       const tag = (f.sub_tag || '').trim() || '他';
       cumulativeSummary[item] = (cumulativeSummary[item] || 0) + f.amount;
@@ -1149,9 +1152,10 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   res.render('dashboard/monthly', {
     year, month,
     totalIncome,
+    totalDeduction,
     totalExpense,
     totalSaving,
-    balance: totalIncome - totalExpense - totalSaving,
+    balance: totalIncome - totalDeduction - totalSaving - totalExpense,
     expenseItems,
     cumulativeItems,
     expenseTagSummary,
