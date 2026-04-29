@@ -12,6 +12,10 @@
             <option value="<%= y %>" <%= year === y ? 'selected' : '' %>><%= y %></option>
           <% }) %>
         </select>
+        <div class="form-check form-switch mb-0">
+          <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %> onchange="this.form.submit()">
+          <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
+        </div>
         <span>年度 <%= titlePrefix %>の年間サマリー</span>
       </form>
 
@@ -32,7 +36,10 @@
           <thead>
             <tr>
               <th class="sticky-top sticky-col header-fixed" style="border-left: none; border-right: none;">項目</th>
-              <th class="sticky-top sticky-col2 header-fixed" style="border-left: none; border-right: none;">予算</th>
+              <% if (showTagSummary) { %>
+                <th class="sticky-top header-fixed" style="background-color: #44616D; color: white; border-left: none; border-right: none;">タグ</th>
+              <% } %>
+              <th class="sticky-top <%= showTagSummary ? '' : 'sticky-col2' %> header-fixed" style="border-left: none; border-right: none;">予算</th>
               <% (fiscalMonths || []).forEach((m) => { %>
               <th class="sticky-top" style="background-color: #44616D; color: white; border-left: none; border-right: none;"><%= m %>月</th>
               <% }) %>
@@ -45,7 +52,8 @@
             <% cfList.forEach((cf, index) => { %>
               <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
                 <td class="sticky-col fw-bold text-center"><%= cf %></td>
-                <td class="sticky-col2"><%= totalBudgets[cf]?.toLocaleString() || '0' %></td>
+                <% if (showTagSummary) { %><td></td><% } %>
+                <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= totalBudgets[cf]?.toLocaleString() || '0' %></td>
                 <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>
                   <td>
                     <a
@@ -72,7 +80,8 @@
             <!-- 収支計 -->
             <tr class="table-warning">
               <td class="sticky-col fw-bold text-center">収支</td>
-              <td class="sticky-col2"></td>
+              <% if (showTagSummary) { %><td></td><% } %>
+              <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"></td>
               <% for (let m = 1; m <= 12; m++) {
                 const income = monthlySummary[m]?.['収入'] || 0;
                 const save = monthlySummary[m]?.['貯蓄'] || 0;
@@ -93,14 +102,15 @@
             </tr>
         
             <!-- 空行 -->
-            <tr><td colspan="16" style="height: 10px; border: none;"></td></tr>
+            <tr><td colspan="<%= showTagSummary ? 17 : 16 %>" style="height: 10px; border: none;"></td></tr>
         
             <!-- 支出内訳 -->
             <% ex_cfs.forEach((item, index) => { %>
               <!-- <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>"> -->
                 <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
                 <td class="sticky-col text-start"><%= item %></td>
-                <td class="sticky-col2"><%= budgetMap[item]?.toLocaleString() || '0' %></td>
+                <% if (showTagSummary) { %><td></td><% } %>
+                <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= budgetMap[item]?.toLocaleString() || '0' %></td>
                 <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>
                   <td>
                     <a
@@ -125,37 +135,47 @@
                   <%= diff.toLocaleString() %>
                 </td>
               </tr>
-              <%
-                const tagSet = new Set();
-                Array.from({ length: 12 }, (_, i) => i + 1).forEach((monthNo) => {
-                  const tagMap = (monthlyExpenseTagDetail?.[monthNo]?.[item]) || {};
-                  Object.keys(tagMap).forEach(tag => tagSet.add(tag));
-                });
-                const tagList = Array.from(tagSet).sort((a, b) => a.localeCompare(b, 'ja'));
-              %>
-              <% tagList.forEach((tag) => { %>
-                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
-                  <td class="sticky-col text-start ps-4">└ <%= tag %></td>
-                  <td class="sticky-col2"></td>
-                  <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; const tagAmount = monthlyExpenseTagDetail?.[mIndex]?.[item]?.[tag] || 0; %>
-                    <td>
+              <% if (showTagSummary) { %>
+                <%
+                  const tagSet = new Set();
+                  Array.from({ length: 12 }, (_, i) => i + 1).forEach((monthNo) => {
+                    const tagMap = (monthlyExpenseTagDetail?.[monthNo]?.[item]) || {};
+                    Object.keys(tagMap).forEach(tag => tagSet.add(tag));
+                  });
+                  const hasNamedTag = Array.from(tagSet).some(tag => tag !== '他');
+                  const tagList = hasNamedTag ? Array.from(tagSet).sort((a, b) => {
+                    if (a === '他') return 1;
+                    if (b === '他') return -1;
+                    return a.localeCompare(b, 'ja');
+                  }) : [];
+                %>
+                <% tagList.forEach((tag) => {
+                  const tagQuery = tag === '他' ? '__none__' : tag;
+                %>
+                  <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                    <td class="sticky-col"></td>
+                    <td class="text-start ps-3"><%= tag %></td>
+                    <td></td>
+                    <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; const tagAmount = monthlyExpenseTagDetail?.[mIndex]?.[item]?.[tag] || 0; %>
+                      <td>
+                        <a
+                          href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tagQuery) %>"
+                          class="text-decoration-none">
+                          <%= tagAmount.toLocaleString() %>
+                        </a>
+                      </td>
+                    <% }) %>
+                    <td class="fw-bold">
                       <a
-                        href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= m %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tag) %>"
+                        href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tagQuery) %>"
                         class="text-decoration-none">
-                        <%= tagAmount.toLocaleString() %>
+                        <%= Array.from({ length: 12 }, (_, i) => monthlyExpenseTagDetail?.[i+1]?.[item]?.[tag] || 0).reduce((a, b) => a + b, 0).toLocaleString() %>
                       </a>
                     </td>
-                  <% }) %>
-                  <td class="fw-bold">
-                    <a
-                      href="/export/dashboard/yearly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tag) %>"
-                      class="text-decoration-none">
-                      <%= Array.from({ length: 12 }, (_, i) => monthlyExpenseTagDetail?.[i+1]?.[item]?.[tag] || 0).reduce((a, b) => a + b, 0).toLocaleString() %>
-                    </a>
-                  </td>
-                  <td></td>
-                </tr>
-              <% }) %>
+                    <td></td>
+                  </tr>
+                <% }) %>
+              <% } %>
             <% }) %>
           </tbody>
         </table>

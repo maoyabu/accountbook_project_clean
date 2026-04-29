@@ -622,6 +622,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
 
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
+  const showTagSummary = req.query.tagSummary === '1';
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
   const fiscalYear = cumulativeMeta.fiscalYear;
@@ -634,6 +635,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
 
   let totalIncome = 0, totalExpense = 0, totalSaving = 0;
   let expenseSummary = {};
+  let expenseTagSummary = {};
 
   for (let f of finances) {
     if (f.cf === '収入') totalIncome += f.amount;
@@ -641,7 +643,10 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     else if (f.cf === '支出' || f.cf === '控除') {
       totalExpense += f.amount;
       const item = f.expense_item || '未分類';
+      const tag = (f.sub_tag || '').trim() || '他';
       expenseSummary[item] = (expenseSummary[item] || 0) + f.amount;
+      if (!expenseTagSummary[item]) expenseTagSummary[item] = {};
+      expenseTagSummary[item][tag] = (expenseTagSummary[item][tag] || 0) + f.amount;
     }
   }
 
@@ -682,10 +687,14 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   });
 
   let cumulativeSummary = {};
+  let cumulativeTagSummary = {};
   for (let f of cumulativeFinances) {
     if (f.cf === '支出' || f.cf === '控除') {
       const item = f.expense_item || '未分類';
+      const tag = (f.sub_tag || '').trim() || '他';
       cumulativeSummary[item] = (cumulativeSummary[item] || 0) + f.amount;
+      if (!cumulativeTagSummary[item]) cumulativeTagSummary[item] = {};
+      cumulativeTagSummary[item][tag] = (cumulativeTagSummary[item][tag] || 0) + f.amount;
     }
   }
 
@@ -709,6 +718,9 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     balance: totalIncome - totalExpense - totalSaving,
     expenseItems,
     cumulativeItems,
+    expenseTagSummary,
+    cumulativeTagSummary,
+    showTagSummary,
     formAction: '/export/dashboard/monthly-m',
     titlePrefix: `${req.user.displayname}さん`,
     viewType: 'user',
@@ -1038,6 +1050,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   const end = new Date(year, month, 1);
 
   const groupId = req.session.activeGroupId;
+  const showTagSummary = req.query.tagSummary === '1';
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
   const fiscalYear = cumulativeMeta.fiscalYear;
@@ -1050,6 +1063,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   // 集計
   let totalIncome = 0, totalExpense = 0, totalSaving = 0;
   let expenseSummary = {};
+  let expenseTagSummary = {};
 
   for (let f of finances) {
     if (f.cf === '収入') totalIncome += f.amount;
@@ -1057,7 +1071,10 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     else if (f.cf === '支出' || f.cf === '控除') {
       totalExpense += f.amount;
       const item = f.expense_item || '未分類';
+      const tag = (f.sub_tag || '').trim() || '他';
       expenseSummary[item] = (expenseSummary[item] || 0) + f.amount;
+      if (!expenseTagSummary[item]) expenseTagSummary[item] = {};
+      expenseTagSummary[item][tag] = (expenseTagSummary[item][tag] || 0) + f.amount;
     }
   }
 
@@ -1095,10 +1112,14 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   });
 
   let cumulativeSummary = {};
+  let cumulativeTagSummary = {};
   for (let f of cumulativeFinances) {
     if (f.cf === '支出' || f.cf === '控除') {
       const item = f.expense_item || '未分類';
+      const tag = (f.sub_tag || '').trim() || '他';
       cumulativeSummary[item] = (cumulativeSummary[item] || 0) + f.amount;
+      if (!cumulativeTagSummary[item]) cumulativeTagSummary[item] = {};
+      cumulativeTagSummary[item][tag] = (cumulativeTagSummary[item][tag] || 0) + f.amount;
     }
   }
 
@@ -1133,6 +1154,9 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     balance: totalIncome - totalExpense - totalSaving,
     expenseItems,
     cumulativeItems,
+    expenseTagSummary,
+    cumulativeTagSummary,
+    showTagSummary,
     formAction: '/export/dashboard/monthly-g',
     titlePrefix: `${groupName}`,
     viewType: 'group',
@@ -1150,6 +1174,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
+    const showTagSummary = req.query.tagSummary === '1';
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -1213,14 +1238,12 @@ router.get('/dashboard/yearly-m', async (req, res) => {
           monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
         monthlyExpensesDetail[fiscalMonth][expense_item] += total;
-        const tag = (sub_tag || '').trim();
-        if (tag) {
-          if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) {
-            monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
-          }
-          monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
-            (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
+        const tag = (sub_tag || '').trim() || '他';
+        if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) {
+          monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
         }
+        monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
+          (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
       }
     });
     // Dynamically build ex_cfs from budget items
@@ -1291,6 +1314,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
       monthlySummary,
       monthlyExpensesDetail,
       monthlyExpenseTagDetail,
+      showTagSummary,
       budgetMap,
       cumulativeBudgetMap,
       ex_cfs,
@@ -1317,6 +1341,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
+    const showTagSummary = req.query.tagSummary === '1';
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -1379,14 +1404,12 @@ router.get('/dashboard/yearly-g', async (req, res) => {
           monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
         monthlyExpensesDetail[fiscalMonth][expense_item] += total;
-        const tag = (sub_tag || '').trim();
-        if (tag) {
-          if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) {
-            monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
-          }
-          monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
-            (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
+        const tag = (sub_tag || '').trim() || '他';
+        if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) {
+          monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
         }
+        monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
+          (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
       }
     });
 
@@ -1468,6 +1491,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       monthlySummary,
       monthlyExpensesDetail,
       monthlyExpenseTagDetail,
+      showTagSummary,
       budgetMap,
       cumulativeBudgetMap,
       ex_cfs,
@@ -2705,7 +2729,13 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
     if (payment_type && payment_type !== 'Please Choice') {
       query.payment_type = payment_type;
     }
-    if (sub_tag && sub_tag !== 'Please Choice') {
+    if (sub_tag === '__none__') {
+      query.$or = [
+        { sub_tag: { $exists: false } },
+        { sub_tag: null },
+        { sub_tag: '' }
+      ];
+    } else if (sub_tag && sub_tag !== 'Please Choice') {
       query.sub_tag = sub_tag;
     }
     if (user && mongoose.Types.ObjectId.isValid(user)) {
@@ -2812,7 +2842,13 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
     if (payment_type && payment_type !== 'Please Choice') {
       query.payment_type = payment_type;
     }
-    if (sub_tag && sub_tag !== 'Please Choice') {
+    if (sub_tag === '__none__') {
+      query.$or = [
+        { sub_tag: { $exists: false } },
+        { sub_tag: null },
+        { sub_tag: '' }
+      ];
+    } else if (sub_tag && sub_tag !== 'Please Choice') {
       query.sub_tag = sub_tag;
     }
     if (user && mongoose.Types.ObjectId.isValid(user)) {

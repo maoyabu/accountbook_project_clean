@@ -6,8 +6,12 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="card-title mb-0"><%= titlePrefix %> 月間サマリー</h5>
         <form method="GET" action="<%= formAction %>" class="d-flex">
-          <div class="d-flex align-items-center flex-nowrap">
+          <div class="d-flex align-items-center flex-nowrap gap-2">
             <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;">
+            <div class="form-check form-switch mb-0 text-nowrap">
+              <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %>>
+              <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
+            </div>
             <button type="submit" class="btn btn-primary btn-sm" style="width: 60px;">表示</button>
           </div>
         </form>
@@ -28,6 +32,9 @@
         <thead class="table-primary text-center">
           <tr>
             <th class="text-dark align-middle" rowspan="2">項目</th>
+            <% if (showTagSummary) { %>
+              <th class="text-dark align-middle" rowspan="2">タグ</th>
+            <% } %>
             <th class="text-dark" colspan="3"><%= month %>月</th>
             <th class="text-dark th-period-highlight" colspan="4"><%= cumulativeRangeLabel || `${fiscalStartMonth || 1}月〜${month}月` %></th>
           </tr>
@@ -103,6 +110,7 @@
           %>
           <tr class="dashboard-monthly-total-row fw-bold">
             <td class="text-start">合計</td>
+            <% if (showTagSummary) { %><td></td><% } %>
             <td class="text-end"><%= totalSum.toLocaleString() %></td>
             <td class="text-end"><%= totalBudget.toLocaleString() %></td>
             <td class="text-end"><%= totalDiff.toLocaleString() %></td>
@@ -130,9 +138,21 @@
           <% for (let data of combinedItems) {
               const { item, month: monData, cumulative: cum } = data;
               const cumRateMeta = getBudgetDiffRateMeta(cum.total, cum.budget);
+              const rawTagSet = new Set([
+                ...Object.keys(expenseTagSummary?.[item] || {}),
+                ...Object.keys(cumulativeTagSummary?.[item] || {})
+              ]);
+              const hasNamedTag = Array.from(rawTagSet).some(tag => tag !== '他');
+              const tagSet = hasNamedTag ? rawTagSet : new Set();
+              const tagList = Array.from(tagSet).sort((a, b) => {
+                if (a === '他') return 1;
+                if (b === '他') return -1;
+                return a.localeCompare(b, 'ja');
+              });
           %>
             <tr>
               <td class="text-start"><%= item %></td>
+              <% if (showTagSummary) { %><td></td><% } %>
               <td class="text-end">
                 <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&fy=<%= fiscalYear %>" class="text-decoration-none">
                   <%= monData.total.toLocaleString() %>
@@ -165,6 +185,33 @@
                 </div>
               </td>
             </tr>
+            <% if (showTagSummary) { %>
+              <% tagList.forEach((tag) => {
+                const monthTagTotal = expenseTagSummary?.[item]?.[tag] || 0;
+                const cumulativeTagTotal = cumulativeTagSummary?.[item]?.[tag] || 0;
+                const tagQuery = tag === '他' ? '__none__' : tag;
+              %>
+                <tr>
+                  <td></td>
+                  <td class="text-start ps-3"><%= tag %></td>
+                  <td class="text-end">
+                    <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tagQuery) %>&fy=<%= fiscalYear %>" class="text-decoration-none">
+                      <%= monthTagTotal.toLocaleString() %>
+                    </a>
+                  </td>
+                  <td></td>
+                  <td></td>
+                  <td class="text-end">
+                    <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&sub_tag=<%= encodeURIComponent(tagQuery) %>&cumulative=1&fy=<%= fiscalYear %>" class="text-decoration-none">
+                      <%= cumulativeTagTotal.toLocaleString() %>
+                    </a>
+                  </td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              <% }) %>
+            <% } %>
           <% } %>
         </tbody>
       </table>
