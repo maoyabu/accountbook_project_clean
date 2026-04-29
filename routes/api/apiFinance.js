@@ -655,6 +655,47 @@ router.get('/recent', async (req, res, next) => {
  * GET /api/finance?group=GROUP_ID
  * - 全件取得（検索用）
  */
+router.get('/sub-tags', async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+    const groupId = String(req.query.group || '').trim();
+    const category = String(req.query.category || '').trim();
+    const limit = Math.max(1, Math.min(20, parseInt(req.query.limit, 10) || 8));
+
+    if (!groupId) {
+      return res.status(400).json({ error: 'missing_params', message: 'group は必須です' });
+    }
+
+    const normalizedGroupId = mongoose.Types.ObjectId.isValid(groupId)
+      ? new mongoose.Types.ObjectId(groupId)
+      : groupId;
+
+    const match = {
+      group: normalizedGroupId,
+      cf: '支出',
+      sub_tag: { $exists: true, $type: 'string', $ne: '' }
+    };
+    if (category) {
+      match.expense_item = category;
+    }
+
+    const items = await Finance.aggregate([
+      { $match: match },
+      { $group: { _id: '$sub_tag', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: limit }
+    ]);
+
+    res.json({
+      items: items
+        .map(item => String(item._id || '').trim())
+        .filter(Boolean)
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/', async (req, res, next) => {
   try {
     const userId = req.user._id;
