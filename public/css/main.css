@@ -329,7 +329,12 @@ main {
     user-select: none;
     touch-action: none;
 }
-.finance-quick-fab-handle {
+.finance-quick-fab-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.finance-quick-fab-control {
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -340,7 +345,14 @@ main {
     align-items: center;
     justify-content: center;
     font-size: 0.8rem;
+    text-decoration: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+.finance-quick-fab-control:hover {
+    background: #f4f8ff;
+    color: #084298;
+}
+.finance-quick-fab-handle {
     cursor: grab;
 }
 .finance-quick-fab-handle:active {
@@ -397,7 +409,10 @@ button.finance-quick-fab-item {
         top: 76px;
         gap: 6px;
     }
-    .finance-quick-fab-handle {
+    .finance-quick-fab-controls {
+        gap: 5px;
+    }
+    .finance-quick-fab-control {
         width: 26px;
         height: 26px;
         font-size: 0.75rem;
