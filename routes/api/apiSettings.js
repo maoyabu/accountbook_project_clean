@@ -8,6 +8,11 @@ const MatometeSetting = require('../../models/matomete_setting');
 const PaymentItem = require('../../models/paymentItems');
 const multer = require('multer');
 const { getStorage } = require('../../cloudinary');
+const {
+  FINANCE_QUICK_MENU_ITEMS,
+  normalizeQuickMenuItems,
+  buildQuickMenuItems
+} = require('../../Utils/financeQuickMenu');
 
 // 共通ログ
 router.use((req, res, next) => {
@@ -483,6 +488,38 @@ router.put('/payment-items', async (req, res, next) => {
     }
 
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/settings/finance-quick-menu
+router.get('/finance-quick-menu', async (req, res, next) => {
+  try {
+    const user = await FinanceUser.findById(req.user._id)
+      .select('financeQuickMenuItems')
+      .lean();
+    if (!user) {
+      return res.status(404).json({ error: 'not_found', message: 'ユーザーが見つかりません' });
+    }
+
+    res.json({
+      options: FINANCE_QUICK_MENU_ITEMS,
+      items: buildQuickMenuItems(user.financeQuickMenuItems)
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/settings/finance-quick-menu
+router.put('/finance-quick-menu', async (req, res, next) => {
+  try {
+    const cleaned = normalizeQuickMenuItems(req.body?.items);
+    await FinanceUser.findByIdAndUpdate(req.user._id, {
+      financeQuickMenuItems: cleaned
+    });
+    res.json({ ok: true, items: buildQuickMenuItems(cleaned) });
   } catch (err) {
     next(err);
   }

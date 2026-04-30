@@ -318,6 +318,101 @@ main {
     }
 }
 
+.finance-quick-fab {
+    position: fixed;
+    right: 20px;
+    top: 88px;
+    z-index: 1060;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    user-select: none;
+    touch-action: none;
+}
+.finance-quick-fab-handle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.14);
+    background: #ffffff;
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    cursor: grab;
+}
+.finance-quick-fab-handle:active {
+    cursor: grabbing;
+}
+.finance-quick-fab-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+.finance-quick-fab-item {
+    min-height: 42px;
+    max-width: min(240px, calc(100vw - 72px));
+    padding: 9px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(13, 110, 253, 0.32);
+    background: #ffffff;
+    color: #0b5ed7;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(13, 110, 253, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.finance-quick-fab-item:hover {
+    background: #f4f8ff;
+    color: #084298;
+}
+.finance-quick-fab-item:active {
+    transform: scale(0.99);
+}
+.finance-quick-fab-item i {
+    width: 1rem;
+    flex: 0 0 1rem;
+    text-align: center;
+}
+.finance-quick-fab-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+button.finance-quick-fab-item {
+    font-family: inherit;
+}
+@media (max-width: 576px) {
+    .finance-quick-fab {
+        right: 12px;
+        top: 76px;
+        gap: 6px;
+    }
+    .finance-quick-fab-handle {
+        width: 26px;
+        height: 26px;
+        font-size: 0.75rem;
+    }
+    .finance-quick-fab-items {
+        gap: 7px;
+    }
+    .finance-quick-fab-item {
+        min-height: 38px;
+        max-width: calc(100vw - 58px);
+        padding: 8px 11px;
+        font-size: 0.8rem;
+    }
+}
+
 /* Finance month close button */
 .finance-close-stack {
     position: fixed;

@@ -31,6 +31,11 @@ const {
   getPreviousFiscalYearMeta,
   getFiscalYearStartDateInCalendarYear
 } = require('../Utils/fiscalYear');
+const {
+  FINANCE_QUICK_MENU_ITEMS,
+  normalizeQuickMenuItems,
+  buildQuickMenuItems
+} = require('../Utils/financeQuickMenu');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -2736,8 +2741,32 @@ router.get('/budget', isLoggedIn, async (req, res) => {
         ? noticeSetting.noticeHour
         : 8,
       walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
-    }
+    },
+    quickMenuOptions: FINANCE_QUICK_MENU_ITEMS,
+    quickMenuSettings: buildQuickMenuItems(req.user?.financeQuickMenuItems).map((item) => ({
+      key: item.key,
+      customLabel: item.customLabel
+    }))
   });
+});
+
+// よく使う項目フローティングメニュー設定
+router.post('/budget/quick-menu-settings', isLoggedIn, async (req, res) => {
+  try {
+    const rows = req.body?.quickMenu;
+    const list = Array.isArray(rows) ? rows : Object.values(rows || {});
+    const cleaned = normalizeQuickMenuItems(list);
+
+    await FinanceUser.findByIdAndUpdate(req.user._id, {
+      financeQuickMenuItems: cleaned
+    });
+
+    req.flash('success', 'よく使う項目の設定を更新しました');
+  } catch (err) {
+    console.error('よく使う項目設定更新エラー:', err);
+    req.flash('error', 'よく使う項目の設定更新に失敗しました');
+  }
+  res.redirect('/finance/budget');
 });
 
 // グループ予算確認画面

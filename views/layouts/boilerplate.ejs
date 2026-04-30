@@ -30,21 +30,37 @@
     <% const fabAgid = (typeof activeGroupId !== 'undefined') ? activeGroupId : null; %>
     <% const fabAgStr = fabAgid ? fabAgid.toString() : null; %>
     <% const fabHasGroup = fabCu && Array.isArray(fabCu.groups) && fabCu.groups.length > 0 && fabAgStr && fabCu.groups.some(group => group && group._id && group._id.toString() === fabAgStr); %>
-    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup) { %>
-      <a
-        href="/finance/entry"
-        class="finance-fab"
-        id="finance-fab"
-        aria-label="家計簿の新規登録へ"
-        title="新規登録"
-      >
-        <span class="finance-fab-handle" aria-hidden="true">
+    <% const fabQuickItems = (typeof financeQuickMenuItems !== 'undefined' && Array.isArray(financeQuickMenuItems)) ? financeQuickMenuItems : []; %>
+    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && fabQuickItems.length > 0) { %>
+      <div class="finance-quick-fab" id="finance-quick-fab" aria-label="家計簿のよく使う項目">
+        <button type="button" class="finance-quick-fab-handle" aria-label="よく使う項目を移動" title="移動">
           <i class="fa-solid fa-up-down-left-right"></i>
-        </span>
-        <span class="finance-fab-label">
-          <i class="fa-solid fa-plus"></i>
-        </span>
-      </a>
+        </button>
+        <div class="finance-quick-fab-items">
+          <% fabQuickItems.forEach((item) => { %>
+            <% if (item.key === 'group_switch') { %>
+              <button
+                type="button"
+                class="finance-quick-fab-item"
+                data-finance-quick-action="group-switch"
+                title="<%= item.displayLabel %>"
+              >
+                <i class="fa-solid <%= item.icon %>"></i>
+                <span><%= item.displayLabel %></span>
+              </button>
+            <% } else { %>
+              <a
+                href="<%= item.href %>"
+                class="finance-quick-fab-item"
+                title="<%= item.displayLabel %>"
+              >
+                <i class="fa-solid <%= item.icon %>"></i>
+                <span><%= item.displayLabel %></span>
+              </a>
+            <% } %>
+          <% }) %>
+        </div>
+      </div>
     <% } %>
     <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && (financeClose?.show || financeClose?.yearShow)) { %>
       <div class="finance-close-stack" id="finance-close-stack">

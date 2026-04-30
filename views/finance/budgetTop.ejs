@@ -41,6 +41,50 @@
     <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
   </form>
 </div>
+<h5 class="mb-2"><i class="fa-solid fa-thumbtack"></i> よく使う項目</h5>
+<div class="p-3 border rounded bg-light mb-4">
+  <form action="/finance/budget/quick-menu-settings" method="POST">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-2">
+        <thead>
+          <tr>
+            <th style="width: 4rem;">表示順</th>
+            <th>項目</th>
+            <th>表示名</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (let i = 0; i < 5; i++) { %>
+            <% const row = (quickMenuSettings && quickMenuSettings[i]) ? quickMenuSettings[i] : {}; %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td>
+                <select name="quickMenu[<%= i %>][key]" class="form-select form-select-sm finance-quick-menu-select">
+                  <option value="">選択しない</option>
+                  <% (quickMenuOptions || []).forEach((option) => { %>
+                    <option value="<%= option.key %>" <%= row.key === option.key ? 'selected' : '' %>><%= option.label %></option>
+                  <% }) %>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  name="quickMenu[<%= i %>][label]"
+                  class="form-control form-control-sm"
+                  maxlength="24"
+                  value="<%= row.customLabel || '' %>"
+                  placeholder="未入力なら元のメニュー名"
+                >
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <div class="text-muted small mb-2">※ 画面右上のフローティングメニューに表示します。同じ項目が複数ある場合は先に選んだものだけ保存します。</div>
+    <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
+  </form>
+</div>
 <h5 class="mb-2"><i class="fa-solid fa-wallet"></i> お財布管理</h5>
 <div class="p-3 border rounded bg-light mb-4">
     <form action="/finance/budget/wallet-settings" method="POST" class="mb-2">

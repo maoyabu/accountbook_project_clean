@@ -74,6 +74,7 @@ const {
   getPreviousFiscalYearMeta,
   getFiscalYearStartDateInCalendarYear
 } = require('./Utils/fiscalYear');
+const { buildQuickMenuItems } = require('./Utils/financeQuickMenu');
 
 const googlePhotosRouter = require('./routes/googlePhotos');
 const ocrRoutes = require('./routes/ocr');
@@ -374,6 +375,9 @@ app.use((req, res, next) => {
         }
     }
     res.locals.services = baseServices;
+    res.locals.financeQuickMenuItems = req.user
+      ? buildQuickMenuItems(req.user.financeQuickMenuItems)
+      : [];
 
     next();
 });

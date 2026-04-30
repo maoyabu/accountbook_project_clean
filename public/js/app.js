@@ -290,12 +290,14 @@ function renderTags(tags) {
     });
 }
 
-// --- Finance floating action button (draggable + persisted) ---
+// --- Finance quick floating menu (draggable + persisted) ---
 (function () {
-    const fab = document.getElementById("finance-fab");
+    const fab = document.getElementById("finance-quick-fab");
     if (!fab) return;
 
-    const storageKey = "financeFabPos";
+    const handle = fab.querySelector(".finance-quick-fab-handle");
+    const groupSwitch = fab.querySelector('[data-finance-quick-action="group-switch"]');
+    const storageKey = "financeQuickFabPos";
     const dragThreshold = 4;
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -371,7 +373,24 @@ function renderTags(tags) {
         dragging = false;
     };
 
-    fab.addEventListener("pointerdown", (event) => {
+    const openGroupMenu = () => {
+        const menuToggle = document.querySelector('[data-bs-target="#offcanvasMenu"]');
+        if (menuToggle) {
+            menuToggle.click();
+            window.setTimeout(() => {
+                const groupSelect = document.querySelector('#offcanvasMenu select[name="groupId"]');
+                if (groupSelect) groupSelect.focus();
+            }, 250);
+        }
+    };
+
+    if (groupSwitch) {
+        groupSwitch.addEventListener("click", openGroupMenu);
+    }
+
+    if (!handle) return;
+
+    handle.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 && event.pointerType === "mouse") return;
         beginDrag(event.clientX, event.clientY);
     });
@@ -383,7 +402,7 @@ function renderTags(tags) {
     window.addEventListener("pointerup", endDrag);
     window.addEventListener("pointercancel", endDrag);
 
-    fab.addEventListener("mousedown", (event) => {
+    handle.addEventListener("mousedown", (event) => {
         if (event.button !== 0) return;
         beginDrag(event.clientX, event.clientY);
     });
@@ -394,7 +413,7 @@ function renderTags(tags) {
 
     window.addEventListener("mouseup", endDrag);
 
-    fab.addEventListener("touchstart", (event) => {
+    handle.addEventListener("touchstart", (event) => {
         const touch = event.touches[0];
         if (!touch) return;
         beginDrag(touch.clientX, touch.clientY);
@@ -409,11 +428,11 @@ function renderTags(tags) {
     window.addEventListener("touchend", endDrag);
     window.addEventListener("touchcancel", endDrag);
 
-    fab.addEventListener("dragstart", (event) => {
+    handle.addEventListener("dragstart", (event) => {
         event.preventDefault();
     });
 
-    fab.addEventListener("click", (event) => {
+    handle.addEventListener("click", (event) => {
         if (moved) {
             event.preventDefault();
         }

@@ -100,6 +100,13 @@ const userSchema = new Schema({
     inactivityReminderDays: {
         type: Number,
         default: 3
+    },
+    financeQuickMenuItems: {
+        type: [{
+            key: { type: String, required: true },
+            label: { type: String, default: '' }
+        }],
+        default: undefined
     }
 });
 
