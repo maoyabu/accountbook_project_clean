@@ -114,7 +114,7 @@
                   </div>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group finance-tag-group">
                     <label for="sub_tag">タグ</label>
                     <input
                       type="text"
@@ -125,7 +125,7 @@
                       list="commonTagDatalist"
                       placeholder="例: 水道、ガス、電気、ガソリン">
                     <datalist id="commonTagDatalist"></datalist>
-                    <div id="commonTagButtons" class="d-flex flex-wrap gap-2 mt-2"></div>
+                    <div id="commonTagButtons" class="common-tag-list"></div>
                 </div>
 
                 <div class="form-group">
@@ -305,12 +305,20 @@
     if (!commonTagButtons) return;
     commonTagButtons.innerHTML = '';
     tags.forEach(tag => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'btn btn-sm btn-outline-secondary';
+      const button = document.createElement('span');
+      button.className = 'common-tag-chip';
+      button.setAttribute('role', 'button');
+      button.setAttribute('tabindex', '0');
       button.textContent = tag.name;
-      button.addEventListener('click', () => {
+      const applyTag = () => {
         if (subTagInput) subTagInput.value = tag.name;
+      };
+      button.addEventListener('click', applyTag);
+      button.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          applyTag();
+        }
       });
       commonTagButtons.appendChild(button);
     });

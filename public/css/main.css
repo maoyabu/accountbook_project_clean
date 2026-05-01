@@ -100,6 +100,53 @@ label {
     display: inline-block;
     flex: 0 0 auto !important;
 }
+
+.finance-form-container .finance-tag-group {
+    align-items: flex-start;
+}
+
+.finance-form-container .finance-tag-group label {
+    padding-top: 5px;
+}
+
+.finance-form-container .common-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: 20px;
+    padding-top: 1px;
+}
+
+.finance-form-container .common-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background-color: #78a9f8;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.finance-form-container .common-tag-chip:hover,
+.finance-form-container .common-tag-chip:focus-visible {
+    background-color: #5f97f1;
+    outline: none;
+}
+
+@media (max-width: 575.98px) {
+    .finance-form-container .common-tag-list {
+        flex-basis: 100%;
+        margin-left: 130px;
+        margin-top: 8px;
+    }
+}
 h2.profile-heading {
     font-size: 24px;
     font-weight: 700;
