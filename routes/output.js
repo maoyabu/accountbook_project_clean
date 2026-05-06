@@ -651,9 +651,9 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
   const titleCell = sheet.getCell(1, 1);
   titleCell.value = `${titlePrefix} 月次カレンダー集計`;
   titleCell.fill = fill(CALENDAR_EXCEL_COLORS.toolbar);
-  titleCell.font = { name: 'Meiryo UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.font = { name: 'Meiryo UI', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  sheet.getRow(1).height = 24;
+  sheet.getRow(1).height = 20;
 
   sheet.mergeCells(2, 1, 2, 3);
   sheet.getCell(2, 1).value = `${year}年 ${month}月`;
@@ -723,7 +723,7 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
         ? (rowFill || CALENDAR_EXCEL_COLORS.white)
         : (col.bodyFill || rowFill || CALENDAR_EXCEL_COLORS.white);
       cell.fill = fill(cellFill);
-      cell.font = { name: 'Meiryo UI', size: 9, color: { argb: CALENDAR_EXCEL_COLORS.text } };
+      cell.font = { name: 'Meiryo UI', size: options.fontSize || 9, color: { argb: CALENDAR_EXCEL_COLORS.text } };
       cell.border = thinBorder;
       cell.alignment = {
         horizontal: col.numeric ? 'right' : (col.key === 'day' || col.key === 'weekday' ? 'center' : 'left'),
@@ -796,8 +796,8 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
       : dayRow.dayToneClass === 'is-saturday'
         ? CALENDAR_EXCEL_COLORS.saturday
         : CALENDAR_EXCEL_COLORS.white;
-    setRowValues(excelRow, buildDayValues(dayRow), rowFill, { forceRowFill: isToday });
-    sheet.getRow(excelRow).height = 34;
+    setRowValues(excelRow, buildDayValues(dayRow), rowFill, { forceRowFill: isToday, fontSize: 12 });
+    sheet.getRow(excelRow).height = 37;
     excelRow += 1;
 
     if (dayRow.day === 15) {
@@ -823,14 +823,20 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
 
   sheet.pageSetup = {
     orientation: 'landscape',
-    paperSize: 9,
+    paperSize: 8,
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: 0,
-    horizontalCentered: true
+    fitToHeight: 1,
+    horizontalCentered: true,
+    margins: {
+      left: 0.2,
+      right: 0.2,
+      top: 0.25,
+      bottom: 0.25,
+      header: 0,
+      footer: 0
+    }
   };
-  sheet.headerFooter.oddHeader = `&C${titlePrefix} 月次カレンダー集計 ${ymValue}`;
-  sheet.headerFooter.oddFooter = '&R&P / &N';
 
   return workbook;
 };
