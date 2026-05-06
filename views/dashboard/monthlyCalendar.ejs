@@ -1,5 +1,22 @@
 <% layout('layouts/boilerplate') %>
 <% const walletManaged = walletManagementEnabled === true; %>
+<%
+  const escapeCalendarHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  const renderCalendarContent = (bucket) => {
+    const links = bucket && Array.isArray(bucket.contentLinks) ? bucket.contentLinks : [];
+    if (links.length > 0) {
+      return links.map(link => (
+        `<a href="${escapeCalendarHtml(link.href)}" class="calendar-detail-link">${escapeCalendarHtml(link.label)}</a>`
+      )).join('<span class="calendar-link-separator">, </span>');
+    }
+    return escapeCalendarHtml(bucket?.contentText || '');
+  };
+%>
 
 <div class="card mb-3 rounded">
   <div class="card-body text-white p-2 d-flex justify-content-between align-items-center gap-2 dashboard-calendar-toolbar" style="background-color: #44616D;">
@@ -26,7 +43,12 @@
       <% } %>
       <span class="dashboard-calendar-title"><%= titlePrefix %> 月次カレンダー集計</span>
     </form>
-    <div class="small dashboard-calendar-created">作成日: <%= todayJst %></div>
+    <div class="dashboard-calendar-created-wrap">
+      <div class="small dashboard-calendar-created">作成日: <%= todayJst %></div>
+      <a href="<%= excelAction %>?ym=<%= encodeURIComponent(ymValue) %>" class="btn btn-sm btn-light dashboard-calendar-show-btn">
+        Excel
+      </a>
+    </div>
   </div>
 </div>
 
@@ -34,16 +56,6 @@
   <div class="card-body p-2" style="background-color: #44616D;">
     <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
       <div class="text-white fw-bold"><%= year %>年 <%= month %>月</div>
-      <% if ((calendarCategoryGroups || []).length > 0) { %>
-        <div class="d-flex align-items-center gap-1 flex-wrap dashboard-calendar-category-summary">
-          <span class="text-white small">月次まとめて集計</span>
-          <% (calendarCategoryGroups || []).forEach((group, index) => { %>
-            <span class="badge bg-light text-dark">
-              <%= group.name %>: <%= Number(total.categoryGroupAmounts?.[index] || 0).toLocaleString() %>円
-            </span>
-          <% }) %>
-        </div>
-      <% } %>
     </div>
     <div class="dashboard-calendar-wrap">
       <table class="table table-sm dashboard-calendar-table mb-0">
@@ -52,13 +64,13 @@
             <th rowspan="2">日</th>
             <th rowspan="2">曜</th>
             <th rowspan="2" class="memo-head">メモ</th>
-            <th colspan="2">収入</th>
-            <th colspan="2">控除</th>
+            <th colspan="2" class="finance-main-head">収入</th>
+            <th colspan="2" class="finance-main-head">控除</th>
             <% (calendarCategoryGroups || []).forEach((group) => { %>
-              <th colspan="2"><%= group.name %></th>
+              <th colspan="2" class="expense-breakdown-head"><%= group.name %></th>
             <% }) %>
-            <th colspan="2">食費・調味料</th>
-            <th colspan="2">それ以外</th>
+            <th colspan="2" class="expense-breakdown-head">食費・調味料</th>
+            <th colspan="2" class="expense-breakdown-head">それ以外</th>
             <th rowspan="2" class="balance-head">収支</th>
             <th colspan="2" class="payment-group-head">支払種別計</th>
             <% if (walletManaged) { %>
@@ -66,18 +78,18 @@
             <% } %>
           </tr>
           <tr>
-            <th class="content-head">内容</th>
-            <th>金額</th>
-            <th class="content-head">内容</th>
-            <th>金額</th>
+            <th class="content-head finance-main-head">内容</th>
+            <th class="finance-main-head">金額</th>
+            <th class="content-head finance-main-head">内容</th>
+            <th class="finance-main-head">金額</th>
             <% (calendarCategoryGroups || []).forEach(() => { %>
-              <th class="content-head">内容</th>
-              <th>金額</th>
+              <th class="content-head expense-breakdown-head">内容</th>
+              <th class="expense-breakdown-head">金額</th>
             <% }) %>
-            <th class="content-head">内容</th>
-            <th>金額</th>
-            <th class="content-head">内容</th>
-            <th>金額</th>
+            <th class="content-head expense-breakdown-head">内容</th>
+            <th class="expense-breakdown-head">金額</th>
+            <th class="content-head expense-breakdown-head">内容</th>
+            <th class="expense-breakdown-head">金額</th>
             <th class="payment-head">現金</th>
             <th class="payment-head">現金以外</th>
           </tr>
@@ -100,17 +112,17 @@
                   <div class="memo-text <%= row.memoText ? '' : 'is-empty' %>"><%= row.memoText || '' %></div>
                 </button>
               </td>
-              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.income.contentText %></div></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%- renderCalendarContent(row.income) %></div></td>
               <td class="amount-col <%= row.dayToneClass %>"><%= row.income.amount ? row.income.amount.toLocaleString() : '' %></td>
-              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.deduction.contentText %></div></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%- renderCalendarContent(row.deduction) %></div></td>
               <td class="amount-col <%= row.dayToneClass %>"><%= row.deduction.amount ? row.deduction.amount.toLocaleString() : '' %></td>
               <% (row.categoryGroupBuckets || []).forEach((groupBucket) => { %>
-                <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= groupBucket.bucket.contentText %></div></td>
+                <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%- renderCalendarContent(groupBucket.bucket) %></div></td>
                 <td class="amount-col <%= row.dayToneClass %>"><%= groupBucket.bucket.amount ? groupBucket.bucket.amount.toLocaleString() : '' %></td>
               <% }) %>
-              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.foodSeasoning.contentText %></div></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%- renderCalendarContent(row.foodSeasoning) %></div></td>
               <td class="amount-col <%= row.dayToneClass %>"><%= row.foodSeasoning.amount ? row.foodSeasoning.amount.toLocaleString() : '' %></td>
-              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.otherExpense.contentText %></div></td>
+              <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%- renderCalendarContent(row.otherExpense) %></div></td>
               <td class="amount-col <%= row.dayToneClass %>"><%= row.otherExpense.amount ? row.otherExpense.amount.toLocaleString() : '' %></td>
               <td class="balance-col <%= row.dayToneClass %>"></td>
               <td class="payment-amount-col"><%= row.cashAmount ? row.cashAmount.toLocaleString() : '' %></td>

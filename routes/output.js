@@ -229,6 +229,7 @@ const getJstDay = (value) => {
 
 const createCalendarBucket = () => ({
   contents: [],
+  contentLinks: [],
   contentText: '',
   amount: 0
 });
@@ -323,11 +324,34 @@ const addEntryToBucket = (bucket, entry, fallbackField) => {
   const label = getEntryLabel(entry, fallbackField);
   if (label) {
     bucket.contents.push(label);
+    const category = String(entry?.[fallbackField] || '').trim();
+    const dateKey = formatJstDate(entry?.date);
+    if (category && dateKey) {
+      const params = new URLSearchParams({
+        scope: 'group',
+        cf: String(entry?.cf || '').trim(),
+        category,
+        date_from: dateKey,
+        date_to: dateKey,
+        limit: '100'
+      });
+      bucket.contentLinks.push({
+        label,
+        href: `/finance/list?${params.toString()}`
+      });
+    }
   }
 };
 
 const finalizeCalendarBucket = (bucket) => {
   bucket.contentText = joinUniqueTexts(bucket.contents);
+  const seen = new Set();
+  bucket.contentLinks = (bucket.contentLinks || []).filter((link) => {
+    const key = `${link.href}::${link.label}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   return bucket;
 };
 
@@ -369,6 +393,446 @@ const summarizeCalendarRows = (rows) => {
     - summary.otherExpenseAmount;
 
   return summary;
+};
+
+const buildMonthlyCalendarData = async ({ groupId, ymRaw }) => {
+  const { year, month } = parseYearMonth(ymRaw, new Date());
+
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+  const end = new Date(year, month, 1, 0, 0, 0, 0);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const activeGroup = await Group.findById(groupId).select('group_name financeWalletManagementEnabled financeFiscalStartMonth').lean();
+  const groupName = activeGroup?.group_name || 'グループ';
+  const walletManagementEnabled = activeGroup?.financeWalletManagementEnabled === true;
+  const fiscalStartMonth = normalizeFiscalStartMonth(activeGroup?.financeFiscalStartMonth);
+  const targetFiscalYear = String(getFiscalYearForDate(start, fiscalStartMonth) ?? year);
+
+  const [finances, configuredCategoryGroups] = await Promise.all([
+    Finance.find({
+      group: groupId,
+      date: { $gte: start, $lt: end }
+    })
+      .select('date day cf content memo amount payment_type income_item dedu_item saving_item expense_item')
+      .lean(),
+    FinanceItemCategoryGroup.find({
+      group: groupId,
+      year: targetFiscalYear,
+      show_in_monthly_calendar: true
+    }).sort({ display_order: 1, name: 1 }).lean()
+  ]);
+  const calendarCategoryGroups = buildCalendarCategoryGroups(configuredCategoryGroups);
+
+  const dayRows = Array.from(
+    { length: daysInMonth },
+    (_, idx) => createCalendarDayRow(year, month, idx + 1)
+  );
+  dayRows.forEach((row) => {
+    row.categoryGroupBuckets = calendarCategoryGroups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      targetType: group.targetType,
+      bucket: createCalendarBucket()
+    }));
+  });
+
+  const holidayMap = buildJapaneseHolidayMap(year);
+  const calendarSetting = await FinanceMonthlyCalendar.findOne({ group: groupId, year, month }).lean();
+  const carryCash = walletManagementEnabled ? (Number(calendarSetting?.carryCash) || 0) : 0;
+  const plannedMemoMap = new Map();
+  (calendarSetting?.plannedMemos || []).forEach((planned) => {
+    const day = normalizeCalendarDay(planned?.day);
+    if (!day || day > daysInMonth) return;
+    plannedMemoMap.set(day, {
+      note: String(planned?.note || '').trim(),
+      cashTopup: walletManagementEnabled ? (Number(planned?.cashTopup) || 0) : 0
+    });
+  });
+
+  for (const entry of finances) {
+    const dayFromDate = getJstDay(entry.date);
+    const day = Number.isInteger(dayFromDate) ? dayFromDate : Number(entry.day);
+    if (!Number.isInteger(day) || day < 1 || day > daysInMonth) continue;
+    const row = dayRows[day - 1];
+    const memoText = String(entry.memo || '').trim();
+    if (memoText) {
+      row.memos.push(memoText);
+    }
+    const entryAmount = Number(entry.amount) || 0;
+    const paymentType = normalizePaymentTypeName(entry.payment_type);
+    if (entry.cf === '支出') {
+      if (paymentType === '現金') {
+        row.cashAmount += entryAmount;
+        row.cashUsedAmount += entryAmount;
+      } else {
+        row.nonCashAmount += entryAmount;
+      }
+    }
+
+    if (entry.cf === '収入') {
+      addEntryToBucket(row.income, entry, 'income_item');
+    } else if (entry.cf === '控除') {
+      addEntryToBucket(row.deduction, entry, 'dedu_item');
+    } else if (entry.cf === '支出') {
+      const isGroupedForCalendar = isEntryInCalendarCategoryGroup(entry, calendarCategoryGroups);
+      if (isGroupedForCalendar) {
+        // 表示対象の上位カテゴリーへ出す支出は、既存の支出分類には重複表示しない。
+      } else if (isFoodOrSeasoningExpense(entry.expense_item)) {
+        addEntryToBucket(row.foodSeasoning, entry, 'expense_item');
+      } else {
+        addEntryToBucket(row.otherExpense, entry, 'expense_item');
+      }
+    }
+
+    calendarCategoryGroups.forEach((group, index) => {
+      if (entry.cf !== group.cf) return;
+      const entryItemName = normalizeCategoryName(entry[group.field]);
+      if (!group.itemSet.has(entryItemName)) return;
+      addEntryToBucket(row.categoryGroupBuckets[index].bucket, entry, group.field);
+    });
+  }
+
+  dayRows.forEach((row) => {
+    const planned = plannedMemoMap.get(row.day) || { note: '', cashTopup: 0 };
+    row.plannedNote = planned.note;
+    row.cashTopupAmount = planned.cashTopup;
+    row.holidayName = holidayMap.get(toDateKey(year, month, row.day)) || '';
+    if (row.holidayName || row.weekday === '日') {
+      row.dayToneClass = 'is-sunday-holiday';
+    } else if (row.weekday === '土') {
+      row.dayToneClass = 'is-saturday';
+    } else {
+      row.dayToneClass = '';
+    }
+
+    const transactionMemoText = joinTexts(row.memos);
+    const memoParts = [];
+    if (row.holidayName) memoParts.push(row.holidayName);
+    if (row.plannedNote) memoParts.push(row.plannedNote);
+    if (walletManagementEnabled && row.cashTopupAmount) memoParts.push(`現金追加 +${row.cashTopupAmount.toLocaleString()}`);
+    if (transactionMemoText) memoParts.push(transactionMemoText);
+    row.memoText = memoParts.join(', ');
+
+    finalizeCalendarBucket(row.income);
+    finalizeCalendarBucket(row.deduction);
+    (row.categoryGroupBuckets || []).forEach((groupBucket) => finalizeCalendarBucket(groupBucket.bucket));
+    finalizeCalendarBucket(row.foodSeasoning);
+    finalizeCalendarBucket(row.otherExpense);
+  });
+
+  let runningCash = carryCash;
+  dayRows.forEach((row) => {
+    runningCash += row.cashTopupAmount;
+    runningCash -= row.cashUsedAmount;
+    row.cashBalance = runningCash;
+  });
+
+  const subtotalRows = dayRows.filter((row) => row.day <= 15);
+  const subtotal = summarizeCalendarRows(subtotalRows);
+  const total = summarizeCalendarRows(dayRows);
+  subtotal.cashBalance = subtotalRows.length > 0
+    ? subtotalRows[subtotalRows.length - 1].cashBalance
+    : carryCash;
+  total.cashBalance = dayRows.length > 0
+    ? dayRows[dayRows.length - 1].cashBalance
+    : carryCash;
+
+  return {
+    year,
+    month,
+    ymValue: `${year}-${String(month).padStart(2, '0')}`,
+    titlePrefix: `${groupName}`,
+    carryCash,
+    dayRows,
+    subtotal,
+    total,
+    calendarCategoryGroups,
+    walletManagementEnabled
+  };
+};
+
+const CALENDAR_EXCEL_COLORS = {
+  toolbar: 'FF44616D',
+  headerDefault: 'FFD8E2EA',
+  headerMain: 'FFBFD6EE',
+  white: 'FFFFFFFF',
+  saturday: 'FFEAF4FF',
+  sundayHoliday: 'FFFDECEC',
+  midTotal: 'FFEEF3F7',
+  monthTotal: 'FFDBE6EF',
+  today: 'FFDFF3DF',
+  payment: 'FFF5DEB3',
+  border: 'FF6A757D',
+  text: 'FF17222A'
+};
+
+const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+const thinBorder = {
+  top: { style: 'thin', color: { argb: CALENDAR_EXCEL_COLORS.border } },
+  left: { style: 'thin', color: { argb: CALENDAR_EXCEL_COLORS.border } },
+  bottom: { style: 'thin', color: { argb: CALENDAR_EXCEL_COLORS.border } },
+  right: { style: 'thin', color: { argb: CALENDAR_EXCEL_COLORS.border } }
+};
+
+const buildCalendarExcelColumns = ({ calendarCategoryGroups = [], walletManagementEnabled }) => {
+  const columns = [
+    { key: 'day', title: '日', width: 6, headerFill: CALENDAR_EXCEL_COLORS.white },
+    { key: 'weekday', title: '曜', width: 6, headerFill: CALENDAR_EXCEL_COLORS.white },
+    { key: 'memo', title: 'メモ', width: 28, headerFill: CALENDAR_EXCEL_COLORS.white },
+    { key: 'incomeContent', group: '収入', sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerMain },
+    { key: 'incomeAmount', group: '収入', sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerMain, numeric: true },
+    { key: 'deductionContent', group: '控除', sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerMain },
+    { key: 'deductionAmount', group: '控除', sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerMain, numeric: true }
+  ];
+
+  calendarCategoryGroups.forEach((group, index) => {
+    columns.push(
+      { key: `category${index}Content`, group: group.name, sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerDefault },
+      { key: `category${index}Amount`, group: group.name, sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerDefault, numeric: true }
+    );
+  });
+
+  columns.push(
+    { key: 'foodContent', group: '食費・調味料', sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerDefault },
+    { key: 'foodAmount', group: '食費・調味料', sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerDefault, numeric: true },
+    { key: 'otherContent', group: 'それ以外', sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerDefault },
+    { key: 'otherAmount', group: 'それ以外', sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerDefault, numeric: true },
+    { key: 'balance', title: '収支', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerMain, bodyFill: CALENDAR_EXCEL_COLORS.headerMain, numeric: true },
+    { key: 'cashAmount', group: '支払種別計', sub: '現金', width: 13, headerFill: CALENDAR_EXCEL_COLORS.payment, numeric: true },
+    { key: 'nonCashAmount', group: '支払種別計', sub: '現金以外', width: 13, headerFill: CALENDAR_EXCEL_COLORS.payment, numeric: true }
+  );
+
+  if (walletManagementEnabled) {
+    columns.push({
+      key: 'cashBalance',
+      title: '現金残',
+      width: 13,
+      headerFill: CALENDAR_EXCEL_COLORS.payment,
+      bodyFill: CALENDAR_EXCEL_COLORS.payment,
+      numeric: true
+    });
+  }
+
+  return columns;
+};
+
+const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
+  const {
+    year,
+    month,
+    ymValue,
+    titlePrefix,
+    carryCash,
+    dayRows,
+    subtotal,
+    total,
+    calendarCategoryGroups,
+    walletManagementEnabled
+  } = calendarData;
+
+  const columns = buildCalendarExcelColumns({ calendarCategoryGroups, walletManagementEnabled });
+  const todayJstParts = getJstTodayParts();
+  const todayDay = (year === todayJstParts.year && month === todayJstParts.month)
+    ? todayJstParts.day
+    : null;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'accountbook';
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet('月次カレンダー集計', {
+    views: [{ state: 'frozen', ySplit: 5, xSplit: 3, showGridLines: false }]
+  });
+  sheet.properties.defaultRowHeight = 18;
+
+  columns.forEach((col, index) => {
+    sheet.getColumn(index + 1).width = col.width;
+  });
+
+  const lastCol = columns.length;
+  sheet.mergeCells(1, 1, 1, lastCol);
+  const titleCell = sheet.getCell(1, 1);
+  titleCell.value = `${titlePrefix} 月次カレンダー集計`;
+  titleCell.fill = fill(CALENDAR_EXCEL_COLORS.toolbar);
+  titleCell.font = { name: 'Meiryo UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.getRow(1).height = 24;
+
+  sheet.mergeCells(2, 1, 2, 3);
+  sheet.getCell(2, 1).value = `${year}年 ${month}月`;
+  sheet.getCell(2, 1).font = { name: 'Meiryo UI', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getCell(2, 1).fill = fill(CALENDAR_EXCEL_COLORS.toolbar);
+  sheet.getCell(2, 1).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  for (let colNumber = 4; colNumber <= lastCol; colNumber += 1) {
+    sheet.getCell(2, colNumber).fill = fill(CALENDAR_EXCEL_COLORS.toolbar);
+  }
+  sheet.getCell(2, lastCol).value = `作成日: ${todayJst}`;
+  sheet.getCell(2, lastCol).font = { name: 'Meiryo UI', size: 10, color: { argb: 'FFFFFFFF' } };
+  sheet.getCell(2, lastCol).fill = fill(CALENDAR_EXCEL_COLORS.toolbar);
+  sheet.getCell(2, lastCol).alignment = { horizontal: 'right', vertical: 'middle' };
+  sheet.getRow(2).height = 22;
+
+  if (walletManagementEnabled) {
+    sheet.getCell(3, 1).value = `繰越現金: ${Number(carryCash || 0).toLocaleString()}円`;
+  } else {
+    sheet.getCell(3, 1).value = '';
+  }
+  sheet.getCell(3, 1).font = { name: 'Meiryo UI', size: 10, bold: true };
+  sheet.mergeCells(3, 1, 3, Math.min(3, lastCol));
+
+  const headerTopRow = 4;
+  const headerSubRow = 5;
+  columns.forEach((col, index) => {
+    const colNumber = index + 1;
+    const topCell = sheet.getCell(headerTopRow, colNumber);
+    const subCell = sheet.getCell(headerSubRow, colNumber);
+    const headerFill = col.headerFill || CALENDAR_EXCEL_COLORS.headerDefault;
+    topCell.fill = fill(headerFill);
+    subCell.fill = fill(headerFill);
+    topCell.font = { name: 'Meiryo UI', size: 10, bold: true, color: { argb: CALENDAR_EXCEL_COLORS.text } };
+    subCell.font = { name: 'Meiryo UI', size: 10, bold: true, color: { argb: CALENDAR_EXCEL_COLORS.text } };
+    topCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    subCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    topCell.border = thinBorder;
+    subCell.border = thinBorder;
+
+    if (col.title) {
+      topCell.value = col.title;
+      sheet.mergeCells(headerTopRow, colNumber, headerSubRow, colNumber);
+    } else {
+      topCell.value = col.group;
+      subCell.value = col.sub;
+    }
+  });
+
+  for (let index = 0; index < columns.length; index += 1) {
+    const col = columns[index];
+    if (!col.group) continue;
+    const startCol = index + 1;
+    const endCol = startCol + 1;
+    sheet.mergeCells(headerTopRow, startCol, headerTopRow, endCol);
+    index += 1;
+  }
+  sheet.getRow(headerTopRow).height = 22;
+  sheet.getRow(headerSubRow).height = 20;
+
+  const setRowValues = (rowNumber, values, rowFill, options = {}) => {
+    columns.forEach((col, index) => {
+      const cell = sheet.getCell(rowNumber, index + 1);
+      const value = values[col.key];
+      cell.value = value === 0 && !col.numeric ? '' : value;
+      const cellFill = options.forceRowFill
+        ? (rowFill || CALENDAR_EXCEL_COLORS.white)
+        : (col.bodyFill || rowFill || CALENDAR_EXCEL_COLORS.white);
+      cell.fill = fill(cellFill);
+      cell.font = { name: 'Meiryo UI', size: 9, color: { argb: CALENDAR_EXCEL_COLORS.text } };
+      cell.border = thinBorder;
+      cell.alignment = {
+        horizontal: col.numeric ? 'right' : (col.key === 'day' || col.key === 'weekday' ? 'center' : 'left'),
+        vertical: 'middle',
+        wrapText: !col.numeric
+      };
+      if (col.numeric) {
+        cell.numFmt = '#,##0';
+      }
+    });
+  };
+
+  const buildDayValues = (row) => {
+    const values = {
+      day: row.day,
+      weekday: row.weekday,
+      memo: row.memoText || '',
+      incomeContent: row.income.contentText || '',
+      incomeAmount: row.income.amount || '',
+      deductionContent: row.deduction.contentText || '',
+      deductionAmount: row.deduction.amount || '',
+      foodContent: row.foodSeasoning.contentText || '',
+      foodAmount: row.foodSeasoning.amount || '',
+      otherContent: row.otherExpense.contentText || '',
+      otherAmount: row.otherExpense.amount || '',
+      balance: '',
+      cashAmount: row.cashAmount || '',
+      nonCashAmount: row.nonCashAmount || '',
+      cashBalance: walletManagementEnabled ? row.cashBalance : ''
+    };
+    (row.categoryGroupBuckets || []).forEach((groupBucket, index) => {
+      values[`category${index}Content`] = groupBucket.bucket.contentText || '';
+      values[`category${index}Amount`] = groupBucket.bucket.amount || '';
+    });
+    return values;
+  };
+
+  const buildSummaryValues = (label, summary) => {
+    const values = {
+      day: label,
+      weekday: '',
+      memo: '',
+      incomeContent: '',
+      incomeAmount: summary.incomeAmount || 0,
+      deductionContent: '',
+      deductionAmount: summary.deductionAmount || 0,
+      foodContent: '',
+      foodAmount: summary.foodSeasoningAmount || 0,
+      otherContent: '',
+      otherAmount: summary.otherExpenseAmount || 0,
+      balance: summary.balance || 0,
+      cashAmount: summary.cashAmount || 0,
+      nonCashAmount: summary.nonCashAmount || 0,
+      cashBalance: walletManagementEnabled ? summary.cashBalance : ''
+    };
+    (calendarCategoryGroups || []).forEach((group, index) => {
+      values[`category${index}Content`] = '';
+      values[`category${index}Amount`] = Number(summary.categoryGroupAmounts?.[index] || 0);
+    });
+    return values;
+  };
+
+  let excelRow = 6;
+  dayRows.forEach((dayRow) => {
+    const isToday = todayDay === dayRow.day;
+    const rowFill = isToday
+      ? CALENDAR_EXCEL_COLORS.today
+      : dayRow.dayToneClass === 'is-sunday-holiday'
+      ? CALENDAR_EXCEL_COLORS.sundayHoliday
+      : dayRow.dayToneClass === 'is-saturday'
+        ? CALENDAR_EXCEL_COLORS.saturday
+        : CALENDAR_EXCEL_COLORS.white;
+    setRowValues(excelRow, buildDayValues(dayRow), rowFill, { forceRowFill: isToday });
+    sheet.getRow(excelRow).height = 34;
+    excelRow += 1;
+
+    if (dayRow.day === 15) {
+      setRowValues(excelRow, buildSummaryValues('小計', subtotal), CALENDAR_EXCEL_COLORS.midTotal, { forceRowFill: true });
+      sheet.mergeCells(excelRow, 1, excelRow, 3);
+      sheet.getCell(excelRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(excelRow).font = { name: 'Meiryo UI', size: 9, bold: true };
+      excelRow += 1;
+    }
+  });
+
+  setRowValues(excelRow, buildSummaryValues('合計', total), CALENDAR_EXCEL_COLORS.monthTotal, { forceRowFill: true });
+  sheet.mergeCells(excelRow, 1, excelRow, 3);
+  sheet.getCell(excelRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.getRow(excelRow).font = { name: 'Meiryo UI', size: 9, bold: true };
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber < 4) return;
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      if (!cell.border) cell.border = thinBorder;
+    });
+  });
+
+  sheet.pageSetup = {
+    orientation: 'landscape',
+    paperSize: 9,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true
+  };
+  sheet.headerFooter.oddHeader = `&C${titlePrefix} 月次カレンダー集計 ${ymValue}`;
+  sheet.headerFooter.oddFooter = '&R&P / &N';
+
+  return workbook;
 };
 
 const parseYearMonth = (ymRaw, fallbackDate = new Date()) => {
@@ -935,144 +1399,7 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       return res.redirect('/group_list');
     }
 
-    const { year, month } = parseYearMonth(req.query.ym, new Date());
-
-    const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-    const end = new Date(year, month, 1, 0, 0, 0, 0);
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const activeGroup = await Group.findById(groupId).select('group_name financeWalletManagementEnabled financeFiscalStartMonth').lean();
-    const groupName = activeGroup?.group_name || 'グループ';
-    const walletManagementEnabled = activeGroup?.financeWalletManagementEnabled === true;
-    const fiscalStartMonth = normalizeFiscalStartMonth(activeGroup?.financeFiscalStartMonth);
-    const targetFiscalYear = String(getFiscalYearForDate(start, fiscalStartMonth) ?? year);
-
-    const [finances, configuredCategoryGroups] = await Promise.all([
-      Finance.find({
-        group: groupId,
-        date: { $gte: start, $lt: end }
-      })
-        .select('date day cf content memo amount payment_type income_item dedu_item saving_item expense_item')
-        .lean(),
-      FinanceItemCategoryGroup.find({
-        group: groupId,
-        year: targetFiscalYear,
-        show_in_monthly_calendar: true
-      }).sort({ display_order: 1, name: 1 }).lean()
-    ]);
-    const calendarCategoryGroups = buildCalendarCategoryGroups(configuredCategoryGroups);
-
-    const dayRows = Array.from(
-      { length: daysInMonth },
-      (_, idx) => createCalendarDayRow(year, month, idx + 1)
-    );
-    dayRows.forEach((row) => {
-      row.categoryGroupBuckets = calendarCategoryGroups.map((group) => ({
-        id: group.id,
-        name: group.name,
-        targetType: group.targetType,
-        bucket: createCalendarBucket()
-      }));
-    });
-    const holidayMap = buildJapaneseHolidayMap(year);
-    const calendarSetting = await FinanceMonthlyCalendar.findOne({ group: groupId, year, month }).lean();
-    const carryCash = walletManagementEnabled ? (Number(calendarSetting?.carryCash) || 0) : 0;
-    const plannedMemoMap = new Map();
-    (calendarSetting?.plannedMemos || []).forEach((planned) => {
-      const day = normalizeCalendarDay(planned?.day);
-      if (!day || day > daysInMonth) return;
-      plannedMemoMap.set(day, {
-        note: String(planned?.note || '').trim(),
-        cashTopup: walletManagementEnabled ? (Number(planned?.cashTopup) || 0) : 0
-      });
-    });
-
-    for (const entry of finances) {
-      const dayFromDate = getJstDay(entry.date);
-      const day = Number.isInteger(dayFromDate) ? dayFromDate : Number(entry.day);
-      if (!Number.isInteger(day) || day < 1 || day > daysInMonth) continue;
-      const row = dayRows[day - 1];
-      const memoText = String(entry.memo || '').trim();
-      if (memoText) {
-        row.memos.push(memoText);
-      }
-      const entryAmount = Number(entry.amount) || 0;
-      const paymentType = normalizePaymentTypeName(entry.payment_type);
-      if (entry.cf === '支出') {
-        if (paymentType === '現金') {
-          row.cashAmount += entryAmount;
-          row.cashUsedAmount += entryAmount;
-        } else {
-          row.nonCashAmount += entryAmount;
-        }
-      }
-
-      if (entry.cf === '収入') {
-        addEntryToBucket(row.income, entry, 'income_item');
-      } else if (entry.cf === '控除') {
-        addEntryToBucket(row.deduction, entry, 'dedu_item');
-      } else if (entry.cf === '支出') {
-        const isGroupedForCalendar = isEntryInCalendarCategoryGroup(entry, calendarCategoryGroups);
-        if (isGroupedForCalendar) {
-          // 表示対象の上位カテゴリーへ出す支出は、既存の支出分類には重複表示しない。
-        } else if (isFoodOrSeasoningExpense(entry.expense_item)) {
-          addEntryToBucket(row.foodSeasoning, entry, 'expense_item');
-        } else {
-          addEntryToBucket(row.otherExpense, entry, 'expense_item');
-        }
-      }
-
-      calendarCategoryGroups.forEach((group, index) => {
-        if (entry.cf !== group.cf) return;
-        const entryItemName = normalizeCategoryName(entry[group.field]);
-        if (!group.itemSet.has(entryItemName)) return;
-        addEntryToBucket(row.categoryGroupBuckets[index].bucket, entry, group.field);
-      });
-    }
-
-    dayRows.forEach((row) => {
-      const planned = plannedMemoMap.get(row.day) || { note: '', cashTopup: 0 };
-      row.plannedNote = planned.note;
-      row.cashTopupAmount = planned.cashTopup;
-      row.holidayName = holidayMap.get(toDateKey(year, month, row.day)) || '';
-      if (row.holidayName || row.weekday === '日') {
-        row.dayToneClass = 'is-sunday-holiday';
-      } else if (row.weekday === '土') {
-        row.dayToneClass = 'is-saturday';
-      } else {
-        row.dayToneClass = '';
-      }
-
-      const transactionMemoText = joinTexts(row.memos);
-      const memoParts = [];
-      if (row.holidayName) memoParts.push(row.holidayName);
-      if (row.plannedNote) memoParts.push(row.plannedNote);
-      if (walletManagementEnabled && row.cashTopupAmount) memoParts.push(`現金追加 +${row.cashTopupAmount.toLocaleString()}`);
-      if (transactionMemoText) memoParts.push(transactionMemoText);
-      row.memoText = memoParts.join(', ');
-
-      finalizeCalendarBucket(row.income);
-      finalizeCalendarBucket(row.deduction);
-      (row.categoryGroupBuckets || []).forEach((groupBucket) => finalizeCalendarBucket(groupBucket.bucket));
-      finalizeCalendarBucket(row.foodSeasoning);
-      finalizeCalendarBucket(row.otherExpense);
-    });
-
-    let runningCash = carryCash;
-    dayRows.forEach((row) => {
-      runningCash += row.cashTopupAmount;
-      runningCash -= row.cashUsedAmount;
-      row.cashBalance = runningCash;
-    });
-
-    const subtotalRows = dayRows.filter((row) => row.day <= 15);
-    const subtotal = summarizeCalendarRows(subtotalRows);
-    const total = summarizeCalendarRows(dayRows);
-    subtotal.cashBalance = subtotalRows.length > 0
-      ? subtotalRows[subtotalRows.length - 1].cashBalance
-      : carryCash;
-    total.cashBalance = dayRows.length > 0
-      ? dayRows[dayRows.length - 1].cashBalance
-      : carryCash;
+    const calendarData = await buildMonthlyCalendarData({ groupId, ymRaw: req.query.ym });
     const todayJst = new Intl.DateTimeFormat('ja-JP', {
       timeZone: 'Asia/Tokyo',
       year: 'numeric',
@@ -1081,25 +1408,17 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
     }).format(new Date());
 
     const todayJstParts = getJstTodayParts();
-    const todayDay = (year === todayJstParts.year && month === todayJstParts.month)
+    const todayDay = (calendarData.year === todayJstParts.year && calendarData.month === todayJstParts.month)
       ? todayJstParts.day
       : null;
 
     res.render('dashboard/monthlyCalendar', {
-      year,
-      month,
-      ymValue: `${year}-${String(month).padStart(2, '0')}`,
-      titlePrefix: `${groupName}`,
+      ...calendarData,
       formAction: '/export/dashboard/monthly-calendar-m',
+      excelAction: '/export/dashboard/monthly-calendar-m-exls',
       carryCashAction: '/export/dashboard/monthly-calendar-m/carry-cash',
       memoSaveAction: '/export/dashboard/monthly-calendar-m/memo',
       memoDeleteAction: '/export/dashboard/monthly-calendar-m/memo/delete',
-      carryCash,
-      dayRows,
-      subtotal,
-      total,
-      calendarCategoryGroups,
-      walletManagementEnabled,
       todayDay,
       todayJst,
       mainClass: 'container-fluid dashboard-calendar-main'
@@ -1107,6 +1426,35 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
   } catch (err) {
     console.error('❌ 月次カレンダー集計ルートエラー:', err);
     res.status(500).send('月次カレンダー集計エラー');
+  }
+});
+
+// 月次カレンダー集計（個人）Excel出力
+router.get('/dashboard/monthly-calendar-m-exls', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const calendarData = await buildMonthlyCalendarData({ groupId, ymRaw: req.query.ym });
+    const todayJst = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric'
+    }).format(new Date());
+    const workbook = await exportMonthlyCalendarWorkbook(calendarData, todayJst);
+    const fileName = `${calendarData.ymValue}_月次カレンダー集計.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('❌ 月次カレンダーExcel出力エラー:', err);
+    res.status(500).send('月次カレンダーExcel出力エラー');
   }
 });
 

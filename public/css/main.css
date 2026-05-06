@@ -2116,9 +2116,12 @@ table td, table th {
     white-space: nowrap;
 }
 
-.dashboard-calendar-table thead tr:first-child th:nth-child(n+4):nth-child(-n+7),
-.dashboard-calendar-table thead tr:nth-child(2) th:nth-child(-n+8) {
+.dashboard-calendar-table thead th.finance-main-head {
     background-color: #bfd6ee;
+}
+
+.dashboard-calendar-table thead th.expense-breakdown-head {
+    background-color: #d8e2ea;
 }
 
 .dashboard-calendar-table thead tr:first-child th:nth-child(1),
@@ -2206,6 +2209,17 @@ table td, table th {
     max-height: calc(1.25em * 3);
 }
 
+.dashboard-calendar-table .calendar-detail-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+.dashboard-calendar-table .calendar-detail-link:hover {
+    color: #0d6efd;
+}
+
 .dashboard-calendar-table td.amount-col,
 .dashboard-calendar-table td.balance-col {
     min-width: 110px;
@@ -2215,7 +2229,7 @@ table td, table th {
 
 .dashboard-calendar-table th.balance-head,
 .dashboard-calendar-table td.balance-col {
-    background-color: #bfd6ee;
+    background-color: #bfd6ee !important;
 }
 
 .dashboard-calendar-table th.payment-group-head {
@@ -2335,6 +2349,13 @@ table td, table th {
 
 .dashboard-calendar-created {
     white-space: nowrap;
+}
+
+.dashboard-calendar-created-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
     flex: 0 0 auto;
 }
 
