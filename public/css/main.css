@@ -382,7 +382,12 @@ main {
     align-items: flex-start;
     gap: 8px;
 }
-.finance-quick-fab.is-disabled .finance-quick-fab-content {
+.finance-quick-fab-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.finance-quick-fab.is-disabled .finance-quick-fab-items {
     display: none;
 }
 .finance-quick-toggle {

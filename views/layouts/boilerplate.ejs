@@ -34,16 +34,18 @@
     <% const fabQuickEnabled = typeof financeQuickMenuEnabled === 'undefined' ? true : financeQuickMenuEnabled !== false; %>
     <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && fabQuickItems.length > 0) { %>
       <div class="finance-quick-fab <%= fabQuickEnabled ? '' : 'is-disabled' %>" id="finance-quick-fab" aria-label="家計簿のよく使う項目" data-finance-quick-enabled="<%= fabQuickEnabled ? 'true' : 'false' %>">
-        <label class="finance-quick-toggle finance-quick-fab-toggle" title="よく使う項目の表示切替">
-          <span>よく使う項目</span>
-          <input type="checkbox" data-finance-quick-toggle <%= fabQuickEnabled ? 'checked' : '' %>>
-          <span class="finance-quick-toggle-track" aria-hidden="true"></span>
-        </label>
+        <div class="finance-quick-fab-top">
+          <button type="button" class="finance-quick-fab-control finance-quick-fab-handle" aria-label="よく使う項目を移動" title="移動">
+            <i class="fa-solid fa-up-down-left-right"></i>
+          </button>
+          <label class="finance-quick-toggle finance-quick-fab-toggle" title="よく使う項目の表示切替">
+            <span>よく使う項目</span>
+            <input type="checkbox" data-finance-quick-toggle <%= fabQuickEnabled ? 'checked' : '' %>>
+            <span class="finance-quick-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
         <div class="finance-quick-fab-content">
           <div class="finance-quick-fab-controls">
-            <button type="button" class="finance-quick-fab-control finance-quick-fab-handle" aria-label="よく使う項目を移動" title="移動">
-              <i class="fa-solid fa-up-down-left-right"></i>
-            </button>
             <a href="/finance/budget#financeQuickMenuSettings" class="finance-quick-fab-control" aria-label="よく使う項目を設定" title="設定">
               <i class="fa-solid fa-gear"></i>
             </a>
