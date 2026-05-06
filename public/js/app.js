@@ -293,12 +293,56 @@ function renderTags(tags) {
 // --- Finance quick floating menu (draggable + persisted) ---
 (function () {
     const fab = document.getElementById("finance-quick-fab");
-    if (!fab) return;
+    const toggles = Array.from(document.querySelectorAll("[data-finance-quick-toggle]"));
+    if (!fab && toggles.length === 0) return;
 
-    const handle = fab.querySelector(".finance-quick-fab-handle");
-    const groupSwitch = fab.querySelector('[data-finance-quick-action="group-switch"]');
+    const handle = fab?.querySelector(".finance-quick-fab-handle");
+    const groupSwitch = fab?.querySelector('[data-finance-quick-action="group-switch"]');
     const storageKey = "financeQuickFabPos";
     const dragThreshold = 4;
+    let syncing = false;
+
+    const setQuickMenuEnabled = (enabled) => {
+        if (fab) {
+            fab.dataset.financeQuickEnabled = enabled ? "true" : "false";
+            fab.classList.toggle("is-disabled", !enabled);
+        }
+        toggles.forEach((toggle) => {
+            toggle.checked = enabled;
+        });
+    };
+
+    const persistQuickMenuEnabled = async (enabled) => {
+        const response = await fetch("/api/settings/finance-quick-menu", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled })
+        });
+        if (!response.ok) throw new Error("Failed to update quick menu setting");
+        const data = await response.json();
+        return data.enabled !== false;
+    };
+
+    toggles.forEach((toggle) => {
+        toggle.addEventListener("change", async () => {
+            if (syncing) return;
+            const nextEnabled = toggle.checked;
+            const previousEnabled = !nextEnabled;
+            syncing = true;
+            setQuickMenuEnabled(nextEnabled);
+            try {
+                const savedEnabled = await persistQuickMenuEnabled(nextEnabled);
+                setQuickMenuEnabled(savedEnabled);
+            } catch (_) {
+                setQuickMenuEnabled(previousEnabled);
+                window.alert("よく使う項目の表示設定を更新できませんでした。時間をおいて再度お試しください。");
+            } finally {
+                syncing = false;
+            }
+        });
+    });
+
+    if (!fab) return;
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 

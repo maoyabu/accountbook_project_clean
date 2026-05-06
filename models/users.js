@@ -101,6 +101,10 @@ const userSchema = new Schema({
         type: Number,
         default: 3
     },
+    financeQuickMenuEnabled: {
+        type: Boolean,
+        default: true
+    },
     financeQuickMenuItems: {
         type: [{
             key: { type: String, required: true },

@@ -21,6 +21,7 @@ const FinanceBudgetNotice = require('../models/finance_budget_notice');
 const { sendMail } = require('../Utils/mailer');
 const MatometeSetting = require('../models/matomete_setting');
 const FinanceBudgetNoticeSetting = require('../models/finance_budget_notice_setting');
+const FinanceItemCategoryGroup = require('../models/finance_item_category_group');
 const FinanceCloseStatus = require('../models/finance_close_status');
 const FinanceCloseGroup = require('../models/finance_close_group');
 const FinanceCloseYearStatus = require('../models/finance_close_year_status');
@@ -2697,6 +2698,82 @@ const buildGroupOnlyRows = ({ docs = [], keyField, laCf = null }) => {
   }));
 };
 
+const CATEGORY_GROUP_TYPES = ['収入項目', '支出項目', '控除項目', '貯蓄項目'];
+
+const normalizeCategoryGroupType = (value) => {
+  const raw = String(value || '').trim();
+  return CATEGORY_GROUP_TYPES.includes(raw) ? raw : '';
+};
+
+const uniqueOrderedStrings = (values = []) => {
+  const seen = new Set();
+  const ordered = [];
+  values.forEach((value) => {
+    const text = String(value || '').trim();
+    if (!text || seen.has(text)) return;
+    seen.add(text);
+    ordered.push(text);
+  });
+  return ordered;
+};
+
+const fetchCategoryGroupItemOptions = async (groupId, year) => {
+  const yearStr = String(year);
+  let [expenseRows, itemRows] = await Promise.all([
+    Budget.find({ group: groupId, year: yearStr }).sort({ display_order: 1 }).lean(),
+    Items.find({
+      group: groupId,
+      year: yearStr,
+      la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目'] }
+    }).sort({ la_cf: 1, display_order: 1 }).lean()
+  ]);
+  if (expenseRows.length === 0) {
+    expenseRows = await Budget.find({ group: groupId, year: { $exists: false } }).sort({ display_order: 1 }).lean();
+  }
+  if (itemRows.length === 0) {
+    itemRows = await Items.find({
+      group: groupId,
+      year: { $exists: false },
+      la_cf: { $in: ['収入項目', '控除項目', '貯蓄項目'] }
+    }).sort({ la_cf: 1, display_order: 1 }).lean();
+  }
+
+  const incomeOptions = uniqueOrderedStrings(itemRows.filter((row) => row.la_cf === '収入項目').map((row) => row.item));
+  const expenseOptions = uniqueOrderedStrings(expenseRows.map((row) => row.expense_item));
+  const deductionOptions = uniqueOrderedStrings(itemRows.filter((row) => row.la_cf === '控除項目').map((row) => row.item));
+  const savingOptions = uniqueOrderedStrings(itemRows.filter((row) => row.la_cf === '貯蓄項目').map((row) => row.item));
+
+  return {
+    '収入項目': incomeOptions.length ? incomeOptions : defaultInItems.slice(1),
+    '支出項目': expenseOptions.length ? expenseOptions : ex_cfs,
+    '控除項目': deductionOptions.length ? deductionOptions : defaultDeduCfs.slice(1),
+    '貯蓄項目': savingOptions.length ? savingOptions : defaultSavingCfs.slice(1)
+  };
+};
+
+const normalizeCategoryGroupRows = (rowsInput) => {
+  const rows = Array.isArray(rowsInput) ? rowsInput : Object.values(rowsInput || {});
+  return rows
+    .map((row, index) => {
+      const targetType = normalizeCategoryGroupType(row?.target_type);
+      const name = String(row?.name || '').trim();
+      if (!targetType || !name) return null;
+      const rawItemNames = Array.isArray(row?.item_names)
+        ? row.item_names
+        : (row?.item_names ? [row.item_names] : []);
+      return {
+        display_order: index + 1,
+        target_type: targetType,
+        name,
+        item_names: uniqueOrderedStrings(rawItemNames),
+        show_in_monthly_calendar: row?.show_in_monthly_calendar === 'on'
+          || row?.show_in_monthly_calendar === 'true'
+          || row?.show_in_monthly_calendar === true
+      };
+    })
+    .filter(Boolean);
+};
+
 //予算関連ルート
 //予算設定のトップ画面表示
 router.get('/budget', isLoggedIn, async (req, res) => {
@@ -2708,10 +2785,14 @@ router.get('/budget', isLoggedIn, async (req, res) => {
 
   const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
   const selectedYear = resolveBudgetYear(req.query.year, getCurrentFiscalYear(fiscalStartMonth));
-  const [{ groupDoc, members }, matometeSetting, noticeSetting] = await Promise.all([
+  const [{ groupDoc, members }, matometeSetting, noticeSetting, categoryGroupItemOptions, categoryGroups] = await Promise.all([
     getFinanceBudgetMembers(activeGroupId),
     MatometeSetting.findOne({ group: activeGroupId }),
-    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId })
+    FinanceBudgetNoticeSetting.findOne({ group: activeGroupId }),
+    fetchCategoryGroupItemOptions(activeGroupId, selectedYear),
+    FinanceItemCategoryGroup.find({ group: activeGroupId, year: selectedYear })
+      .sort({ target_type: 1, display_order: 1, name: 1 })
+      .lean()
   ]);
 
   if (!groupDoc) {
@@ -2742,7 +2823,11 @@ router.get('/budget', isLoggedIn, async (req, res) => {
         : 8,
       walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
     },
+    categoryGroupTypes: CATEGORY_GROUP_TYPES,
+    categoryGroupItemOptions,
+    categoryGroups,
     quickMenuOptions: FINANCE_QUICK_MENU_ITEMS,
+    quickMenuEnabled: req.user?.financeQuickMenuEnabled !== false,
     quickMenuSettings: buildQuickMenuItems(req.user?.financeQuickMenuItems).map((item) => ({
       key: item.key,
       customLabel: item.customLabel
@@ -2756,8 +2841,13 @@ router.post('/budget/quick-menu-settings', isLoggedIn, async (req, res) => {
     const rows = req.body?.quickMenu;
     const list = Array.isArray(rows) ? rows : Object.values(rows || {});
     const cleaned = normalizeQuickMenuItems(list);
+    const enabledValue = req.body?.quickMenuEnabled;
+    const quickMenuEnabled = Array.isArray(enabledValue)
+      ? enabledValue.includes('true')
+      : enabledValue !== 'false';
 
     await FinanceUser.findByIdAndUpdate(req.user._id, {
+      financeQuickMenuEnabled: quickMenuEnabled,
       financeQuickMenuItems: cleaned
     });
 
@@ -2767,6 +2857,40 @@ router.post('/budget/quick-menu-settings', isLoggedIn, async (req, res) => {
     req.flash('error', 'よく使う項目の設定更新に失敗しました');
   }
   res.redirect('/finance/budget');
+});
+
+// 上位カテゴリー設定
+router.post('/budget/category-groups', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = normalizeIdString(req.session.activeGroupId);
+    if (!groupId) {
+      req.flash('error', 'アクティブなグループが選択されていません');
+      return res.redirect('/group_list');
+    }
+
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const year = resolveBudgetYear(req.body.year, getCurrentFiscalYear(fiscalStartMonth));
+    const rows = normalizeCategoryGroupRows(req.body.categoryGroups);
+    const now = new Date();
+
+    await FinanceItemCategoryGroup.deleteMany({ group: groupId, year });
+    if (rows.length > 0) {
+      await FinanceItemCategoryGroup.insertMany(rows.map((row) => ({
+        ...row,
+        group: groupId,
+        year,
+        entry_date: now,
+        update_date: now
+      })));
+    }
+
+    req.flash('success', '上位カテゴリー設定を保存しました');
+    return res.redirect(`/finance/budget?year=${encodeURIComponent(year)}`);
+  } catch (err) {
+    console.error('上位カテゴリー設定保存エラー:', err);
+    req.flash('error', '上位カテゴリー設定の保存に失敗しました');
+    return res.redirect('/finance/budget');
+  }
 });
 
 // グループ予算確認画面

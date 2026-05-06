@@ -41,9 +41,82 @@
     <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
   </form>
 </div>
+<h5 class="mb-2"><i class="fa-solid fa-layer-group"></i> 上位カテゴリー設定</h5>
+<div class="p-3 border rounded bg-light mb-4">
+  <form action="/finance/budget/category-groups" method="POST" id="categoryGroupForm">
+    <input type="hidden" name="year" value="<%= selectedYear %>">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-2">
+        <thead>
+          <tr>
+            <th style="width: 8rem;">対象区分</th>
+            <th style="width: 12rem;">上位カテゴリー</th>
+            <th>含める区分</th>
+            <th style="width: 8rem;">月次表示</th>
+            <th style="width: 4rem;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="categoryGroupTableBody">
+          <% (categoryGroups || []).forEach((group, idx) => { %>
+            <tr>
+              <td>
+                <select name="categoryGroups[<%= idx %>][target_type]" class="form-select form-select-sm category-group-type">
+                  <% (categoryGroupTypes || []).forEach((type) => { %>
+                    <option value="<%= type %>" <%= group.target_type === type ? 'selected' : '' %>><%= type.replace('項目', '区分') %></option>
+                  <% }) %>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  name="categoryGroups[<%= idx %>][name]"
+                  class="form-control form-control-sm"
+                  value="<%= group.name || '' %>"
+                  placeholder="例: 食費"
+                >
+              </td>
+              <td>
+                <select name="categoryGroups[<%= idx %>][item_names]" class="form-select form-select-sm category-group-items" multiple size="4">
+                  <% const options = (categoryGroupItemOptions && categoryGroupItemOptions[group.target_type]) ? categoryGroupItemOptions[group.target_type] : []; %>
+                  <% options.forEach((itemName) => { %>
+                    <option value="<%= itemName %>" <%= (group.item_names || []).includes(itemName) ? 'selected' : '' %>><%= itemName %></option>
+                  <% }) %>
+                </select>
+              </td>
+              <td>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="categoryGroups[<%= idx %>][show_in_monthly_calendar]"
+                    <%= group.show_in_monthly_calendar ? 'checked' : '' %>
+                  >
+                </div>
+              </td>
+              <td>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCategoryGroupRow(this)"><i class="fas fa-trash-alt"></i></button>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="text-muted small mb-2">※ 複数選択は Ctrl / Command キーを押しながら選択できます。月次表示にチェックした上位カテゴリーは月次カレンダー集計の控除の右に表示します。</div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="addCategoryGroupRow()">＋上位カテゴリー追加</button>
+      <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
+    </div>
+  </form>
+</div>
 <h5 class="mb-2" id="financeQuickMenuSettings"><i class="fa-solid fa-thumbtack"></i> よく使う項目</h5>
 <div class="p-3 border rounded bg-light mb-4">
   <form action="/finance/budget/quick-menu-settings" method="POST">
+    <label class="finance-quick-toggle finance-quick-settings-toggle mb-3">
+      <span>よく使う項目を表示する</span>
+      <input type="checkbox" name="quickMenuEnabled" value="true" <%= quickMenuEnabled === false ? '' : 'checked' %>>
+      <input type="hidden" name="quickMenuEnabled" value="false">
+      <span class="finance-quick-toggle-track" aria-hidden="true"></span>
+    </label>
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-2">
         <thead>
@@ -172,3 +245,82 @@
 <div class="p-3 border rounded bg-light mb-4">
     <h5><i class="fa-regular fa-credit-card"></i> <a href="/finance/payment-items">支払い方法の設定</a></h5>
 </div>
+
+<script>
+  const categoryGroupTypes = <%- JSON.stringify(categoryGroupTypes || []) %>;
+  const categoryGroupItemOptions = <%- JSON.stringify(categoryGroupItemOptions || {}) %>;
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function categoryGroupTypeLabel(type) {
+    return String(type || '').replace('項目', '区分');
+  }
+
+  function buildCategoryGroupTypeOptions(selectedType) {
+    return categoryGroupTypes.map((type) => (
+      `<option value="${escapeHtml(type)}" ${type === selectedType ? 'selected' : ''}>${escapeHtml(categoryGroupTypeLabel(type))}</option>`
+    )).join('');
+  }
+
+  function buildCategoryGroupItemOptions(type, selectedItems = []) {
+    const selectedSet = new Set(selectedItems);
+    return (categoryGroupItemOptions[type] || []).map((itemName) => (
+      `<option value="${escapeHtml(itemName)}" ${selectedSet.has(itemName) ? 'selected' : ''}>${escapeHtml(itemName)}</option>`
+    )).join('');
+  }
+
+  function refreshCategoryGroupItemOptions(row) {
+    const typeSelect = row.querySelector('.category-group-type');
+    const itemsSelect = row.querySelector('.category-group-items');
+    if (!typeSelect || !itemsSelect) return;
+    itemsSelect.innerHTML = buildCategoryGroupItemOptions(typeSelect.value);
+  }
+
+  function addCategoryGroupRow() {
+    const tbody = document.getElementById('categoryGroupTableBody');
+    if (!tbody) return;
+    const index = tbody.children.length;
+    const defaultType = categoryGroupTypes[1] || categoryGroupTypes[0] || '';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        <select name="categoryGroups[${index}][target_type]" class="form-select form-select-sm category-group-type">
+          ${buildCategoryGroupTypeOptions(defaultType)}
+        </select>
+      </td>
+      <td>
+        <input type="text" name="categoryGroups[${index}][name]" class="form-control form-control-sm" placeholder="例: 食費">
+      </td>
+      <td>
+        <select name="categoryGroups[${index}][item_names]" class="form-select form-select-sm category-group-items" multiple size="4">
+          ${buildCategoryGroupItemOptions(defaultType)}
+        </select>
+      </td>
+      <td>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="categoryGroups[${index}][show_in_monthly_calendar]">
+        </div>
+      </td>
+      <td>
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCategoryGroupRow(this)"><i class="fas fa-trash-alt"></i></button>
+      </td>
+    `;
+    tbody.appendChild(row);
+    row.querySelector('.category-group-type')?.addEventListener('change', () => refreshCategoryGroupItemOptions(row));
+  }
+
+  function removeCategoryGroupRow(button) {
+    button.closest('tr')?.remove();
+  }
+
+  document.querySelectorAll('#categoryGroupTableBody tr').forEach((row) => {
+    row.querySelector('.category-group-type')?.addEventListener('change', () => refreshCategoryGroupItemOptions(row));
+  });
+</script>

@@ -29,6 +29,13 @@ router.use(requireLogin);
 
 const upload = multer({ storage: getStorage() });
 
+function parseEnabledFlag(value) {
+  if (Array.isArray(value)) {
+    return value.includes(true) || value.includes('true');
+  }
+  return value !== false && value !== 'false';
+}
+
 // GET /api/settings/profile
 router.get('/profile', async (req, res, next) => {
   try {
@@ -497,7 +504,7 @@ router.put('/payment-items', async (req, res, next) => {
 router.get('/finance-quick-menu', async (req, res, next) => {
   try {
     const user = await FinanceUser.findById(req.user._id)
-      .select('financeQuickMenuItems')
+      .select('financeQuickMenuEnabled financeQuickMenuItems')
       .lean();
     if (!user) {
       return res.status(404).json({ error: 'not_found', message: 'ユーザーが見つかりません' });
@@ -505,6 +512,7 @@ router.get('/finance-quick-menu', async (req, res, next) => {
 
     res.json({
       options: FINANCE_QUICK_MENU_ITEMS,
+      enabled: user.financeQuickMenuEnabled !== false,
       items: buildQuickMenuItems(user.financeQuickMenuItems)
     });
   } catch (err) {
@@ -515,11 +523,32 @@ router.get('/finance-quick-menu', async (req, res, next) => {
 // PUT /api/settings/finance-quick-menu
 router.put('/finance-quick-menu', async (req, res, next) => {
   try {
-    const cleaned = normalizeQuickMenuItems(req.body?.items);
-    await FinanceUser.findByIdAndUpdate(req.user._id, {
-      financeQuickMenuItems: cleaned
+    const update = {};
+    let cleaned;
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'items')) {
+      cleaned = normalizeQuickMenuItems(req.body?.items);
+      update.financeQuickMenuItems = cleaned;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'enabled')) {
+      update.financeQuickMenuEnabled = parseEnabledFlag(req.body.enabled);
+    }
+
+    const user = await FinanceUser.findByIdAndUpdate(req.user._id, update, {
+      new: true,
+      select: 'financeQuickMenuEnabled financeQuickMenuItems'
+    }).lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'not_found', message: 'ユーザーが見つかりません' });
+    }
+
+    res.json({
+      ok: true,
+      enabled: user.financeQuickMenuEnabled !== false,
+      items: buildQuickMenuItems(cleaned || user.financeQuickMenuItems)
     });
-    res.json({ ok: true, items: buildQuickMenuItems(cleaned) });
   } catch (err) {
     next(err);
   }

@@ -32,7 +32,19 @@
 
 <div class="card mb-3 rounded">
   <div class="card-body p-2" style="background-color: #44616D;">
-    <div class="text-white fw-bold mb-2"><%= year %>年 <%= month %>月</div>
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+      <div class="text-white fw-bold"><%= year %>年 <%= month %>月</div>
+      <% if ((calendarCategoryGroups || []).length > 0) { %>
+        <div class="d-flex align-items-center gap-1 flex-wrap dashboard-calendar-category-summary">
+          <span class="text-white small">月次まとめて集計</span>
+          <% (calendarCategoryGroups || []).forEach((group, index) => { %>
+            <span class="badge bg-light text-dark">
+              <%= group.name %>: <%= Number(total.categoryGroupAmounts?.[index] || 0).toLocaleString() %>円
+            </span>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
     <div class="dashboard-calendar-wrap">
       <table class="table table-sm dashboard-calendar-table mb-0">
         <thead>
@@ -42,6 +54,9 @@
             <th rowspan="2" class="memo-head">メモ</th>
             <th colspan="2">収入</th>
             <th colspan="2">控除</th>
+            <% (calendarCategoryGroups || []).forEach((group) => { %>
+              <th colspan="2"><%= group.name %></th>
+            <% }) %>
             <th colspan="2">食費・調味料</th>
             <th colspan="2">それ以外</th>
             <th rowspan="2" class="balance-head">収支</th>
@@ -55,6 +70,10 @@
             <th>金額</th>
             <th class="content-head">内容</th>
             <th>金額</th>
+            <% (calendarCategoryGroups || []).forEach(() => { %>
+              <th class="content-head">内容</th>
+              <th>金額</th>
+            <% }) %>
             <th class="content-head">内容</th>
             <th>金額</th>
             <th class="content-head">内容</th>
@@ -85,6 +104,10 @@
               <td class="amount-col <%= row.dayToneClass %>"><%= row.income.amount ? row.income.amount.toLocaleString() : '' %></td>
               <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.deduction.contentText %></div></td>
               <td class="amount-col <%= row.dayToneClass %>"><%= row.deduction.amount ? row.deduction.amount.toLocaleString() : '' %></td>
+              <% (row.categoryGroupBuckets || []).forEach((groupBucket) => { %>
+                <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= groupBucket.bucket.contentText %></div></td>
+                <td class="amount-col <%= row.dayToneClass %>"><%= groupBucket.bucket.amount ? groupBucket.bucket.amount.toLocaleString() : '' %></td>
+              <% }) %>
               <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.foodSeasoning.contentText %></div></td>
               <td class="amount-col <%= row.dayToneClass %>"><%= row.foodSeasoning.amount ? row.foodSeasoning.amount.toLocaleString() : '' %></td>
               <td class="content-col <%= row.dayToneClass %>"><div class="content-text"><%= row.otherExpense.contentText %></div></td>
@@ -103,6 +126,10 @@
                 <td class="amount-col"><%= subtotal.incomeAmount.toLocaleString() %></td>
                 <td></td>
                 <td class="amount-col"><%= subtotal.deductionAmount.toLocaleString() %></td>
+                <% (calendarCategoryGroups || []).forEach((group, index) => { %>
+                  <td></td>
+                  <td class="amount-col"><%= Number(subtotal.categoryGroupAmounts?.[index] || 0).toLocaleString() %></td>
+                <% }) %>
                 <td></td>
                 <td class="amount-col"><%= subtotal.foodSeasoningAmount.toLocaleString() %></td>
                 <td></td>
@@ -122,6 +149,10 @@
             <td class="amount-col"><%= total.incomeAmount.toLocaleString() %></td>
             <td></td>
             <td class="amount-col"><%= total.deductionAmount.toLocaleString() %></td>
+            <% (calendarCategoryGroups || []).forEach((group, index) => { %>
+              <td></td>
+              <td class="amount-col"><%= Number(total.categoryGroupAmounts?.[index] || 0).toLocaleString() %></td>
+            <% }) %>
             <td></td>
             <td class="amount-col"><%= total.foodSeasoningAmount.toLocaleString() %></td>
             <td></td>

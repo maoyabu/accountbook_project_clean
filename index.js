@@ -378,6 +378,7 @@ app.use((req, res, next) => {
     res.locals.financeQuickMenuItems = req.user
       ? buildQuickMenuItems(req.user.financeQuickMenuItems)
       : [];
+    res.locals.financeQuickMenuEnabled = req.user?.financeQuickMenuEnabled !== false;
 
     next();
 });

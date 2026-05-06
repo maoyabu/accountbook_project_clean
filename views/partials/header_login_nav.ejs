@@ -12,6 +12,7 @@
 <% const serviceTop = activeSvc === 'myself' ? '/myself/top' : (activeSvc === 'message' ? '/message/top' : '/finance/top'); %>
 <% const serviceLabel = activeSvc === 'myself' ? 'Myself' : (activeSvc === 'message' ? 'Message' : 'Finance'); %>
 <% const serviceIcon = activeSvc === 'myself' ? 'fa-user' : (activeSvc === 'message' ? 'fa-envelope' : 'fa-wallet'); %>
+<% const quickMenuEnabled = typeof financeQuickMenuEnabled === 'undefined' ? true : financeQuickMenuEnabled !== false; %>
 <% const activeGroupName = (cu && Array.isArray(cu.groups) && activeGroupStr)
   ? (cu.groups.find(group => group && group._id && group._id.toString() === activeGroupStr)?.group_name || '')
   : ''; %>
@@ -66,6 +67,16 @@
       </div>
     </div>
     <div class="offcanvas-body">
+      <% if (activeSvc === 'finance' && hasGroup && svc.finance) { %>
+        <div class="menu-section menu-quick-toggle-section">
+          <label class="finance-quick-toggle menu-quick-toggle" title="よく使う項目の表示切替">
+            <span><i class="fa-solid fa-thumbtack"></i> よく使う項目</span>
+            <input type="checkbox" data-finance-quick-toggle <%= quickMenuEnabled ? 'checked' : '' %>>
+            <span class="finance-quick-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
+      <% } %>
+
       <div class="menu-section menu-user-section">
         <% if (cu) { %>
           <div class="menu-user d-flex align-items-center gap-2">

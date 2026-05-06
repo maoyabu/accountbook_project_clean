@@ -371,10 +371,84 @@ main {
     top: 88px;
     z-index: 1060;
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
     gap: 8px;
     user-select: none;
     touch-action: none;
+}
+.finance-quick-fab-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+.finance-quick-fab.is-disabled .finance-quick-fab-content {
+    display: none;
+}
+.finance-quick-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 34px;
+    color: #1f2937;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+}
+.finance-quick-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.finance-quick-toggle-track {
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    position: relative;
+    flex: 0 0 auto;
+    transition: background-color 0.18s ease;
+}
+.finance-quick-toggle-track::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    top: 3px;
+    left: 3px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+    transition: transform 0.18s ease;
+}
+.finance-quick-toggle input:checked ~ .finance-quick-toggle-track {
+    background: #0d6efd;
+}
+.finance-quick-toggle input:checked ~ .finance-quick-toggle-track::after {
+    transform: translateX(18px);
+}
+.finance-quick-fab-toggle {
+    padding: 7px 9px 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(13, 110, 253, 0.28);
+    background: #ffffff;
+    color: #0b5ed7;
+    box-shadow: 0 8px 18px rgba(13, 110, 253, 0.14), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.menu-quick-toggle-section {
+    padding-top: 10px;
+}
+.menu-quick-toggle,
+.finance-quick-settings-toggle {
+    width: 100%;
+}
+.menu-quick-toggle span:first-child,
+.finance-quick-settings-toggle span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 .finance-quick-fab-controls {
     display: flex;
@@ -454,6 +528,9 @@ button.finance-quick-fab-item {
     .finance-quick-fab {
         right: 12px;
         top: 76px;
+        gap: 6px;
+    }
+    .finance-quick-fab-content {
         gap: 6px;
     }
     .finance-quick-fab-controls {

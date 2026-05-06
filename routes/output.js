@@ -11,6 +11,7 @@ const FinanceExBudget = require('../models/finance_ex_budget');
 const FinanceExBudgetPersonal = require('../models/finance_ex_budget_personal');
 const FinanceMonthlyCalendar = require('../models/finance_monthly_calendar');
 const FinancePaymentTypeCheck = require('../models/finance_payment_type_check');
+const FinanceItemCategoryGroup = require('../models/finance_item_category_group');
 const Group = require('../models/groups');
 const dashboardController = require('../controllers/dashboardController');
 const Items = require('../models/finance_items');
@@ -273,6 +274,40 @@ const createCalendarDayRow = (year, month, day) => ({
   otherExpense: createCalendarBucket()
 });
 
+const CATEGORY_GROUP_TYPE_META = {
+  '収入項目': { cf: '収入', field: 'income_item' },
+  '支出項目': { cf: '支出', field: 'expense_item' },
+  '控除項目': { cf: '控除', field: 'dedu_item' },
+  '貯蓄項目': { cf: '貯蓄', field: 'saving_item' }
+};
+
+const buildCalendarCategoryGroups = (groups = []) => (
+  groups
+    .map((group) => {
+      const meta = CATEGORY_GROUP_TYPE_META[group?.target_type];
+      const itemNames = Array.isArray(group?.item_names) ? group.item_names : [];
+      const itemSet = new Set(itemNames.map((name) => normalizeCategoryName(name)).filter(Boolean));
+      if (!meta || !group?.name || itemSet.size === 0) return null;
+      return {
+        id: String(group._id),
+        name: String(group.name || '').trim(),
+        targetType: group.target_type,
+        cf: meta.cf,
+        field: meta.field,
+        itemSet
+      };
+    })
+    .filter(Boolean)
+);
+
+const isEntryInCalendarCategoryGroup = (entry, categoryGroups = []) => (
+  categoryGroups.some((group) => {
+    if (entry?.cf !== group.cf) return false;
+    const entryItemName = normalizeCategoryName(entry?.[group.field]);
+    return entryItemName && group.itemSet.has(entryItemName);
+  })
+);
+
 const getEntryLabel = (entry, fallbackField) => {
   const content = String(entry?.content || '').trim();
   if (content) {
@@ -302,6 +337,12 @@ const summarizeCalendarRows = (rows) => {
     acc.deductionAmount += row.deduction.amount;
     acc.foodSeasoningAmount += row.foodSeasoning.amount;
     acc.otherExpenseAmount += row.otherExpense.amount;
+    (row.categoryGroupBuckets || []).forEach((groupBucket, index) => {
+      acc.categoryGroupAmounts[index] = (acc.categoryGroupAmounts[index] || 0) + groupBucket.bucket.amount;
+      if (groupBucket.targetType === '支出項目') {
+        acc.categoryGroupExpenseAmount += groupBucket.bucket.amount;
+      }
+    });
     acc.cashAmount += row.cashAmount;
     acc.nonCashAmount += row.nonCashAmount;
     acc.cashUsedAmount += row.cashUsedAmount;
@@ -311,6 +352,8 @@ const summarizeCalendarRows = (rows) => {
     deductionAmount: 0,
     foodSeasoningAmount: 0,
     otherExpenseAmount: 0,
+    categoryGroupAmounts: [],
+    categoryGroupExpenseAmount: 0,
     cashAmount: 0,
     nonCashAmount: 0,
     cashUsedAmount: 0,
@@ -321,6 +364,7 @@ const summarizeCalendarRows = (rows) => {
   summary.balance =
     summary.incomeAmount
     - summary.deductionAmount
+    - summary.categoryGroupExpenseAmount
     - summary.foodSeasoningAmount
     - summary.otherExpenseAmount;
 
@@ -896,21 +940,39 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
     const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
     const end = new Date(year, month, 1, 0, 0, 0, 0);
     const daysInMonth = new Date(year, month, 0).getDate();
-    const activeGroup = await Group.findById(groupId).select('group_name financeWalletManagementEnabled').lean();
+    const activeGroup = await Group.findById(groupId).select('group_name financeWalletManagementEnabled financeFiscalStartMonth').lean();
     const groupName = activeGroup?.group_name || 'グループ';
     const walletManagementEnabled = activeGroup?.financeWalletManagementEnabled === true;
+    const fiscalStartMonth = normalizeFiscalStartMonth(activeGroup?.financeFiscalStartMonth);
+    const targetFiscalYear = String(getFiscalYearForDate(start, fiscalStartMonth) ?? year);
 
-    const finances = await Finance.find({
-      group: groupId,
-      date: { $gte: start, $lt: end }
-    })
-      .select('date day cf content memo amount payment_type income_item dedu_item expense_item')
-      .lean();
+    const [finances, configuredCategoryGroups] = await Promise.all([
+      Finance.find({
+        group: groupId,
+        date: { $gte: start, $lt: end }
+      })
+        .select('date day cf content memo amount payment_type income_item dedu_item saving_item expense_item')
+        .lean(),
+      FinanceItemCategoryGroup.find({
+        group: groupId,
+        year: targetFiscalYear,
+        show_in_monthly_calendar: true
+      }).sort({ display_order: 1, name: 1 }).lean()
+    ]);
+    const calendarCategoryGroups = buildCalendarCategoryGroups(configuredCategoryGroups);
 
     const dayRows = Array.from(
       { length: daysInMonth },
       (_, idx) => createCalendarDayRow(year, month, idx + 1)
     );
+    dayRows.forEach((row) => {
+      row.categoryGroupBuckets = calendarCategoryGroups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        targetType: group.targetType,
+        bucket: createCalendarBucket()
+      }));
+    });
     const holidayMap = buildJapaneseHolidayMap(year);
     const calendarSetting = await FinanceMonthlyCalendar.findOne({ group: groupId, year, month }).lean();
     const carryCash = walletManagementEnabled ? (Number(calendarSetting?.carryCash) || 0) : 0;
@@ -949,12 +1011,22 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       } else if (entry.cf === '控除') {
         addEntryToBucket(row.deduction, entry, 'dedu_item');
       } else if (entry.cf === '支出') {
-        if (isFoodOrSeasoningExpense(entry.expense_item)) {
+        const isGroupedForCalendar = isEntryInCalendarCategoryGroup(entry, calendarCategoryGroups);
+        if (isGroupedForCalendar) {
+          // 表示対象の上位カテゴリーへ出す支出は、既存の支出分類には重複表示しない。
+        } else if (isFoodOrSeasoningExpense(entry.expense_item)) {
           addEntryToBucket(row.foodSeasoning, entry, 'expense_item');
         } else {
           addEntryToBucket(row.otherExpense, entry, 'expense_item');
         }
       }
+
+      calendarCategoryGroups.forEach((group, index) => {
+        if (entry.cf !== group.cf) return;
+        const entryItemName = normalizeCategoryName(entry[group.field]);
+        if (!group.itemSet.has(entryItemName)) return;
+        addEntryToBucket(row.categoryGroupBuckets[index].bucket, entry, group.field);
+      });
     }
 
     dayRows.forEach((row) => {
@@ -980,6 +1052,7 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
 
       finalizeCalendarBucket(row.income);
       finalizeCalendarBucket(row.deduction);
+      (row.categoryGroupBuckets || []).forEach((groupBucket) => finalizeCalendarBucket(groupBucket.bucket));
       finalizeCalendarBucket(row.foodSeasoning);
       finalizeCalendarBucket(row.otherExpense);
     });
@@ -1025,6 +1098,7 @@ router.get('/dashboard/monthly-calendar-m', isLoggedIn, async (req, res) => {
       dayRows,
       subtotal,
       total,
+      calendarCategoryGroups,
       walletManagementEnabled,
       todayDay,
       todayJst,
