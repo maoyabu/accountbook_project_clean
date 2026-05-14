@@ -32,7 +32,7 @@
     <% const fabHasGroup = fabCu && Array.isArray(fabCu.groups) && fabCu.groups.length > 0 && fabAgStr && fabCu.groups.some(group => group && group._id && group._id.toString() === fabAgStr); %>
     <% const fabQuickItems = (typeof financeQuickMenuItems !== 'undefined' && Array.isArray(financeQuickMenuItems)) ? financeQuickMenuItems : []; %>
     <% const fabQuickEnabled = typeof financeQuickMenuEnabled === 'undefined' ? true : financeQuickMenuEnabled !== false; %>
-    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup && fabQuickItems.length > 0) { %>
+    <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup) { %>
       <div class="finance-quick-fab <%= fabQuickEnabled ? '' : 'is-disabled' %>" id="finance-quick-fab" aria-label="家計簿のよく使う項目" data-finance-quick-enabled="<%= fabQuickEnabled ? 'true' : 'false' %>">
         <div class="finance-quick-fab-top">
           <button type="button" class="finance-quick-fab-control finance-quick-fab-handle" aria-label="よく使う項目を移動" title="移動">
@@ -51,11 +51,21 @@
             </a>
           </div>
           <div class="finance-quick-fab-items">
+            <a
+              href="/finance/entry"
+              class="finance-quick-fab-item finance-quick-fab-mobile-entry"
+              data-finance-quick-key="new_entry"
+              title="新規登録"
+            >
+              <i class="fa-solid fa-plus"></i>
+              <span>新規登録</span>
+            </a>
             <% fabQuickItems.forEach((item) => { %>
               <% if (item.key === 'group_switch') { %>
                 <button
                   type="button"
                   class="finance-quick-fab-item"
+                  data-finance-quick-key="<%= item.key %>"
                   data-finance-quick-action="group-switch"
                   title="<%= item.displayLabel %>"
                 >
@@ -66,6 +76,7 @@
                 <a
                   href="<%= item.href %>"
                   class="finance-quick-fab-item"
+                  data-finance-quick-key="<%= item.key %>"
                   title="<%= item.displayLabel %>"
                 >
                   <i class="fa-solid <%= item.icon %>"></i>

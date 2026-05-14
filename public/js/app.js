@@ -297,10 +297,13 @@ function renderTags(tags) {
     if (!fab && toggles.length === 0) return;
 
     const handle = fab?.querySelector(".finance-quick-fab-handle");
+    const mobileEntry = fab?.querySelector(".finance-quick-fab-mobile-entry");
     const groupSwitch = fab?.querySelector('[data-finance-quick-action="group-switch"]');
-    const storageKey = "financeQuickFabPos";
     const dragThreshold = 4;
     let syncing = false;
+
+    const isMobileFab = () => window.matchMedia("(max-width: 576px)").matches;
+    const getStorageKey = () => isMobileFab() ? "financeQuickFabPosMobile" : "financeQuickFabPos";
 
     const setQuickMenuEnabled = (enabled) => {
         if (fab) {
@@ -361,7 +364,7 @@ function renderTags(tags) {
 
     const loadPosition = () => {
         try {
-            const raw = localStorage.getItem(storageKey);
+            const raw = localStorage.getItem(getStorageKey());
             if (!raw) return;
             const parsed = JSON.parse(raw);
             if (typeof parsed?.x === "number" && typeof parsed?.y === "number") {
@@ -374,7 +377,7 @@ function renderTags(tags) {
 
     const savePosition = (pos) => {
         try {
-            localStorage.setItem(storageKey, JSON.stringify(pos));
+            localStorage.setItem(getStorageKey(), JSON.stringify(pos));
         } catch (_) {
             // ignore
         }
@@ -432,11 +435,14 @@ function renderTags(tags) {
         groupSwitch.addEventListener("click", openGroupMenu);
     }
 
-    if (!handle) return;
+    const dragTargets = [handle, mobileEntry].filter(Boolean);
+    if (dragTargets.length === 0) return;
 
-    handle.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0 && event.pointerType === "mouse") return;
-        beginDrag(event.clientX, event.clientY);
+    dragTargets.forEach((target) => {
+        target.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 && event.pointerType === "mouse") return;
+            beginDrag(event.clientX, event.clientY);
+        });
     });
 
     window.addEventListener("pointermove", (event) => {
@@ -446,9 +452,11 @@ function renderTags(tags) {
     window.addEventListener("pointerup", endDrag);
     window.addEventListener("pointercancel", endDrag);
 
-    handle.addEventListener("mousedown", (event) => {
-        if (event.button !== 0) return;
-        beginDrag(event.clientX, event.clientY);
+    dragTargets.forEach((target) => {
+        target.addEventListener("mousedown", (event) => {
+            if (event.button !== 0) return;
+            beginDrag(event.clientX, event.clientY);
+        });
     });
 
     window.addEventListener("mousemove", (event) => {
@@ -457,11 +465,13 @@ function renderTags(tags) {
 
     window.addEventListener("mouseup", endDrag);
 
-    handle.addEventListener("touchstart", (event) => {
-        const touch = event.touches[0];
-        if (!touch) return;
-        beginDrag(touch.clientX, touch.clientY);
-    }, { passive: true });
+    dragTargets.forEach((target) => {
+        target.addEventListener("touchstart", (event) => {
+            const touch = event.touches[0];
+            if (!touch) return;
+            beginDrag(touch.clientX, touch.clientY);
+        }, { passive: true });
+    });
 
     window.addEventListener("touchmove", (event) => {
         const touch = event.touches[0];
@@ -472,14 +482,16 @@ function renderTags(tags) {
     window.addEventListener("touchend", endDrag);
     window.addEventListener("touchcancel", endDrag);
 
-    handle.addEventListener("dragstart", (event) => {
-        event.preventDefault();
-    });
-
-    handle.addEventListener("click", (event) => {
-        if (moved) {
+    dragTargets.forEach((target) => {
+        target.addEventListener("dragstart", (event) => {
             event.preventDefault();
-        }
+        });
+
+        target.addEventListener("click", (event) => {
+            if (moved) {
+                event.preventDefault();
+            }
+        });
     });
 
     window.addEventListener("resize", () => {
