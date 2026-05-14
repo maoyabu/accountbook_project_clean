@@ -423,8 +423,18 @@ const extractTagsFromRequest = (tagItemsInput) => {
 
 const normalizeSubTag = (value) => (typeof value === 'string' ? value.trim() : '');
 
-const getFrequentFinanceTags = async (groupId) => {
+const getFrequentFinanceTags = async (groupId, userId = null) => {
   if (!groupId) return [];
+  let hiddenTagNames = new Set();
+  if (userId) {
+    const user = await FinanceUser.findById(userId).select('financeHiddenCommonTags').lean();
+    hiddenTagNames = new Set(
+      (user?.financeHiddenCommonTags || [])
+        .filter(item => normalizeIdString(item?.group) === normalizeIdString(groupId))
+        .map(item => normalizeSubTag(item?.name))
+        .filter(Boolean)
+    );
+  }
   const rows = await Finance.aggregate([
     {
       $match: {
@@ -448,6 +458,7 @@ const getFrequentFinanceTags = async (groupId) => {
   rows.forEach((row) => {
     const tag = normalizeSubTag(row?._id?.tag);
     if (!tag) return;
+    if (hiddenTagNames.has(tag)) return;
     const category = row?._id?.category || '';
     if (!grouped.has(category)) grouped.set(category, []);
     const tags = grouped.get(category);
@@ -468,7 +479,7 @@ async function getFinanceEditableGroupsForUser(userId) {
   return { currentUser, availableGroups, availableGroupIds };
 }
 
-async function buildFinanceFormOptions({ groupId, year, preserveValues = null }) {
+async function buildFinanceFormOptions({ groupId, year, preserveValues = null, userId = null }) {
   const exExpenseItems = await fetchExpenseItemsByYear(groupId, year);
   const incomeItems = await fetchItemsByYear(groupId, '収入項目', year);
   const deductionItems = await fetchItemsByYear(groupId, '控除項目', year);
@@ -533,7 +544,7 @@ async function buildFinanceFormOptions({ groupId, year, preserveValues = null })
     saving_cfs: savingCfs,
     pay_cfs: payCfs,
     allUsers,
-    common_tags: await getFrequentFinanceTags(groupId)
+    common_tags: await getFrequentFinanceTags(groupId, userId)
   };
 }
 
@@ -635,7 +646,7 @@ router.get('/entry', isLoggedIn, async(req, res) => {
     // MongoDBからデータを取得（activeGroupIDで絞り込み）
     const allUsers = await FinanceUser.find({ groups: activeGroupId });
     const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
-    const common_tags = await getFrequentFinanceTags(activeGroupId);
+    const common_tags = await getFrequentFinanceTags(activeGroupId, req.user?._id);
 
     res.render('finance/entry', {
         page: 'entry',
@@ -667,7 +678,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     const { finance } = req.body;
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
     const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
-    const common_tags = await getFrequentFinanceTags(activeGroupId);
+    const common_tags = await getFrequentFinanceTags(activeGroupId, req.user?._id);
     let errors = {};
 
     let extractedAmount = null;
@@ -1415,6 +1426,7 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
     } = await buildFinanceFormOptions({
       groupId: financeGroupId,
       year: yearForItems,
+      userId: req.user?._id,
       preserveValues: {
         income_item: finance.income_item,
         expense_item: finance.expense_item,
@@ -1508,7 +1520,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
       common_tags
     } = await buildFinanceFormOptions({
       groupId: targetGroupId,
-      year: yearForItems
+      year: yearForItems,
+      userId: req.user?._id
     });
     const validUserIds = new Set(allUsers.map(candidate => normalizeIdString(candidate._id)));
 
@@ -1637,6 +1650,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         } = await buildFinanceFormOptions({
           groupId: duplicateGroupId,
           year: duplicateYearForItems,
+          userId: req.user?._id,
           preserveValues: {
             payment_type: newFinance.payment_type,
             userId: newFinance.user
@@ -3180,7 +3194,8 @@ router.get('/budget/items', isLoggedIn, async (req, res) => {
       common_tags
     } = await buildFinanceFormOptions({
       groupId: requestedGroupId,
-      year: targetYear
+      year: targetYear,
+      userId: req.user?._id
     });
 
     res.json({

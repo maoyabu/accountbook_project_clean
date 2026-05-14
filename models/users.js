@@ -111,6 +111,13 @@ const userSchema = new Schema({
             label: { type: String, default: '' }
         }],
         default: undefined
+    },
+    financeHiddenCommonTags: {
+        type: [{
+            group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: true },
+            name: { type: String, required: true }
+        }],
+        default: []
     }
 });
 

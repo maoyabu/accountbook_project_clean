@@ -121,6 +121,7 @@ label {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     min-height: 28px;
     padding: 4px 14px;
     border-radius: 999px;
@@ -132,6 +133,35 @@ label {
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
+}
+
+.finance-form-container .common-tag-chip-text {
+    min-width: 0;
+}
+
+.finance-form-container .common-tag-chip-delete {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 18px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.finance-form-container .common-tag-chip-delete:hover,
+.finance-form-container .common-tag-chip-delete:focus-visible {
+    background: rgba(255, 255, 255, 0.42);
+    outline: none;
 }
 
 .finance-form-container .common-tag-chip:hover,
@@ -174,6 +204,9 @@ label {
         word-break: keep-all;
         overflow-wrap: anywhere;
         line-height: 1.2;
+    }
+    .finance-form-container .common-tag-chip-text {
+        overflow-wrap: anywhere;
     }
 }
 h2.profile-heading {

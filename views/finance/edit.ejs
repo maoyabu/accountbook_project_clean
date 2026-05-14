@@ -343,10 +343,24 @@
       button.className = 'common-tag-chip';
       button.setAttribute('role', 'button');
       button.setAttribute('tabindex', '0');
-      button.textContent = tag.name;
+      const tagText = document.createElement('span');
+      tagText.className = 'common-tag-chip-text';
+      tagText.textContent = tag.name;
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'common-tag-chip-delete';
+      deleteButton.setAttribute('aria-label', `${tag.name}を候補から削除`);
+      deleteButton.textContent = '×';
+      button.appendChild(tagText);
+      button.appendChild(deleteButton);
       const applyTag = () => {
         if (subTagInput) subTagInput.value = tag.name;
       };
+      deleteButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        hideCommonTag(tag.name);
+      });
       button.addEventListener('click', applyTag);
       button.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -356,6 +370,31 @@
       });
       commonTagButtons.appendChild(button);
     });
+  }
+
+  async function hideCommonTag(tagName) {
+    const normalized = String(tagName || '').trim();
+    if (!normalized) return;
+    const previousTags = commonTags;
+    commonTags = (commonTags || []).map(group => ({
+      ...group,
+      tags: (group.tags || []).filter(tag => tag?.name !== normalized)
+    }));
+    renderCommonTags();
+    try {
+      const payload = { name: normalized };
+      if (groupSelect?.value) payload.groupId = groupSelect.value;
+      const response = await fetch('/api/settings/finance-common-tags', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error('Failed to hide common tag');
+    } catch (_) {
+      commonTags = previousTags;
+      renderCommonTags();
+      window.alert('タグ候補を削除できませんでした。時間をおいて再度お試しください。');
+    }
   }
 
   function applyDateLockState() {

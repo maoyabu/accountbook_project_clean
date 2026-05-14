@@ -36,6 +36,10 @@ function parseEnabledFlag(value) {
   return value !== false && value !== 'false';
 }
 
+function normalizeSubTag(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 // GET /api/settings/profile
 router.get('/profile', async (req, res, next) => {
   try {
@@ -549,6 +553,42 @@ router.put('/finance-quick-menu', async (req, res, next) => {
       enabled: user.financeQuickMenuEnabled !== false,
       items: buildQuickMenuItems(cleaned || user.financeQuickMenuItems)
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/settings/finance-common-tags
+router.delete('/finance-common-tags', async (req, res, next) => {
+  try {
+    const groupId = req.body?.groupId || req.session?.activeGroupId;
+    const tagName = normalizeSubTag(req.body?.name);
+
+    if (!groupId || !tagName) {
+      return res.status(400).json({ error: 'bad_request', message: 'タグ名またはグループが指定されていません' });
+    }
+
+    const user = await FinanceUser.findByIdAndUpdate(
+      req.user._id,
+      {
+        $addToSet: {
+          financeHiddenCommonTags: {
+            group: groupId,
+            name: tagName
+          }
+        }
+      },
+      {
+        new: true,
+        select: 'financeHiddenCommonTags'
+      }
+    ).lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'not_found', message: 'ユーザーが見つかりません' });
+    }
+
+    res.json({ ok: true, name: tagName });
   } catch (err) {
     next(err);
   }
