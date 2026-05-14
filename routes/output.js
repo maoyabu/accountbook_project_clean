@@ -228,13 +228,6 @@ const buildJapaneseHolidayMap = (year) => {
   return holidayMap;
 };
 
-const isFoodOrSeasoningExpense = (expenseItem) => {
-  const normalized = normalizeCategoryName(expenseItem);
-  if (!normalized) return false;
-  if (normalized.includes('調味料')) return true;
-  return /副食|主食|外食|食費|給食/.test(normalized);
-};
-
 const getJstDay = (value) => {
   const dt = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(dt.getTime())) return null;
@@ -286,7 +279,6 @@ const createCalendarDayRow = (year, month, day) => ({
   cashBalance: 0,
   income: createCalendarBucket(),
   deduction: createCalendarBucket(),
-  foodSeasoning: createCalendarBucket(),
   otherExpense: createCalendarBucket()
 });
 
@@ -374,7 +366,6 @@ const summarizeCalendarRows = (rows) => {
   const summary = rows.reduce((acc, row) => {
     acc.incomeAmount += row.income.amount;
     acc.deductionAmount += row.deduction.amount;
-    acc.foodSeasoningAmount += row.foodSeasoning.amount;
     acc.otherExpenseAmount += row.otherExpense.amount;
     (row.categoryGroupBuckets || []).forEach((groupBucket, index) => {
       acc.categoryGroupAmounts[index] = (acc.categoryGroupAmounts[index] || 0) + groupBucket.bucket.amount;
@@ -389,7 +380,6 @@ const summarizeCalendarRows = (rows) => {
   }, {
     incomeAmount: 0,
     deductionAmount: 0,
-    foodSeasoningAmount: 0,
     otherExpenseAmount: 0,
     categoryGroupAmounts: [],
     categoryGroupExpenseAmount: 0,
@@ -404,7 +394,6 @@ const summarizeCalendarRows = (rows) => {
     summary.incomeAmount
     - summary.deductionAmount
     - summary.categoryGroupExpenseAmount
-    - summary.foodSeasoningAmount
     - summary.otherExpenseAmount;
 
   return summary;
@@ -489,11 +478,7 @@ const buildMonthlyCalendarData = async ({ groupId, ymRaw }) => {
       addEntryToBucket(row.deduction, entry, 'dedu_item');
     } else if (entry.cf === '支出') {
       const isGroupedForCalendar = isEntryInCalendarCategoryGroup(entry, calendarCategoryGroups);
-      if (isGroupedForCalendar) {
-        // 表示対象の上位カテゴリーへ出す支出は、既存の支出分類には重複表示しない。
-      } else if (isFoodOrSeasoningExpense(entry.expense_item)) {
-        addEntryToBucket(row.foodSeasoning, entry, 'expense_item');
-      } else {
+      if (!isGroupedForCalendar) {
         addEntryToBucket(row.otherExpense, entry, 'expense_item');
       }
     }
@@ -530,7 +515,6 @@ const buildMonthlyCalendarData = async ({ groupId, ymRaw }) => {
     finalizeCalendarBucket(row.income);
     finalizeCalendarBucket(row.deduction);
     (row.categoryGroupBuckets || []).forEach((groupBucket) => finalizeCalendarBucket(groupBucket.bucket));
-    finalizeCalendarBucket(row.foodSeasoning);
     finalizeCalendarBucket(row.otherExpense);
   });
 
@@ -607,8 +591,6 @@ const buildCalendarExcelColumns = ({ calendarCategoryGroups = [], walletManageme
   });
 
   columns.push(
-    { key: 'foodContent', group: '食費・調味料', sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerDefault },
-    { key: 'foodAmount', group: '食費・調味料', sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerDefault, numeric: true },
     { key: 'otherContent', group: 'それ以外', sub: '内容', width: 28, headerFill: CALENDAR_EXCEL_COLORS.headerDefault },
     { key: 'otherAmount', group: 'それ以外', sub: '金額', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerDefault, numeric: true },
     { key: 'balance', title: '収支', width: 13, headerFill: CALENDAR_EXCEL_COLORS.headerMain, bodyFill: CALENDAR_EXCEL_COLORS.headerMain, numeric: true },
@@ -760,8 +742,6 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
       incomeAmount: row.income.amount || '',
       deductionContent: row.deduction.contentText || '',
       deductionAmount: row.deduction.amount || '',
-      foodContent: row.foodSeasoning.contentText || '',
-      foodAmount: row.foodSeasoning.amount || '',
       otherContent: row.otherExpense.contentText || '',
       otherAmount: row.otherExpense.amount || '',
       balance: '',
@@ -785,8 +765,6 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
       incomeAmount: summary.incomeAmount || 0,
       deductionContent: '',
       deductionAmount: summary.deductionAmount || 0,
-      foodContent: '',
-      foodAmount: summary.foodSeasoningAmount || 0,
       otherContent: '',
       otherAmount: summary.otherExpenseAmount || 0,
       balance: summary.balance || 0,
