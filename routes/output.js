@@ -28,6 +28,21 @@ const xlsx = require('xlsx');
 const ExcelJS = require('exceljs');
 const { isLoggedIn, logAction } = require('../middleware');
 
+const resolveDashboardTagSummary = (req, key) => {
+  if (!req.session.dashboardTagSummary) {
+    req.session.dashboardTagSummary = {};
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.query, 'tagSummary')) {
+    const rawValue = req.query.tagSummary;
+    const enabled = Array.isArray(rawValue) ? rawValue.includes('1') : rawValue === '1';
+    req.session.dashboardTagSummary[key] = enabled;
+    return enabled;
+  }
+
+  return req.session.dashboardTagSummary[key] === true;
+};
+
 async function fetchItemsByYear(groupId, year) {
     const yearStr = String(year);
     let items = await Items.find({ group: groupId, year: yearStr });
@@ -1136,7 +1151,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
 
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
-  const showTagSummary = req.query.tagSummary === '1';
+  const showTagSummary = resolveDashboardTagSummary(req, 'monthly-m');
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
   const fiscalYear = cumulativeMeta.fiscalYear;
@@ -1480,7 +1495,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   const end = new Date(year, month, 1);
 
   const groupId = req.session.activeGroupId;
-  const showTagSummary = req.query.tagSummary === '1';
+  const showTagSummary = resolveDashboardTagSummary(req, 'monthly-g');
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
   const fiscalYear = cumulativeMeta.fiscalYear;
@@ -1606,7 +1621,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
-    const showTagSummary = req.query.tagSummary === '1';
+    const showTagSummary = resolveDashboardTagSummary(req, 'yearly-m');
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -1773,7 +1788,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
-    const showTagSummary = req.query.tagSummary === '1';
+    const showTagSummary = resolveDashboardTagSummary(req, 'yearly-g');
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));

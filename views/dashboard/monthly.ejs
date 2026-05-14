@@ -9,6 +9,7 @@
           <div class="d-flex align-items-center flex-nowrap gap-2">
             <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;">
             <div class="form-check form-switch mb-0 text-nowrap">
+              <input type="hidden" name="tagSummary" value="0">
               <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %>>
               <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
             </div>
