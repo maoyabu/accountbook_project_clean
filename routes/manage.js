@@ -258,8 +258,8 @@ cron.schedule('0 4 1 * *', async () => {
     const modelName = path.basename(file, '.js');
     try {
       const model = require(`../models/${modelName}`);
-      if (typeof model.find === 'function') {
-        modelData[modelName] = await model.find({});
+      if (model?.collection && typeof model.collection.find === 'function') {
+        modelData[modelName] = await model.collection.find({}).toArray();
       }
     } catch (e) {
       console.warn(`🟡 モデル ${modelName} の取得に失敗:`, e.message);

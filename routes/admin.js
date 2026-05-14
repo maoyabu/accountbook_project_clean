@@ -21,11 +21,98 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 const archiver = require('archiver');
+const multer = require('multer');
+const JSZip = require('jszip');
 // const nodemailer = require('nodemailer');
 const { sendMail } = require('../Utils/mailer');
 const OcrLog = require('../models/ocrs');
 const dictentry = require('../models/dictentry'); // 作成したモデル
 const dictPath = path.join(__dirname, '../Utils/categoryDictionary.json');
+
+const restoreUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const isZip = file.mimetype === 'application/zip'
+      || file.mimetype === 'application/x-zip-compressed'
+      || path.extname(file.originalname || '').toLowerCase() === '.zip';
+    cb(isZip ? null : new Error('ZIPファイルを選択してください'), isZip);
+  }
+});
+
+const loadBackupModelMap = () => {
+  const modelsPath = path.join(__dirname, '../models');
+  const modelMap = new Map();
+
+  const walk = (dir) => {
+    fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        return;
+      }
+      if (!entry.name.endsWith('.js') || entry.name === 'index.js') return;
+
+      const modelName = path.basename(entry.name, '.js');
+      try {
+        const model = require(fullPath);
+        if (typeof model.find === 'function' && typeof model.deleteMany === 'function' && typeof model.insertMany === 'function') {
+          modelMap.set(modelName, model);
+        }
+      } catch (e) {
+        console.warn(`[admin restore] モデル ${modelName} の読み込みに失敗:`, e.message);
+      }
+    });
+  };
+
+  walk(modelsPath);
+  return modelMap;
+};
+
+const parseBackupZip = async (buffer) => {
+  const zip = await JSZip.loadAsync(buffer);
+  const modelMap = loadBackupModelMap();
+  const entries = [];
+
+  for (const [zipName, zipEntry] of Object.entries(zip.files)) {
+    if (zipEntry.dir || path.extname(zipName).toLowerCase() !== '.json') continue;
+
+    const baseName = path.basename(zipName, '.json');
+    const model = modelMap.get(baseName);
+    const raw = await zipEntry.async('string');
+    let docs;
+
+    try {
+      docs = JSON.parse(raw);
+    } catch (e) {
+      entries.push({ fileName: zipName, modelName: baseName, count: 0, status: 'invalid_json' });
+      continue;
+    }
+
+    if (!Array.isArray(docs)) {
+      entries.push({ fileName: zipName, modelName: baseName, count: 0, status: 'not_array' });
+      continue;
+    }
+
+    entries.push({
+      fileName: zipName,
+      modelName: baseName,
+      count: docs.length,
+      status: model ? 'ready' : 'unknown_model'
+    });
+  }
+
+  return entries.sort((a, b) => a.modelName.localeCompare(b.modelName));
+};
+
+const saveRestoreUpload = (buffer) => {
+  const restoreDir = path.join(__dirname, '../tmp/restore');
+  fs.mkdirSync(restoreDir, { recursive: true });
+  const token = crypto.randomBytes(16).toString('hex');
+  const zipPath = path.join(restoreDir, `${token}.zip`);
+  fs.writeFileSync(zipPath, buffer);
+  return { token, zipPath };
+};
 
 const ex_cfs = [
   '副食物費','主食費1','主食費2','調味料','光熱費','住宅・家具費',
@@ -437,17 +524,12 @@ router.get('/backup', isAdmin, async (req, res) => {
 
   try {
     // モデル一覧を動的に読み込み
-    const modelsPath = path.join(__dirname, '../models');
-    const modelFiles = fs.readdirSync(modelsPath).filter(file => file.endsWith('.js') && file !== 'index.js');
+    const modelMap = loadBackupModelMap();
     const modelData = {};
 
-    for (const file of modelFiles) {
-      const modelName = path.basename(file, '.js');
+    for (const [modelName, model] of modelMap.entries()) {
       try {
-        const model = require(`../models/${modelName}`);
-        if (typeof model.find === 'function') {
-          modelData[modelName] = await model.find({});
-        }
+        modelData[modelName] = await model.collection.find({}).toArray();
       } catch (e) {
         console.warn(`[/backup] モデル ${modelName} の取得に失敗:`, e.message);
       }
@@ -497,6 +579,118 @@ router.get('/backup', isAdmin, async (req, res) => {
     console.error('[/backup] 処理中エラー:', err);
     req.flash('error', 'バックアップ中にエラーが発生しました');
     res.redirect('/admin');
+  }
+});
+
+// バックアップZIPからデータベースを復元（プレビュー）
+router.get('/restore', isAdmin, (req, res) => {
+  res.render('admin/restore', {
+    restorePreview: req.session.restorePreview || null
+  });
+});
+
+router.post('/restore/preview', isAdmin, restoreUpload.single('backupZip'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      req.flash('error', '復元するZIPファイルを選択してください');
+      return res.redirect('/admin/restore');
+    }
+
+    const entries = await parseBackupZip(req.file.buffer);
+    const readyCount = entries.filter(entry => entry.status === 'ready').length;
+
+    if (readyCount === 0) {
+      req.flash('error', '復元可能なJSONファイルがZIP内に見つかりませんでした');
+      return res.redirect('/admin/restore');
+    }
+
+    if (req.session.restorePreview?.zipPath) {
+      fs.rmSync(req.session.restorePreview.zipPath, { force: true });
+    }
+
+    const { token, zipPath } = saveRestoreUpload(req.file.buffer);
+    req.session.restorePreview = {
+      token,
+      zipPath,
+      originalName: req.file.originalname,
+      uploadedAt: new Date().toISOString(),
+      entries
+    };
+
+    res.redirect('/admin/restore');
+  } catch (err) {
+    console.error('[admin restore preview] エラー:', err);
+    req.flash('error', 'ZIPファイルの読み込みに失敗しました');
+    res.redirect('/admin/restore');
+  }
+});
+
+router.post('/restore/execute', isAdmin, async (req, res) => {
+  const preview = req.session.restorePreview;
+
+  try {
+    if (!preview?.zipPath || !fs.existsSync(preview.zipPath)) {
+      req.flash('error', '復元対象のZIPが見つかりません。もう一度アップロードしてください');
+      return res.redirect('/admin/restore');
+    }
+
+    if (req.body.confirmText !== 'RESTORE') {
+      req.flash('error', '確認文字列が一致しません。RESTORE と入力してください');
+      return res.redirect('/admin/restore');
+    }
+
+    const zipBuffer = fs.readFileSync(preview.zipPath);
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const modelMap = loadBackupModelMap();
+    const readyEntries = (preview.entries || []).filter(entry => entry.status === 'ready' && modelMap.has(entry.modelName));
+
+    if (readyEntries.length === 0) {
+      req.flash('error', '復元可能なモデルがありません');
+      return res.redirect('/admin/restore');
+    }
+
+    const results = [];
+    for (const entry of readyEntries) {
+      const model = modelMap.get(entry.modelName);
+      const zipEntry = zip.file(entry.fileName);
+      if (!zipEntry) {
+        results.push({ modelName: entry.modelName, deleted: 0, inserted: 0, status: 'missing_file' });
+        continue;
+      }
+
+      const docs = JSON.parse(await zipEntry.async('string'));
+      if (!Array.isArray(docs)) {
+        results.push({ modelName: entry.modelName, deleted: 0, inserted: 0, status: 'not_array' });
+        continue;
+      }
+
+      const castedDocs = docs.map((doc) => model.castObject(doc));
+      const deleteResult = await model.deleteMany({});
+      let insertedCount = 0;
+      if (castedDocs.length > 0) {
+        const insertResult = await model.collection.insertMany(castedDocs, { ordered: true });
+        insertedCount = insertResult.insertedCount || castedDocs.length;
+      }
+
+      results.push({
+        modelName: entry.modelName,
+        deleted: deleteResult.deletedCount || 0,
+        inserted: insertedCount,
+        status: 'restored'
+      });
+    }
+
+    await logAction({ req, action: 'バックアップZIPからDB復元', target: '管理画面' });
+    fs.rmSync(preview.zipPath, { force: true });
+    delete req.session.restorePreview;
+
+    const insertedTotal = results.reduce((sum, result) => sum + (result.inserted || 0), 0);
+    req.flash('success', `復元が完了しました（${results.length}モデル / ${insertedTotal}件）`);
+    res.render('admin/restore', { restorePreview: null, restoreResults: results });
+  } catch (err) {
+    console.error('[admin restore execute] エラー:', err);
+    req.flash('error', `復元に失敗しました: ${err.message}`);
+    res.redirect('/admin/restore');
   }
 });
 

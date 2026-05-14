@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My History | サポート</title>
+  <meta name="description" content="My History（パーソナル年表）は、生まれてからこれまでの歩みを記録し、住まい、学歴、職歴、趣味や思い出を振り返るためのアプリです。">
+  <style>
+    :root {
+      --text: #202124;
+      --muted: #5f6368;
+      --link: #0b63b6;
+      --line: #e7ecef;
+      --soft: #f8fbfd;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #fff;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "YuGothic", "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.72;
+      letter-spacing: 0;
+    }
+
+    main {
+      width: min(760px, calc(100% - 40px));
+      margin: 118px auto 120px;
+    }
+
+    h1 {
+      margin: 0 0 140px;
+      font-size: 26px;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    h2 {
+      margin: 44px 0 8px;
+      font-size: 17px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--link);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .hero {
+      position: relative;
+      margin: 0 0 16px;
+      overflow: hidden;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #edf8ff, #fff6e6);
+      border: 1px solid var(--line);
+    }
+
+    .hero img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .hero-fallback {
+      display: none;
+      min-height: 430px;
+      padding: 40px;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .hero-fallback strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: clamp(28px, 5vw, 46px);
+      line-height: 1.2;
+    }
+
+    .hero-fallback span {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .app-name {
+      margin-top: 0;
+      margin-bottom: 2px;
+      font-weight: 800;
+    }
+
+    .support {
+      margin-top: 52px;
+    }
+
+    .support p {
+      padding-left: 28px;
+    }
+
+    .privacy {
+      margin-top: 42px;
+      padding: 18px 22px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .privacy h2 {
+      margin-top: 0;
+    }
+
+    .privacy ul {
+      margin: 0 0 0 1.3em;
+      padding: 0;
+    }
+
+    .privacy li {
+      margin: 6px 0;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100% - 28px, 760px);
+        margin-top: 48px;
+        margin-bottom: 72px;
+      }
+
+      h1 {
+        margin-bottom: 48px;
+        font-size: 24px;
+      }
+
+      .hero-fallback {
+        min-height: 280px;
+        padding: 28px 18px;
+      }
+
+      .support p {
+        padding-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>My History ー パーソナル年表</h1>
+
+    <section class="hero" aria-label="My Historyの紹介画像">
+      <img src="/images/myhistory_top_image.jpg" alt="My History あなただけの人生記録アプリ" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="hero-fallback">
+        <div>
+          <strong>My History</strong>
+          <span>あなただけの人生記録アプリ</span>
+        </div>
+      </div>
+    </section>
+
+    <p class="app-name">My History</p>
+    <p>このアプリは生まれてから、これまでの自分の歩みを記録して、いろんな視点で振り返りができるアプリです。</p>
+    <p>今まで暮らしてきた住まいでそこで遊んだお友達や通った学校やそこで友達になった人のこと、勤めた会社や部署でどんな仕事をしてきたのかなどを記録するのに加えて、自分が記録に残しておきたいなと思うものを自分好みで記録したい項目を設定し思い通りに記録することができます。</p>
+    <p>例えば、旅行の思い出、自分が乗ってきた車やバイク、自転車といった乗り物とかを記録したり、利用してきた携帯電話や様々なGadgetやPCの遍歴とその時の思い出などを記録して懐かしむことができます。</p>
+    <p>デフォルトで職務履歴や住まい、学歴の3つのカテゴリーがあります。このカテゴリーを登録すると自動的に履歴書や職務経歴書を作成することができます。</p>
+    <p>今後このHistoryを活用して様々な視点で自分のこれまでを振り返ることができるように進化していきます。</p>
+
+    <section class="support">
+      <h2>サポート情報</h2>
+      <p>アプリに関するご意見、ご感想、不具合などございましたら以下のメールアドレスまでお問い合わせください</p>
+      <p>お問い合わせをいただいてから3営業日までにはご回答させていただきます。</p>
+      <p>連絡先： <a href="mailto:staff.allaboutme@gmail.com">staff.allaboutme@gmail.com</a></p>
+    </section>
+
+    <section class="privacy">
+      <h2>プライバシーポリシー</h2>
+      <ul>
+        <li>本アプリは、入力された履歴情報をアプリの機能提供のために使用します。</li>
+        <li>収集したデータを第三者へ送信・共有しません。</li>
+        <li>お問い合わせ: <a href="mailto:staff.allaboutme@gmail.com">staff.allaboutme@gmail.com</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

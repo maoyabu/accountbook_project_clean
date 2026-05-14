@@ -1,0 +1,106 @@
+<% layout('layouts/boilerplate') %>
+
+<h1>バックアップデータからDB復元</h1>
+
+<div class="alert alert-danger">
+  <strong>注意:</strong>
+  実行すると、復元対象モデルの現在データを全件削除して、ZIP内のJSONデータに入れ替えます。
+  本番環境で実行する前に、現在のデータを一括ダウンロードしてください。
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">1. バックアップZIPを選択</div>
+  <div class="card-body">
+    <form action="/admin/restore/preview" method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="backupZip" class="form-label">データの一括ダウンロードで取得したZIPファイル</label>
+        <input type="file" id="backupZip" name="backupZip" class="form-control" accept=".zip,application/zip" required>
+      </div>
+      <button type="submit" class="btn btn-outline-primary">ZIPの内容を確認</button>
+    </form>
+  </div>
+</div>
+
+<% if (typeof restorePreview !== 'undefined' && restorePreview) { %>
+  <% const readyEntries = (restorePreview.entries || []).filter(entry => entry.status === 'ready'); %>
+  <div class="card mb-4 border-warning">
+    <div class="card-header bg-warning">2. 復元内容の確認</div>
+    <div class="card-body">
+      <p class="mb-2">
+        ファイル: <strong><%= restorePreview.originalName %></strong>
+        / 復元対象: <strong><%= readyEntries.length %></strong> モデル
+      </p>
+
+      <div class="table-responsive mb-3">
+        <table class="table table-sm table-bordered align-middle">
+          <thead>
+            <tr>
+              <th>JSON</th>
+              <th>モデル</th>
+              <th>件数</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (restorePreview.entries || []).forEach(entry => { %>
+              <tr>
+                <td><%= entry.fileName %></td>
+                <td><%= entry.modelName %></td>
+                <td class="text-end"><%= entry.count %></td>
+                <td>
+                  <% if (entry.status === 'ready') { %>
+                    <span class="badge bg-success">復元対象</span>
+                  <% } else if (entry.status === 'unknown_model') { %>
+                    <span class="badge bg-secondary">未対応モデルのためスキップ</span>
+                  <% } else { %>
+                    <span class="badge bg-danger"><%= entry.status %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <form action="/admin/restore/execute" method="POST" onsubmit="return confirm('現在のDBデータをバックアップZIPの内容に入れ替えます。実行しますか？')">
+        <div class="mb-3">
+          <label for="confirmText" class="form-label">実行する場合は RESTORE と入力してください</label>
+          <input type="text" id="confirmText" name="confirmText" class="form-control" autocomplete="off" required>
+        </div>
+        <button type="submit" class="btn btn-danger">DBデータを入れ替える</button>
+      </form>
+    </div>
+  </div>
+<% } %>
+
+<% if (typeof restoreResults !== 'undefined' && restoreResults && restoreResults.length > 0) { %>
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white">復元結果</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle">
+          <thead>
+            <tr>
+              <th>モデル</th>
+              <th>削除件数</th>
+              <th>登録件数</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% restoreResults.forEach(result => { %>
+              <tr>
+                <td><%= result.modelName %></td>
+                <td class="text-end"><%= result.deleted %></td>
+                <td class="text-end"><%= result.inserted %></td>
+                <td><%= result.status %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<p><a href="/admin">管理画面トップへ戻る</a></p>

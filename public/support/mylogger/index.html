@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Logger | サポート</title>
+  <meta name="description" content="My Logger（マイロガー）は、書かなくても続く、新しい日記アプリです。自動・手動ログ、音声入力、自動タグ、テーマ別の振り返りに対応しています。">
+  <style>
+    :root {
+      --text: #222;
+      --muted: #5b6368;
+      --line: #e7ecef;
+      --accent: #2bb99f;
+      --accent-dark: #178b7a;
+      --bg: #fff;
+      --soft: #f7fbfa;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "YuGothic", "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.8;
+      letter-spacing: 0;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 56px auto 80px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1.2;
+      font-weight: 800;
+    }
+
+    h2 {
+      margin: 42px 0 14px;
+      font-size: 17px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 15px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ul,
+    ol {
+      margin: 0 0 18px 1.3em;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    a {
+      color: var(--accent-dark);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .lead {
+      margin: 0 0 18px;
+      font-weight: 700;
+    }
+
+    .hero {
+      position: relative;
+      margin: 10px 0 22px;
+      overflow: hidden;
+      border-radius: 8px;
+      background: linear-gradient(120deg, #e7fff4, #eff9ff 58%, #fff2f7);
+      border: 1px solid var(--line);
+    }
+
+    .hero img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .hero-fallback {
+      display: none;
+      min-height: 360px;
+      padding: 44px;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .hero-fallback strong {
+      display: block;
+      margin-bottom: 12px;
+      font-size: clamp(24px, 5vw, 44px);
+      line-height: 1.35;
+    }
+
+    .hero-fallback span {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .content {
+      max-width: 1080px;
+    }
+
+    .intro {
+      padding-left: 24px;
+    }
+
+    .feature-list {
+      list-style-position: outside;
+    }
+
+    .recommend {
+      columns: 2;
+      column-gap: 52px;
+      max-width: 840px;
+    }
+
+    .support-box {
+      margin-top: 34px;
+      padding: 22px 24px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .support-box h2 {
+      margin-top: 0;
+    }
+
+    .copyright {
+      margin-top: 44px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100% - 28px, 1120px);
+        margin-top: 32px;
+      }
+
+      .intro {
+        padding-left: 0;
+      }
+
+      .recommend {
+        columns: 1;
+      }
+
+      .hero-fallback {
+        min-height: 260px;
+        padding: 28px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>My Logger</h1>
+    <p class="lead">このアプリについて</p>
+
+    <section class="hero" aria-label="My Loggerの紹介画像">
+      <img src="/images/top_image.png" alt="My Logger（マイロガー） 記録が楽しくてたまらない！書かなくても続く、新しい日記アプリ" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="hero-fallback">
+        <div>
+          <strong>My Logger（マイロガー）</strong>
+          <span>記録が楽しくてたまらない。書かなくても続く、新しい日記アプリ。</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="content">
+      <h2>【コンセプト】</h2>
+      <div class="intro">
+        <p>「記録」が楽しくてたまらない！書かなくても続く、新しい日記アプリ</p>
+        <p>「今度こそ日記を続けるぞ！」と決意しても、ついサボってやめてしまう…。そんな方に向けた、紙の日記では味わえない新しい体験を提供するアプリです。「文章を書く」のではなく、日々の行動を「記録（ログ）する」ことで、振り返るのが楽しくなる工夫が満ちています。</p>
+      </div>
+
+      <h2>【7つの主な特徴】</h2>
+      <ol class="feature-list">
+        <li>「自動＆手動ログ」が、そのままあなたの日記に。「いざ日記を書こうとしても、何を書けばいいか思いつかない」という悩みを解決します。</li>
+        <li>過去の情景や気持ちを鮮明に思い出す「視覚化」。紙の日記では難しい振り返りを強力にサポートします。</li>
+        <li>思いついたら即記録。便利な「自動タグ付け」。散歩中のアイデアや忘れたくないタスクなども、音声でサクッと入力できます。</li>
+        <li>タスクやリマインダーも「感情のログ」として活用。やったことだけでなく、その時どう感じたか、結果はどうだったかまで記録できます。</li>
+        <li>習慣やテーマに特化した「定期的な振り返り」。睡眠、朝食、ウォーキング、おやつなど、定期的に振り返りたい項目をタグ付けして見返せます。</li>
+        <li>誰にも見られない、完全プライベート空間。SNSのような共有機能はなく、飾らない本当の自分を安心して記録できます。</li>
+        <li>別サービスの「グループの家計簿」「7DAYS PLAN」と連携しているユーザーは、その情報も自動で表示されます。</li>
+      </ol>
+
+      <h2>【こんな方におすすめ！】</h2>
+      <ul class="recommend">
+        <li>日記を始めたいけど、書くのが苦手で続かない方</li>
+        <li>日々の歩数、睡眠、エンタメ履歴などを一箇所にまとめたい方</li>
+        <li>頭の中のモヤモヤを音声で吐き出したい方</li>
+        <li>誰にも見られない自分だけのプライベートな記録空間が欲しい方</li>
+      </ul>
+
+      <p>My Loggerと一緒に、飾らない本当の自分を記録してみませんか？今すぐダウンロードして、新しい日記体験を始めましょう！</p>
+
+      <section class="support-box">
+        <h2>【サポート】</h2>
+        <p>ご不明点、不具合報告、ご要望がありましたら、下記メールアドレスまでお問い合わせください。</p>
+        <p><a href="mailto:staff.allaboutme@gmail.com">staff.allaboutme@gmail.com</a></p>
+      </section>
+
+      <h2>【プライバシーポリシー】</h2>
+      <ul>
+        <li>本アプリは入力内容・端末内データ（位置情報、ヘルスケア、音楽履歴など）をアプリの機能のためにのみ使用します。</li>
+        <li>収集したデータを第三者へ送信・共有しません。</li>
+        <li>アカウント登録は不要です。</li>
+        <li>お問い合わせ: <a href="mailto:staff.allaboutme@gmail.com">staff.allaboutme@gmail.com</a></li>
+      </ul>
+
+      <p class="copyright">&copy; 2026 Masayuki Oyabu</p>
+    </div>
+  </main>
+</body>
+</html>
