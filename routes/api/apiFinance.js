@@ -755,7 +755,9 @@ router.post('/', async (req, res, next) => {
       memo,
       cf,           // 'expense' | 'income' | 'deduction' | 'saving' または 日本語 '支出' など
       paymentType,  // 支払種別
+      payment_type,
       memberId,     // 使用者ID
+      member_id,
       content,      // 内容（複数行）
       sub_tag,      // サブタグ（任意）
       tags          // レシート明細（任意）
@@ -772,6 +774,8 @@ router.post('/', async (req, res, next) => {
 
     // cf を日本語へ正規化（未指定時は '支出' を既定に）
     const cfKey = cfToJapanese(cf) || '支出';
+    const paymentTypeValue = typeof paymentType !== 'undefined' ? paymentType : payment_type;
+    const memberIdValue = typeof memberId !== 'undefined' ? memberId : member_id;
 
     const doc = new Finance({
       user: userId,
@@ -782,8 +786,8 @@ router.post('/', async (req, res, next) => {
       cf: cfKey,
       amount: Number(amount),
       memo: memo || null,
-      payment_type: (typeof paymentType === 'string' && paymentType.trim().length > 0) ? paymentType.trim() : 'cash',
-      member_id: (typeof memberId === 'string' && memberId.trim().length > 0) ? memberId.trim() : null,
+      payment_type: (typeof paymentTypeValue === 'string' && paymentTypeValue.trim().length > 0) ? paymentTypeValue.trim() : 'cash',
+      member_id: (typeof memberIdValue === 'string' && memberIdValue.trim().length > 0) ? memberIdValue.trim() : null,
       content: (typeof content === 'string' && content.trim().length > 0) ? content.trim() : null,
       sub_tag: (typeof sub_tag === 'string' && sub_tag.trim().length > 0) ? sub_tag.trim() : null,
       entry_date: new Date()
@@ -876,7 +880,9 @@ router.put('/:id', async (req, res, next) => {
       memo,
       cf,
       paymentType,
+      payment_type,
       memberId,
+      member_id,
       content,
       sub_tag,
       group,
@@ -961,15 +967,17 @@ router.put('/:id', async (req, res, next) => {
       update.tags = cfForCategory === '支出' ? normalizeTags(tags) : [];
     }
 
-    if (typeof paymentType !== 'undefined') {
-      update.payment_type = (typeof paymentType === 'string' && paymentType.trim().length > 0)
-        ? paymentType.trim()
+    const paymentTypeValue = typeof paymentType !== 'undefined' ? paymentType : payment_type;
+    if (typeof paymentTypeValue !== 'undefined') {
+      update.payment_type = (typeof paymentTypeValue === 'string' && paymentTypeValue.trim().length > 0)
+        ? paymentTypeValue.trim()
         : null;
     }
 
-    if (typeof memberId !== 'undefined') {
-      update.member_id = (typeof memberId === 'string' && memberId.trim().length > 0)
-        ? memberId.trim()
+    const memberIdValue = typeof memberId !== 'undefined' ? memberId : member_id;
+    if (typeof memberIdValue !== 'undefined') {
+      update.member_id = (typeof memberIdValue === 'string' && memberIdValue.trim().length > 0)
+        ? memberIdValue.trim()
         : null;
     }
 
