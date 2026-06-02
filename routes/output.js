@@ -606,11 +606,16 @@ const buildMonthlyCalendarData = async ({ groupId, ymRaw }) => {
   });
 
   const subtotalRows = dayRows.filter((row) => row.day <= 15);
+  const latterSubtotalRows = dayRows.filter((row) => row.day >= 16);
   const subtotal = summarizeCalendarRows(subtotalRows);
+  const latterSubtotal = summarizeCalendarRows(latterSubtotalRows);
   const total = summarizeCalendarRows(dayRows);
   subtotal.cashBalance = subtotalRows.length > 0
     ? subtotalRows[subtotalRows.length - 1].cashBalance
     : carryCash;
+  latterSubtotal.cashBalance = latterSubtotalRows.length > 0
+    ? latterSubtotalRows[latterSubtotalRows.length - 1].cashBalance
+    : subtotal.cashBalance;
   total.cashBalance = dayRows.length > 0
     ? dayRows[dayRows.length - 1].cashBalance
     : carryCash;
@@ -623,6 +628,7 @@ const buildMonthlyCalendarData = async ({ groupId, ymRaw }) => {
     carryCash,
     dayRows,
     subtotal,
+    latterSubtotal,
     total,
     calendarCategoryGroups,
     walletManagementEnabled
@@ -701,6 +707,7 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
     carryCash,
     dayRows,
     subtotal,
+    latterSubtotal,
     total,
     calendarCategoryGroups,
     walletManagementEnabled
@@ -800,7 +807,7 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
         ? (rowFill || CALENDAR_EXCEL_COLORS.white)
         : (col.bodyFill || rowFill || CALENDAR_EXCEL_COLORS.white);
       cell.fill = fill(cellFill);
-      cell.font = { name: 'Meiryo UI', size: options.fontSize || 9, color: { argb: CALENDAR_EXCEL_COLORS.text } };
+      cell.font = { name: 'Meiryo UI', size: options.fontSize || 9, bold: options.bold === true, color: { argb: CALENDAR_EXCEL_COLORS.text } };
       cell.border = thinBorder;
       cell.alignment = {
         horizontal: col.numeric ? 'right' : (col.key === 'day' || col.key === 'weekday' ? 'center' : 'left'),
@@ -874,18 +881,21 @@ const exportMonthlyCalendarWorkbook = async (calendarData, todayJst) => {
     excelRow += 1;
 
     if (dayRow.day === 15) {
-      setRowValues(excelRow, buildSummaryValues('小計', subtotal), CALENDAR_EXCEL_COLORS.midTotal, { forceRowFill: true });
+      setRowValues(excelRow, buildSummaryValues('小計（1〜15日）', subtotal), CALENDAR_EXCEL_COLORS.midTotal, { forceRowFill: true, fontSize: 16, bold: true });
       sheet.mergeCells(excelRow, 1, excelRow, 3);
       sheet.getCell(excelRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
-      sheet.getRow(excelRow).font = { name: 'Meiryo UI', size: 9, bold: true };
       excelRow += 1;
     }
   });
 
-  setRowValues(excelRow, buildSummaryValues('合計', total), CALENDAR_EXCEL_COLORS.monthTotal, { forceRowFill: true });
+  setRowValues(excelRow, buildSummaryValues('小計（16〜31日）', latterSubtotal), CALENDAR_EXCEL_COLORS.midTotal, { forceRowFill: true, fontSize: 16, bold: true });
   sheet.mergeCells(excelRow, 1, excelRow, 3);
   sheet.getCell(excelRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
-  sheet.getRow(excelRow).font = { name: 'Meiryo UI', size: 9, bold: true };
+  excelRow += 1;
+
+  setRowValues(excelRow, buildSummaryValues('合計', total), CALENDAR_EXCEL_COLORS.monthTotal, { forceRowFill: true, fontSize: 16, bold: true });
+  sheet.mergeCells(excelRow, 1, excelRow, 3);
+  sheet.getCell(excelRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
 
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber < 4) return;
@@ -1237,6 +1247,12 @@ async function exportMonthlyDashboardWorkbook(data) {
   const cumulativeLabel = data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`;
 
   sheet.mergeCells(1, 2, 1, 11);
+  applyRange(1, 1, 2, 11, {
+    fill: darkFill,
+    font: { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } },
+    alignment: { horizontal: 'center', vertical: 'middle' },
+    border: false
+  });
   sheet.getCell(1, 2).value = `${data.titlePrefix} 月間サマリー ${data.year}年${data.month}月`;
   sheet.getCell(1, 2).fill = darkFill;
   sheet.getCell(1, 2).font = { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };

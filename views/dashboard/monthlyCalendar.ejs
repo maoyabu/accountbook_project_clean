@@ -128,7 +128,7 @@
             </tr>
             <% if (row.day === 15) { %>
               <tr class="mid-total-row fw-bold">
-                <td class="summary-label" colspan="3">小計</td>
+                <td class="summary-label" colspan="3">小計（1〜15日）</td>
                 <td></td>
                 <td class="amount-col"><%= subtotal.incomeAmount.toLocaleString() %></td>
                 <td></td>
@@ -148,6 +148,25 @@
               </tr>
             <% } %>
           <% }) %>
+          <tr class="mid-total-row fw-bold">
+            <td class="summary-label" colspan="3">小計（16〜31日）</td>
+            <td></td>
+            <td class="amount-col"><%= latterSubtotal.incomeAmount.toLocaleString() %></td>
+            <td></td>
+            <td class="amount-col"><%= latterSubtotal.deductionAmount.toLocaleString() %></td>
+            <% (calendarCategoryGroups || []).forEach((group, index) => { %>
+              <td></td>
+              <td class="amount-col"><%= Number(latterSubtotal.categoryGroupAmounts?.[index] || 0).toLocaleString() %></td>
+            <% }) %>
+            <td></td>
+            <td class="amount-col"><%= latterSubtotal.otherExpenseAmount.toLocaleString() %></td>
+            <td class="balance-col"><%= latterSubtotal.balance.toLocaleString() %></td>
+            <td class="payment-amount-col"><%= latterSubtotal.cashAmount.toLocaleString() %></td>
+            <td class="payment-amount-col"><%= latterSubtotal.nonCashAmount.toLocaleString() %></td>
+            <% if (walletManaged) { %>
+              <td class="cash-balance-col"><%= latterSubtotal.cashBalance.toLocaleString() %></td>
+            <% } %>
+          </tr>
           <tr class="month-total-row fw-bold">
             <td class="summary-label" colspan="3">合計</td>
             <td></td>
