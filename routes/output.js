@@ -1158,116 +1158,139 @@ async function exportMonthlyDashboardWorkbook(data) {
   workbook.creator = 'All About me';
   workbook.created = new Date();
   const sheet = workbook.addWorksheet('Monthly Summary', {
-    views: [{ state: 'frozen', ySplit: 4, showGridLines: false }]
+    views: [{ state: 'frozen', ySplit: 14, showGridLines: false }]
   });
 
-  const columnCount = data.showTagSummary ? 9 : 8;
+  const columnCount = 11;
   const darkFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF44616D' } };
   const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAF7' } };
   const cumulativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF4F7' } };
   const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F4EA' } };
   const negativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
+  const subtleFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7FBFD' } };
   const whiteFont = { name: 'Meiryo UI', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   const baseFont = { name: 'Meiryo UI', size: 11 };
+  const smallFont = { name: 'Meiryo UI', size: 10 };
   const border = {
     top: { style: 'thin', color: { argb: 'FFB8C7CE' } },
     left: { style: 'thin', color: { argb: 'FFB8C7CE' } },
     bottom: { style: 'thin', color: { argb: 'FFB8C7CE' } },
     right: { style: 'thin', color: { argb: 'FFB8C7CE' } }
   };
+  const thickBorder = {
+    top: { style: 'medium', color: { argb: 'FF44616D' } },
+    left: { style: 'medium', color: { argb: 'FF44616D' } },
+    bottom: { style: 'medium', color: { argb: 'FF44616D' } },
+    right: { style: 'medium', color: { argb: 'FF44616D' } }
+  };
 
-  sheet.mergeCells(1, 1, 1, columnCount);
-  sheet.getCell(1, 1).value = `${data.titlePrefix} 月間サマリー ${data.year}年${data.month}月`;
-  sheet.getCell(1, 1).fill = darkFill;
-  sheet.getCell(1, 1).font = { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
-  sheet.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+  const applyCellStyle = (cell, options = {}) => {
+    cell.font = options.font || baseFont;
+    cell.alignment = options.alignment || { vertical: 'middle' };
+    if (options.fill) cell.fill = options.fill;
+    if (options.border !== false) cell.border = options.border || border;
+    if (options.numFmt) cell.numFmt = options.numFmt;
+  };
+  const applyRange = (rowStart, rowEnd, colStart, colEnd, options = {}) => {
+    for (let r = rowStart; r <= rowEnd; r++) {
+      for (let c = colStart; c <= colEnd; c++) {
+        applyCellStyle(sheet.getCell(r, c), options);
+      }
+    }
+  };
+  const setNumberCell = (row, col, value, options = {}) => {
+    const cell = sheet.getCell(row, col);
+    cell.value = value;
+    applyCellStyle(cell, {
+      ...options,
+      alignment: options.alignment || { horizontal: 'right', vertical: 'middle' },
+      numFmt: options.numFmt || '#,##0'
+    });
+    if (typeof value === 'number' && value < 0) {
+      cell.fill = negativeFill;
+      cell.font = { ...(cell.font || baseFont), bold: options.bold || cell.font?.bold, color: { argb: 'FF9C0006' } };
+    }
+    return cell;
+  };
+  const setTextCell = (row, col, value, options = {}) => {
+    const cell = sheet.getCell(row, col);
+    cell.value = value;
+    applyCellStyle(cell, {
+      ...options,
+      alignment: options.alignment || { horizontal: 'left', vertical: 'middle' }
+    });
+    return cell;
+  };
+  const setSectionTitle = (row, colStart, colEnd, value) => {
+    sheet.mergeCells(row, colStart, row, colEnd);
+    const cell = sheet.getCell(row, colStart);
+    cell.value = value;
+    applyCellStyle(cell, {
+      fill: darkFill,
+      font: whiteFont,
+      alignment: { horizontal: 'left', vertical: 'middle' },
+      border: thickBorder
+    });
+    sheet.getRow(row).height = 20;
+  };
+
+  const cumulativeLabel = data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`;
+
+  sheet.mergeCells(1, 2, 1, 11);
+  sheet.getCell(1, 2).value = `${data.titlePrefix} 月間サマリー ${data.year}年${data.month}月`;
+  sheet.getCell(1, 2).fill = darkFill;
+  sheet.getCell(1, 2).font = { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getCell(1, 2).alignment = { horizontal: 'center', vertical: 'middle' };
   sheet.getRow(1).height = 26;
 
-  sheet.mergeCells(2, 1, 2, columnCount);
-  sheet.getCell(2, 1).value = `累計: ${data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`} / タグ別: ${data.showTagSummary ? 'あり' : 'なし'}`;
-  sheet.getCell(2, 1).font = { name: 'Meiryo UI', size: 10, color: { argb: 'FF4D5960' } };
-  sheet.getCell(2, 1).alignment = { horizontal: 'right' };
+  sheet.mergeCells(2, 2, 2, 11);
+  sheet.getCell(2, 2).value = `累計: ${cumulativeLabel} / タグ別: ${data.showTagSummary ? 'あり' : 'なし'}`;
+  sheet.getCell(2, 2).font = { name: 'Meiryo UI', size: 10, color: { argb: 'FF4D5960' } };
+  sheet.getCell(2, 2).alignment = { horizontal: 'right' };
 
-  sheet.addRow([]);
-  const summaryTop = 4;
-  sheet.mergeCells(summaryTop, 2, summaryTop, 4);
-  sheet.mergeCells(summaryTop, 5, summaryTop, 7);
-  sheet.getCell(summaryTop, 1).value = '';
-  sheet.getCell(summaryTop, 2).value = '当月';
-  sheet.getCell(summaryTop, 5).value = `累計（${data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`}）`;
-  sheet.getRow(summaryTop).eachCell((cell) => {
-    cell.fill = darkFill;
-    cell.font = whiteFont;
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = border;
+  sheet.mergeCells(4, 2, 4, 5);
+  sheet.mergeCells(4, 8, 4, 10);
+  setTextCell(4, 2, '当月', { fill: darkFill, font: whiteFont, alignment: { horizontal: 'center', vertical: 'middle' }, border: thickBorder });
+  setTextCell(4, 8, `累計（${cumulativeLabel}）`, { fill: darkFill, font: whiteFont, alignment: { horizontal: 'center', vertical: 'middle' }, border: thickBorder });
+  applyRange(4, 4, 2, 5, { fill: darkFill, font: whiteFont, alignment: { horizontal: 'center', vertical: 'middle' }, border: thickBorder });
+  applyRange(4, 4, 8, 10, { fill: darkFill, font: whiteFont, alignment: { horizontal: 'center', vertical: 'middle' }, border: thickBorder });
+
+  ['実績', '予算', '予算差'].forEach((label, index) => {
+    setTextCell(5, 3 + index, label, { fill: headerFill, font: { ...smallFont, bold: true }, alignment: { horizontal: 'right', vertical: 'middle' } });
+    setTextCell(5, 8 + index, label, { fill: headerFill, font: { ...smallFont, bold: true }, alignment: { horizontal: 'right', vertical: 'middle' } });
   });
-
-  const summaryHeader = sheet.addRow(['', '実績', '予算', '予算差', '実績', '予算', '予算差']);
-  summaryHeader.eachCell((cell, col) => {
-    cell.fill = col >= 5 ? cumulativeFill : headerFill;
-    cell.font = { ...baseFont, bold: true };
-    cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
-    cell.border = border;
-  });
-
-  for (const row of data.monthlySummaryRows || []) {
-    const excelRow = sheet.addRow([
-      `${row.label}:`,
-      row.actual,
-      row.budget,
-      row.diff,
-      row.cumulative,
-      row.cumulativeBudget,
-      row.cumulativeDiff
-    ]);
-    excelRow.eachCell((cell, col) => {
-      cell.font = { ...baseFont, bold: String(row.label || '').startsWith('収支') };
-      cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
-      cell.border = border;
-      if (col >= 5) cell.fill = cumulativeFill;
-      if (typeof cell.value === 'number') cell.numFmt = '#,##0';
-      if (typeof cell.value === 'number' && cell.value < 0) {
-        cell.fill = negativeFill;
-        cell.font = { ...cell.font, color: { argb: 'FF9C0006' } };
-      }
-    });
+  setTextCell(5, 2, '', { fill: headerFill, font: smallFont });
+  for (let r = 0; r < (data.monthlySummaryRows || []).length; r++) {
+    const row = data.monthlySummaryRows[r];
+    const excelRow = 6 + r;
+    const isBalance = String(row.label || '').startsWith('収支');
+    setTextCell(excelRow, 2, `${row.label}:`, { fill: subtleFill, font: { ...baseFont, bold: isBalance } });
+    setNumberCell(excelRow, 3, row.actual, { fill: subtleFill, font: { ...baseFont, bold: isBalance } });
+    setNumberCell(excelRow, 4, row.budget, { fill: subtleFill, font: { ...baseFont, bold: isBalance } });
+    setNumberCell(excelRow, 5, row.diff, { fill: subtleFill, font: { ...baseFont, bold: isBalance } });
+    setNumberCell(excelRow, 8, row.cumulative, { fill: cumulativeFill, font: { ...baseFont, bold: isBalance } });
+    setNumberCell(excelRow, 9, row.cumulativeBudget, { fill: cumulativeFill, font: { ...baseFont, bold: isBalance } });
+    setNumberCell(excelRow, 10, row.cumulativeDiff, { fill: cumulativeFill, font: { ...baseFont, bold: isBalance } });
   }
 
-  sheet.addRow([]);
-  const detailTitleRow = sheet.addRow([`支出内訳（${data.month}月 & 累計）`]);
-  sheet.mergeCells(detailTitleRow.number, 1, detailTitleRow.number, columnCount);
-  detailTitleRow.getCell(1).fill = darkFill;
-  detailTitleRow.getCell(1).font = whiteFont;
-  detailTitleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+  setSectionTitle(12, 2, 11, `支出内訳（${data.month}月 & 累計）`);
 
-  const headRow1 = data.showTagSummary
-    ? ['項目', 'タグ', `${data.month}月`, '', '', data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`, '', '', '']
-    : ['項目', `${data.month}月`, '', '', data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`, '', '', ''];
-  const headerRow1 = sheet.addRow(headRow1);
-  const headerRow2 = data.showTagSummary
-    ? ['', '', '合計', '予算', '予算差', '累計', '予算累計', '予算-累計', '累計（％）']
-    : ['', '合計', '予算', '予算差', '累計', '予算累計', '予算-累計', '累計（％）'];
-  const headerRow2Excel = sheet.addRow(headerRow2);
-  const headerStart = headerRow1.number;
-  if (data.showTagSummary) {
-    sheet.mergeCells(headerStart, 1, headerStart + 1, 1);
-    sheet.mergeCells(headerStart, 2, headerStart + 1, 2);
-    sheet.mergeCells(headerStart, 3, headerStart, 5);
-    sheet.mergeCells(headerStart, 6, headerStart, 9);
-  } else {
-    sheet.mergeCells(headerStart, 1, headerStart + 1, 1);
-    sheet.mergeCells(headerStart, 2, headerStart, 4);
-    sheet.mergeCells(headerStart, 5, headerStart, 8);
-  }
-  [headerRow1, headerRow2Excel].forEach((row) => {
-    row.eachCell({ includeEmpty: true }, (cell, col) => {
-      if (col > columnCount) return;
-      cell.fill = col >= (data.showTagSummary ? 6 : 5) ? cumulativeFill : headerFill;
-      cell.font = { ...baseFont, bold: true };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
-    });
+  sheet.mergeCells(13, 2, 14, 2);
+  sheet.mergeCells(13, 3, 14, 3);
+  sheet.mergeCells(13, 4, 13, 6);
+  sheet.mergeCells(13, 8, 13, 11);
+  setTextCell(13, 2, '項目', { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } });
+  setTextCell(13, 3, 'タグ', { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } });
+  setTextCell(13, 4, `${data.month}月`, { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } });
+  setTextCell(13, 8, cumulativeLabel, { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } });
+  ['合計', '予算', '予算差'].forEach((label, index) => {
+    setTextCell(14, 4 + index, label, { fill: headerFill, font: { ...smallFont, bold: true }, alignment: { horizontal: 'right', vertical: 'middle' } });
   });
+  ['累計', '予算累計', '予算-累計', '累計（％）'].forEach((label, index) => {
+    setTextCell(14, 8 + index, label, { fill: headerFill, font: { ...smallFont, bold: true }, alignment: { horizontal: 'right', vertical: 'middle' } });
+  });
+  applyRange(13, 14, 2, 6, { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } });
+  applyRange(13, 14, 8, 11, { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } });
 
   const cumulativeMap = new Map((data.cumulativeItems || []).map(item => [item.item, item]));
   const combinedItems = (data.expenseItems || []).map(monthItem => ({
@@ -1285,42 +1308,45 @@ async function exportMonthlyDashboardWorkbook(data) {
     return acc;
   }, { monthTotal: 0, monthBudget: 0, monthDiff: 0, cumTotal: 0, cumBudget: 0, cumDiff: 0 });
 
-  const writeDetailRow = ({ values, isTotal = false, isTag = false }) => {
-    const row = sheet.addRow(values);
-    row.eachCell({ includeEmpty: true }, (cell, col) => {
-      if (col > columnCount) return;
-      cell.font = { ...baseFont, bold: isTotal, italic: isTag };
-      cell.alignment = { horizontal: col <= (data.showTagSummary ? 2 : 1) ? 'left' : 'right', vertical: 'middle' };
-      cell.border = border;
-      if (isTotal) cell.fill = totalFill;
-      if (col >= (data.showTagSummary ? 6 : 5) && !isTotal) cell.fill = cumulativeFill;
-      if (typeof cell.value === 'number') cell.numFmt = '#,##0';
-      if (typeof cell.value === 'number' && cell.value < 0) {
-        cell.fill = negativeFill;
-        cell.font = { ...cell.font, color: { argb: 'FF9C0006' } };
-      }
-    });
-    const rateCell = row.getCell(columnCount);
-    const rateValue = formatBudgetRatePercentValue(values[columnCount - 4], values[columnCount - 3]);
+  const writeDetailRow = ({ rowNumber, item = '', tag = '', monthTotal = '', monthBudget = '', monthDiff = '', cumTotal = '', cumBudget = '', cumDiff = '', isTotal = false, isTag = false }) => {
+    const fill = isTotal ? totalFill : subtleFill;
+    const font = { ...baseFont, bold: isTotal, italic: isTag };
+    setTextCell(rowNumber, 2, item, { fill, font });
+    setTextCell(rowNumber, 3, tag, { fill, font });
+    if (monthTotal !== '') setNumberCell(rowNumber, 4, monthTotal, { fill, font }); else setTextCell(rowNumber, 4, '', { fill, font });
+    if (monthBudget !== '') setNumberCell(rowNumber, 5, monthBudget, { fill, font }); else setTextCell(rowNumber, 5, '', { fill, font });
+    if (monthDiff !== '') setNumberCell(rowNumber, 6, monthDiff, { fill, font }); else setTextCell(rowNumber, 6, '', { fill, font });
+    if (cumTotal !== '') setNumberCell(rowNumber, 8, cumTotal, { fill: isTotal ? totalFill : cumulativeFill, font }); else setTextCell(rowNumber, 8, '', { fill: isTotal ? totalFill : cumulativeFill, font });
+    if (cumBudget !== '') setNumberCell(rowNumber, 9, cumBudget, { fill: isTotal ? totalFill : cumulativeFill, font }); else setTextCell(rowNumber, 9, '', { fill: isTotal ? totalFill : cumulativeFill, font });
+    if (cumDiff !== '') setNumberCell(rowNumber, 10, cumDiff, { fill: isTotal ? totalFill : cumulativeFill, font }); else setTextCell(rowNumber, 10, '', { fill: isTotal ? totalFill : cumulativeFill, font });
+
+    const rateCell = sheet.getCell(rowNumber, 11);
+    const rateValue = typeof cumTotal === 'number' && typeof cumBudget === 'number'
+      ? formatBudgetRatePercentValue(cumTotal, cumBudget)
+      : null;
     rateCell.value = rateValue === null ? '-' : rateValue;
-    if (rateValue !== null) rateCell.numFmt = '0.0%';
-    rateCell.fill = isTotal ? totalFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: getBudgetRateToneArgb(rateValue) } };
+    applyCellStyle(rateCell, {
+      fill: isTotal ? totalFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: getBudgetRateToneArgb(rateValue) } },
+      font,
+      alignment: { horizontal: 'right', vertical: 'middle' },
+      numFmt: rateValue === null ? undefined : '0.0%'
+    });
   };
 
-  writeDetailRow({
-    isTotal: true,
-    values: data.showTagSummary
-      ? ['合計', '', totals.monthTotal, totals.monthBudget, totals.monthDiff, totals.cumTotal, totals.cumBudget, totals.cumDiff, '']
-      : ['合計', totals.monthTotal, totals.monthBudget, totals.monthDiff, totals.cumTotal, totals.cumBudget, totals.cumDiff, '']
-  });
-
+  let currentRow = 15;
   for (const itemData of combinedItems) {
     const { item, month, cumulative } = itemData;
     writeDetailRow({
-      values: data.showTagSummary
-        ? [item, '', month.total, month.budget, month.diff, cumulative.total, cumulative.budget, cumulative.diff, '']
-        : [item, month.total, month.budget, month.diff, cumulative.total, cumulative.budget, cumulative.diff, '']
+      rowNumber: currentRow,
+      item,
+      monthTotal: month.total,
+      monthBudget: month.budget,
+      monthDiff: month.diff,
+      cumTotal: cumulative.total,
+      cumBudget: cumulative.budget,
+      cumDiff: cumulative.diff
     });
+    currentRow += 1;
 
     if (data.showTagSummary) {
       const rawTagSet = new Set([
@@ -1335,29 +1361,34 @@ async function exportMonthlyDashboardWorkbook(data) {
       }) : [];
       for (const tag of tagList) {
         writeDetailRow({
+          rowNumber: currentRow,
           isTag: true,
-          values: [
-            '',
-            tag,
-            data.expenseTagSummary?.[item]?.[tag] || 0,
-            '',
-            '',
-            data.cumulativeTagSummary?.[item]?.[tag] || 0,
-            '',
-            '',
-            ''
-          ]
+          tag,
+          monthTotal: data.expenseTagSummary?.[item]?.[tag] || 0,
+          cumTotal: data.cumulativeTagSummary?.[item]?.[tag] || 0
         });
+        currentRow += 1;
       }
     }
   }
 
-  const widths = data.showTagSummary
-    ? [24, 18, 13, 13, 13, 13, 13, 13, 13]
-    : [24, 13, 13, 13, 13, 13, 13, 13];
+  writeDetailRow({
+    rowNumber: currentRow,
+    isTotal: true,
+    item: '合計',
+    monthTotal: totals.monthTotal,
+    monthBudget: totals.monthBudget,
+    monthDiff: totals.monthDiff,
+    cumTotal: totals.cumTotal,
+    cumBudget: totals.cumBudget,
+    cumDiff: totals.cumDiff
+  });
+
+  const widths = [3, 28, 14, 13, 12, 13, 3, 13, 13, 13, 12];
   widths.forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;
   });
+  sheet.getColumn(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
 
   sheet.eachRow((row) => {
     row.eachCell({ includeEmpty: true }, (cell, col) => {
@@ -1365,6 +1396,12 @@ async function exportMonthlyDashboardWorkbook(data) {
       cell.font = cell.font || baseFont;
       cell.alignment = cell.alignment || { vertical: 'middle' };
     });
+  });
+  sheet.getColumn(1).eachCell({ includeEmpty: true }, cell => {
+    cell.border = {};
+  });
+  sheet.getColumn(7).eachCell({ includeEmpty: true }, cell => {
+    cell.border = {};
   });
 
   sheet.pageSetup = {
