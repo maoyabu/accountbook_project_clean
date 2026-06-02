@@ -37,6 +37,7 @@ const {
   normalizeQuickMenuItems,
   buildQuickMenuItems
 } = require('../Utils/financeQuickMenu');
+const { fetchPublishedInfosForGroup } = require('../Utils/infoDelivery');
 
 // 必要なモジュール
 const multer = require('multer');
@@ -171,6 +172,7 @@ router.get('/top', isLoggedIn, async (req, res) => {
     };
     const fiscalYear = getFiscalYearForDate(today, fiscalStartMonth) ?? today.getFullYear();
     const yearStr = String(fiscalYear);
+    const infos = await fetchPublishedInfosForGroup(objectId, today);
 
     const budgets = await Budget.find({ group: objectId, year: yearStr }).sort({ display_order: 1 }).lean();
     const budgetMap = new Map(budgets.map(b => [b.expense_item || '未分類', Number(b.budget) || 0]));
@@ -324,6 +326,7 @@ router.get('/top', isLoggedIn, async (req, res) => {
       },
       fiscalStartMonth,
       todayMeta,
+      infos,
       recentFinances,
       totalYen,
       totalByCf,

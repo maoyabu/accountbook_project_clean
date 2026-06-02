@@ -15,7 +15,8 @@
         <th>掲載日</th>
         <th>タイトル</th>
         <th>対象</th>
-        <th>配信</th>
+        <th>配信指定</th>
+        <th>送信状況</th>
         <th>操作</th>
       </tr>
     </thead>
@@ -33,7 +34,14 @@
               （不明）
             <% } %>
           </td>
-          <td><%= info.mail_delivery ? 'あり' : 'なし' %></td>
+          <td><%= info.mail_delivery !== false ? 'あり' : 'なし' %></td>
+          <td>
+            <% if (info.mail_delivery === false) { %>
+              -
+            <% } else { %>
+              <%= info.mail_sent ? '送信済み' : '未送信' %>
+            <% } %>
+          </td>
           <td>
             <div class="d-flex gap-2">
               <a href="/admin/info/<%= info._id %>/edit" class="btn btn-outline-success btn-sm"><i class="fas fa-edit"></i></a>

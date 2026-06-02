@@ -17,6 +17,7 @@ const MessageAliveToken = require('../models/messageAliveToken');
 const crypto = require('crypto');
 
 const { isAdmin, logAction } = require('../middleware');
+const { toDateOrNull, deliverInfoMail } = require('../Utils/infoDelivery');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
@@ -28,6 +29,14 @@ const { sendMail } = require('../Utils/mailer');
 const OcrLog = require('../models/ocrs');
 const dictentry = require('../models/dictentry'); // 作成したモデル
 const dictPath = path.join(__dirname, '../Utils/categoryDictionary.json');
+
+const parseMailDelivery = (value, defaultValue = true) => {
+  if (value === undefined) return defaultValue;
+  const values = Array.isArray(value) ? value : [value];
+  if (values.some(v => v === 'on' || v === 'true' || v === true)) return true;
+  if (values.some(v => v === 'false' || v === 'off' || v === false)) return false;
+  return defaultValue;
+};
 
 const restoreUpload = multer({
   storage: multer.memoryStorage(),
@@ -127,6 +136,10 @@ router.get('/', isAdmin, (req,res) => {
 
 // お知らせの一覧表示
 router.get('/info', isAdmin, async (req, res) => {
+  await Info.updateMany(
+    { $or: [{ mail_delivery: { $exists: false } }, { mail_delivery: null }] },
+    { $set: { mail_delivery: true } }
+  );
   const infos = await Info.find().populate('target_group').sort({ from_date: -1 });
   res.render('admin/info', { infos });
 });
@@ -140,19 +153,34 @@ router.get('/info/new', isAdmin, async (req, res) => {
 // 新規お知らせ登録処理
 router.post('/info', isAdmin, async (req, res) => {
   const { info_title, info_content, app_url, guide_url, pub_target, mail_delivery, from_date, end_date } = req.body;
-  await Info.create({
+  const targetGroup = pub_target !== 'all' && mongoose.Types.ObjectId.isValid(pub_target) ? pub_target : null;
+  const info = await Info.create({
     info_title,
     info_content,
     app_url,
     guide_url,
     pub_target,
-    mail_delivery: mail_delivery === 'on',
-    from_date,
-    end_date,
+    target_group: targetGroup,
+    mail_delivery: parseMailDelivery(mail_delivery, true),
+    mail_sent: false,
+    from_date: toDateOrNull(from_date),
+    end_date: toDateOrNull(end_date),
     entry_date: new Date()
   });
-    await logAction({ req, action: '登録', target: 'お知らせ' });
-  req.flash('success', 'お知らせを登録しました');
+
+  let mailMessage = '';
+  try {
+    const result = await deliverInfoMail(info);
+    if (result.sent) mailMessage = `（メール送信済み: ${result.recipients}件）`;
+    if (result.reason === 'delivery_disabled') mailMessage = '（メール配信なし）';
+    if (result.reason === 'no_recipients') mailMessage = '（メール送信対象者なし）';
+  } catch (err) {
+    console.error('お知らせメール送信エラー:', err);
+    mailMessage = '（メール送信に失敗しました）';
+  }
+
+  await logAction({ req, action: '登録', target: 'お知らせ' });
+  req.flash('success', `お知らせを登録しました${mailMessage}`);
   res.redirect('/admin/info');
 });
 
@@ -179,9 +207,9 @@ router.put('/info/:id', isAdmin, async (req, res) => {
       app_url,
       guide_url,
       pub_target,
-      mail_delivery: mail_delivery === 'on',
-      from_date,
-      end_date,
+      mail_delivery: parseMailDelivery(mail_delivery, true),
+      from_date: toDateOrNull(from_date),
+      end_date: toDateOrNull(end_date),
       update_date: new Date()
     };
 
@@ -192,9 +220,22 @@ router.put('/info/:id', isAdmin, async (req, res) => {
       updateData.target_group = null;
     }
 
-    await Info.findByIdAndUpdate(req.params.id, updateData);
-        await logAction({ req, action: '更新', target: 'お知らせ' });
-    req.flash('success', 'お知らせを更新しました');
+    const info = await Info.findByIdAndUpdate(req.params.id, updateData, { new: true });
+
+    let mailMessage = '';
+    try {
+      const result = await deliverInfoMail(info);
+      if (result.sent) mailMessage = `（メール送信済み: ${result.recipients}件）`;
+      if (result.reason === 'delivery_disabled') mailMessage = '（メール配信なし）';
+      if (result.reason === 'already_sent') mailMessage = '（メール送信済み）';
+      if (result.reason === 'no_recipients') mailMessage = '（メール送信対象者なし）';
+    } catch (err) {
+      console.error('お知らせメール送信エラー:', err);
+      mailMessage = '（メール送信に失敗しました）';
+    }
+
+    await logAction({ req, action: '更新', target: 'お知らせ' });
+    req.flash('success', `お知らせを更新しました${mailMessage}`);
     res.redirect('/admin/info');
   } catch (err) {
     console.error('お知らせ更新エラー:', err);

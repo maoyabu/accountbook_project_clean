@@ -1,6 +1,44 @@
 <% layout('layouts/boilerplate') %>
 
 <div class="row g-3">
+  <% if (typeof infos !== 'undefined' && infos && infos.length > 0) { %>
+    <div class="col-12">
+      <div class="alert alert-info mb-0">
+        <h5 class="mb-2"><i class="fa-solid fa-bullhorn"></i> お知らせ</h5>
+        <ul class="mb-0">
+          <% infos.forEach(info => { %>
+            <li>
+              <a href="#" class="info-link" data-bs-toggle="modal" data-bs-target="#infoModal" data-id="<%= info._id %>">
+                <strong><%= info.info_title %></strong>
+              </a>
+              <% if (info.app_url) { %>
+                - <a href="<%= info.app_url %>">ご利用はこちら</a>
+              <% } %>
+              <% if (info.guide_url) { %>
+                - <a href="<%= info.guide_url %>" target="_blank" rel="noopener"><small>詳しくは（外部サイト）</small></a>
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+        <% infos.forEach(info => { %>
+          <div id="info-content-<%= info._id %>" class="d-none">
+            <% const content = info.info_content || ''; %>
+            <% const isHtml = /<\/?[a-z][\s\S]*>/i.test(content); %>
+            <%- isHtml ? content : content.replace(/\r?\n/g, '<br>') %>
+            <div class="mt-3">
+              <% if (info.app_url) { %>
+                <a href="<%= info.app_url %>" class="btn btn-sm btn-primary me-2">アプリ内リンク</a>
+              <% } %>
+              <% if (info.guide_url) { %>
+                <a href="<%= info.guide_url %>" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">詳しいガイド（外部）</a>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
   <div class="col-12">
     <div class="card finance-top-card">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #4A6A7A;">
@@ -284,8 +322,33 @@
   </div>
 </div>
 
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoModalLabel">お知らせ詳細</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body" id="infoModalBody"></div>
+    </div>
+  </div>
+</div>
+
 <script>
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
     new bootstrap.Tooltip(el);
   });
+
+  const infoModal = document.getElementById('infoModal');
+  if (infoModal) {
+    infoModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      const infoId = button.getAttribute('data-id');
+      const contentElement = document.getElementById('info-content-' + infoId);
+      if (contentElement) {
+        infoModal.querySelector('.modal-title').textContent = button.textContent.trim();
+        infoModal.querySelector('.modal-body').innerHTML = contentElement.innerHTML;
+      }
+    });
+  }
 </script>

@@ -16,7 +16,7 @@ const infoSchema = new mongoose.Schema({
         ref: 'Group'
     },
 
-    mail_delivery: { type: Boolean },
+    mail_delivery: { type: Boolean, default: true },
     mail_sent: { type: Boolean, default: false },
 
     entry_date: { type: Date, default: Date.now },

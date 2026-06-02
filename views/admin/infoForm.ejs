@@ -45,8 +45,10 @@
     </div>
 
     <div class="mb-3 form-check">
-      <input type="checkbox" class="form-check-input" id="mail_delivery" name="mail_delivery" <%= info?.mail_delivery ? 'checked' : '' %>>
+      <input type="hidden" name="mail_delivery" value="false">
+      <input type="checkbox" class="form-check-input" id="mail_delivery" name="mail_delivery" value="on" <%= info?.mail_delivery !== false ? 'checked' : '' %>>
       <label class="form-check-label" for="mail_delivery">メール配信する</label>
+      <div class="form-text">指定がない場合は配信する設定になります。</div>
     </div>
 
     <button type="submit" class="btn btn-primary"><%= info ? '更新' : '作成' %></button>

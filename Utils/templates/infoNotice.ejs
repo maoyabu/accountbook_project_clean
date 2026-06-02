@@ -1,0 +1,24 @@
+<%- include('_mailHeader') %>
+
+<h2><%= title %></h2>
+<div>
+  <% const isHtml = /<\/?[a-z][\s\S]*>/i.test(content); %>
+  <%- isHtml ? content : String(content || '').replace(/\r?\n/g, '<br>') %>
+</div>
+
+<% if (appUrl || guideUrl) { %>
+  <p style="margin-top: 20px;">
+    <% if (appUrl) { %>
+      <a href="<%= appUrl.startsWith('http') ? appUrl : baseUrl + appUrl %>" style="display: inline-block; padding: 10px 16px; background-color: #007BFF; color: #ffffff; text-decoration: none; border-radius: 5px;">
+        アプリで確認する
+      </a>
+    <% } %>
+    <% if (guideUrl) { %>
+      <a href="<%= guideUrl %>" style="display: inline-block; padding: 10px 16px; margin-left: 8px; background-color: #6c757d; color: #ffffff; text-decoration: none; border-radius: 5px;">
+        詳しいガイド
+      </a>
+    <% } %>
+  </p>
+<% } %>
+
+<%- include('_mailFooter') %>
