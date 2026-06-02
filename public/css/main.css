@@ -1247,6 +1247,58 @@ hr {
 }
 
 /* Dashboard monthly table header highlights */
+.dashboard-summary-wrap {
+    background: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+}
+.dashboard-summary-table {
+    color: #000000 !important;
+    table-layout: fixed;
+    min-width: 720px;
+    background: #ffffff;
+}
+.dashboard-summary-table th,
+.dashboard-summary-table td {
+    padding: 0.28rem 0.55rem;
+    border: 0;
+    border-bottom: 1px solid #000000;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.dashboard-summary-table thead th {
+    color: #000000 !important;
+    font-weight: 700;
+    background: #eef4f8;
+}
+.dashboard-summary-table thead tr:first-child th {
+    border-bottom: 0;
+    background: #dfeaf1;
+}
+.dashboard-summary-table thead tr:nth-child(2) th {
+    border-top: 1px solid #000000;
+}
+.dashboard-summary-table tbody tr:nth-child(2),
+.dashboard-summary-table tbody tr:nth-child(4) {
+    background: #d9d9d9;
+}
+.dashboard-summary-label-head,
+.dashboard-summary-label {
+    width: 12.5rem;
+}
+.dashboard-summary-label {
+    font-weight: 700;
+}
+.dashboard-summary-cumulative-head,
+.dashboard-summary-cumulative-cell {
+    border-left: 2px solid #44616D !important;
+}
+.dashboard-summary-balance-row td {
+    border-top: 2px solid #000000;
+    background: #ffffff;
+    font-weight: 700;
+}
+
 .dashboard-monthly thead th.th-cumulative-highlight {
     background-color: #0dcaf0 !important; /* Bootstrap info */
     color: #000000 !important;            /* black text */

@@ -15,6 +15,7 @@ const FinanceItemCategoryGroup = require('../models/finance_item_category_group'
 const Group = require('../models/groups');
 const dashboardController = require('../controllers/dashboardController');
 const Items = require('../models/finance_items');
+const PersonalItem = require('../models/finance_items_personal');
 const PaymentItem = require('../models/paymentItems');
 const {
   normalizeFiscalStartMonth,
@@ -51,6 +52,85 @@ async function fetchItemsByYear(groupId, year) {
     }
     return items;
 }
+
+const createFinanceSummaryActuals = () => ({
+    income: 0,
+    deduction: 0,
+    saving: 0,
+    expense: 0
+});
+
+const addFinanceSummaryActual = (actuals, finance) => {
+    const amount = Number(finance?.amount) || 0;
+    if (finance?.cf === '収入') actuals.income += amount;
+    else if (finance?.cf === '控除') actuals.deduction += amount;
+    else if (finance?.cf === '貯蓄') actuals.saving += amount;
+    else if (finance?.cf === '支出') actuals.expense += amount;
+};
+
+const getSummaryBalance = (values) => (
+    (Number(values?.income) || 0)
+    - (Number(values?.deduction) || 0)
+    - (Number(values?.saving) || 0)
+    - (Number(values?.expense) || 0)
+);
+
+const getOtherBudgetCfKey = (laCf) => {
+    const value = String(laCf || '').trim();
+    if (value === '収入項目' || value === 'income') return 'income';
+    if (value === '控除項目' || value === 'deduction') return 'deduction';
+    if (value === '貯蓄項目' || value === 'saving') return 'saving';
+    return null;
+};
+
+const sumOtherFinanceBudgets = (items) => {
+    const budgets = createFinanceSummaryActuals();
+    for (const item of items || []) {
+        const key = getOtherBudgetCfKey(item?.la_cf ?? item?.cf);
+        if (!key) continue;
+        budgets[key] += Number(item?.budget) || 0;
+    }
+    return budgets;
+};
+
+const buildMonthlySummaryRows = ({ monthlyActual, cumulativeActual, monthlyBudget, budgetMonthCount }) => {
+    const monthCount = Number(budgetMonthCount) || 1;
+    const monthlyBalanceActual = getSummaryBalance(monthlyActual);
+    const monthlyBalanceBudget = getSummaryBalance(monthlyBudget);
+    const cumulativeBudget = {
+        income: (Number(monthlyBudget.income) || 0) * monthCount,
+        deduction: (Number(monthlyBudget.deduction) || 0) * monthCount,
+        saving: (Number(monthlyBudget.saving) || 0) * monthCount,
+        expense: (Number(monthlyBudget.expense) || 0) * monthCount
+    };
+    const cumulativeBalanceActual = getSummaryBalance(cumulativeActual);
+    const cumulativeBalanceBudget = getSummaryBalance(cumulativeBudget);
+    const makeRow = (label, key, diffType) => {
+        const actual = key === 'balance' ? monthlyBalanceActual : Number(monthlyActual[key]) || 0;
+        const budget = key === 'balance' ? monthlyBalanceBudget : Number(monthlyBudget[key]) || 0;
+        const cumulative = key === 'balance' ? cumulativeBalanceActual : Number(cumulativeActual[key]) || 0;
+        const cumulativeBudgetValue = key === 'balance' ? cumulativeBalanceBudget : Number(cumulativeBudget[key]) || 0;
+        return {
+            label,
+            actual,
+            budget,
+            diff: diffType === 'actual-minus-budget' ? actual - budget : budget - actual,
+            cumulative,
+            cumulativeBudget: cumulativeBudgetValue,
+            cumulativeDiff: diffType === 'actual-minus-budget'
+                ? cumulative - cumulativeBudgetValue
+                : cumulativeBudgetValue - cumulative
+        };
+    };
+
+    return [
+        makeRow('収入', 'income', 'actual-minus-budget'),
+        makeRow('控除', 'deduction', 'budget-minus-actual'),
+        makeRow('貯蓄', 'saving', 'actual-minus-budget'),
+        makeRow('支出', 'expense', 'budget-minus-actual'),
+        makeRow('収支（収入 - 控除 - 貯蓄 - 支出）', 'balance', 'actual-minus-budget')
+    ];
+};
 
 const parseJstDateStart = (value) => {
     if (!value) return null;
@@ -1141,10 +1221,12 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   });
 
   let totalIncome = 0, totalDeduction = 0, totalSaving = 0, totalExpense = 0;
+  const monthlyActual = createFinanceSummaryActuals();
   let expenseSummary = {};
   let expenseTagSummary = {};
 
   for (let f of finances) {
+    addFinanceSummaryActual(monthlyActual, f);
     if (f.cf === '収入') totalIncome += f.amount;
     else if (f.cf === '貯蓄') totalSaving += f.amount;
     else if (f.cf === '控除') totalDeduction += f.amount;
@@ -1158,14 +1240,23 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     }
   }
 
-  const budgets = await FinanceExBudgetPersonal.find({
-    group: groupId,
-    user: userId,
-    year: String(fiscalYear)
-  });
+  const [budgets, otherBudgetItems] = await Promise.all([
+    FinanceExBudgetPersonal.find({
+      group: groupId,
+      user: userId,
+      year: String(fiscalYear)
+    }),
+    PersonalItem.find({
+      group: groupId,
+      user: userId,
+      year: String(fiscalYear)
+    })
+  ]);
+  const monthlyBudget = sumOtherFinanceBudgets(otherBudgetItems);
   const budgetMap = {};
   for (let b of budgets) {
     budgetMap[b.expense_item] = Number(b.budget) || 0;
+    monthlyBudget.expense += Number(b.budget) || 0;
   }
 
   const expenseItems = Object.keys(budgetMap)
@@ -1194,9 +1285,11 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     date: { $gte: startOfYear, $lte: endOfCurrentMonth }
   });
 
+  const cumulativeActual = createFinanceSummaryActuals();
   let cumulativeSummary = {};
   let cumulativeTagSummary = {};
   for (let f of cumulativeFinances) {
+    addFinanceSummaryActual(cumulativeActual, f);
     if (f.cf === '支出') {
       const item = f.expense_item || '未分類';
       const tag = (f.sub_tag || '').trim() || '他';
@@ -1217,6 +1310,12 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
       diff: budget - total
     };
   });
+  const monthlySummaryRows = buildMonthlySummaryRows({
+    monthlyActual,
+    cumulativeActual,
+    monthlyBudget,
+    budgetMonthCount: cumulativeMeta.budgetMonthCount
+  });
 
   res.render('dashboard/monthly', {
     year, month,
@@ -1225,6 +1324,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     totalExpense,
     totalSaving,
     balance: totalIncome - totalDeduction - totalSaving - totalExpense,
+    monthlySummaryRows,
     expenseItems,
     cumulativeItems,
     expenseTagSummary,
@@ -1485,10 +1585,12 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
 
   // 集計
   let totalIncome = 0, totalDeduction = 0, totalSaving = 0, totalExpense = 0;
+  const monthlyActual = createFinanceSummaryActuals();
   let expenseSummary = {};
   let expenseTagSummary = {};
 
   for (let f of finances) {
+    addFinanceSummaryActual(monthlyActual, f);
     if (f.cf === '収入') totalIncome += f.amount;
     else if (f.cf === '貯蓄') totalSaving += f.amount;
     else if (f.cf === '控除') totalDeduction += f.amount;
@@ -1503,10 +1605,15 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
   }
 
   // 予算取得
-  const budgets = await FinanceExBudget.find({ group: groupId, year: String(fiscalYear) });
+  const [budgets, otherBudgetItems] = await Promise.all([
+    FinanceExBudget.find({ group: groupId, year: String(fiscalYear) }),
+    fetchItemsByYear(groupId, fiscalYear)
+  ]);
+  const monthlyBudget = sumOtherFinanceBudgets(otherBudgetItems);
   const budgetMap = {};
   for (let b of budgets) {
-    budgetMap[b.expense_item] = b.budget || 0;
+    budgetMap[b.expense_item] = Number(b.budget) || 0;
+    monthlyBudget.expense += Number(b.budget) || 0;
   }
 
   //予算のある項目全てまわす
@@ -1535,9 +1642,11 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     date: { $gte: startOfYear, $lte: endOfCurrentMonth }
   });
 
+  const cumulativeActual = createFinanceSummaryActuals();
   let cumulativeSummary = {};
   let cumulativeTagSummary = {};
   for (let f of cumulativeFinances) {
+    addFinanceSummaryActual(cumulativeActual, f);
     if (f.cf === '支出') {
       const item = f.expense_item || '未分類';
       const tag = (f.sub_tag || '').trim() || '他';
@@ -1558,6 +1667,12 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
       diff: budget - total
     };
   });
+  const monthlySummaryRows = buildMonthlySummaryRows({
+    monthlyActual,
+    cumulativeActual,
+    monthlyBudget,
+    budgetMonthCount: cumulativeMeta.budgetMonthCount
+  });
 
   let groupName = 'グループ';
   if (!req.session.groupName) {
@@ -1577,6 +1692,7 @@ router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
     totalExpense,
     totalSaving,
     balance: totalIncome - totalDeduction - totalSaving - totalExpense,
+    monthlySummaryRows,
     expenseItems,
     cumulativeItems,
     expenseTagSummary,

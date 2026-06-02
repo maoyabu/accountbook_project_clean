@@ -17,13 +17,51 @@
           </div>
         </form>
       </div>
-      <ul class="list-group">
-        <li class="list-group-item">収入：<strong><%= totalIncome.toLocaleString() %></strong></li>
-        <li class="list-group-item">控除：<strong><%= totalDeduction.toLocaleString() %></strong></li>
-        <li class="list-group-item">貯蓄：<strong><%= totalSaving.toLocaleString() %></strong></li>
-        <li class="list-group-item">支出：<strong><%= totalExpense.toLocaleString() %></strong></li>
-        <li class="list-group-item">収支（収入 - 控除 - 貯蓄 - 支出）：<strong><%= balance.toLocaleString() %></strong></li>
-      </ul>
+      <%
+        const fallbackSummaryRows = [
+          { label: '収入', actual: totalIncome, budget: 0, diff: totalIncome, cumulative: 0, cumulativeBudget: 0, cumulativeDiff: 0 },
+          { label: '控除', actual: totalDeduction, budget: 0, diff: -totalDeduction, cumulative: 0, cumulativeBudget: 0, cumulativeDiff: 0 },
+          { label: '貯蓄', actual: totalSaving, budget: 0, diff: totalSaving, cumulative: 0, cumulativeBudget: 0, cumulativeDiff: 0 },
+          { label: '支出', actual: totalExpense, budget: 0, diff: -totalExpense, cumulative: 0, cumulativeBudget: 0, cumulativeDiff: 0 },
+          { label: '収支（収入 - 控除 - 貯蓄 - 支出）', actual: balance, budget: 0, diff: balance, cumulative: 0, cumulativeBudget: 0, cumulativeDiff: 0 }
+        ];
+        const summaryRows = Array.isArray(monthlySummaryRows) && monthlySummaryRows.length ? monthlySummaryRows : fallbackSummaryRows;
+        const formatSummaryAmount = (value) => Number(value || 0).toLocaleString();
+        const summaryNumberClass = (value) => Number(value || 0) < 0 ? 'text-danger fw-bold' : '';
+      %>
+      <div class="table-responsive dashboard-summary-wrap">
+        <table class="table table-sm dashboard-summary-table mb-0">
+          <thead>
+            <tr>
+              <th class="dashboard-summary-label-head"></th>
+              <th colspan="3" class="text-center">当月</th>
+              <th colspan="3" class="text-center dashboard-summary-cumulative-head">累計（<%= cumulativeRangeLabel || `${fiscalStartMonth || 1}月〜${month}月` %>）</th>
+            </tr>
+            <tr>
+              <th></th>
+              <th class="text-end">実績</th>
+              <th class="text-end">予算</th>
+              <th class="text-end">予算差</th>
+              <th class="text-end dashboard-summary-cumulative-cell">実績</th>
+              <th class="text-end">予算</th>
+              <th class="text-end">予算差</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% summaryRows.forEach((row, index) => { %>
+              <tr class="<%= index === summaryRows.length - 1 ? 'dashboard-summary-balance-row' : '' %>">
+                <td class="dashboard-summary-label"><%= row.label %>：</td>
+                <td class="text-end <%= summaryNumberClass(row.actual) %>"><%= formatSummaryAmount(row.actual) %></td>
+                <td class="text-end <%= summaryNumberClass(row.budget) %>"><%= formatSummaryAmount(row.budget) %></td>
+                <td class="text-end <%= summaryNumberClass(row.diff) %>"><%= formatSummaryAmount(row.diff) %></td>
+                <td class="text-end dashboard-summary-cumulative-cell <%= summaryNumberClass(row.cumulative) %>"><%= formatSummaryAmount(row.cumulative) %></td>
+                <td class="text-end <%= summaryNumberClass(row.cumulativeBudget) %>"><%= formatSummaryAmount(row.cumulativeBudget) %></td>
+                <td class="text-end <%= summaryNumberClass(row.cumulativeDiff) %>"><%= formatSummaryAmount(row.cumulativeDiff) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
