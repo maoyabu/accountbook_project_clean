@@ -1003,6 +1003,383 @@ async function getGroupFiscalStartMonth(groupId) {
     return normalizeFiscalStartMonth(group?.financeFiscalStartMonth);
 }
 
+const formatBudgetRatePercentValue = (total, budget) => {
+    const budgetValue = Number(budget) || 0;
+    if (!budgetValue) return null;
+    return (Number(total) || 0) / budgetValue;
+};
+
+const getBudgetRateToneArgb = (rateValue) => {
+    if (rateValue === null) return 'FFFFFFFF';
+    const percent = rateValue * 100;
+    if (percent < 0 || percent >= 100) return 'FFF8D7DA';
+    if (percent < 50) return 'FFD9EAD3';
+    if (percent < 85) return 'FFD9EAF7';
+    return 'FFFFE5CC';
+};
+
+async function buildMonthlyGroupDashboardData(req) {
+  const { year, month } = parseYearMonth(req.query.ym, new Date());
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+
+  const groupId = req.session.activeGroupId;
+  const showTagSummary = resolveDashboardTagSummary(req, 'monthly-g');
+  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+  const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
+  const fiscalYear = cumulativeMeta.fiscalYear;
+
+  const finances = await Finance.find({
+    group: groupId,
+    date: { $gte: start, $lt: end }
+  });
+
+  let totalIncome = 0, totalDeduction = 0, totalSaving = 0, totalExpense = 0;
+  const monthlyActual = createFinanceSummaryActuals();
+  const expenseSummary = {};
+  const expenseTagSummary = {};
+
+  for (const f of finances) {
+    addFinanceSummaryActual(monthlyActual, f);
+    if (f.cf === '収入') totalIncome += f.amount;
+    else if (f.cf === '貯蓄') totalSaving += f.amount;
+    else if (f.cf === '控除') totalDeduction += f.amount;
+    else if (f.cf === '支出') {
+      totalExpense += f.amount;
+      const item = f.expense_item || '未分類';
+      const tag = (f.sub_tag || '').trim() || '他';
+      expenseSummary[item] = (expenseSummary[item] || 0) + f.amount;
+      if (!expenseTagSummary[item]) expenseTagSummary[item] = {};
+      expenseTagSummary[item][tag] = (expenseTagSummary[item][tag] || 0) + f.amount;
+    }
+  }
+
+  const [budgets, otherBudgetItems] = await Promise.all([
+    FinanceExBudget.find({ group: groupId, year: String(fiscalYear) }),
+    fetchItemsByYear(groupId, fiscalYear)
+  ]);
+  const monthlyBudget = sumOtherFinanceBudgets(otherBudgetItems);
+  const budgetMap = {};
+  for (const b of budgets) {
+    budgetMap[b.expense_item] = Number(b.budget) || 0;
+    monthlyBudget.expense += Number(b.budget) || 0;
+  }
+
+  const expenseItems = Object.keys(budgetMap)
+    .map(item => {
+      const matched = budgets.find(b => b.expense_item === item);
+      const order = matched?.display_order || 9999;
+      const total = expenseSummary[item] || 0;
+      const budget = budgetMap[item];
+      return {
+        item,
+        total,
+        budget,
+        diff: budget - total,
+        display_order: order
+      };
+    })
+    .sort((a, b) => a.display_order - b.display_order);
+
+  const cumulativeFinances = await Finance.find({
+    group: groupId,
+    date: { $gte: cumulativeMeta.start, $lte: cumulativeMeta.end }
+  });
+
+  const cumulativeActual = createFinanceSummaryActuals();
+  const cumulativeSummary = {};
+  const cumulativeTagSummary = {};
+  for (const f of cumulativeFinances) {
+    addFinanceSummaryActual(cumulativeActual, f);
+    if (f.cf === '支出') {
+      const item = f.expense_item || '未分類';
+      const tag = (f.sub_tag || '').trim() || '他';
+      cumulativeSummary[item] = (cumulativeSummary[item] || 0) + f.amount;
+      if (!cumulativeTagSummary[item]) cumulativeTagSummary[item] = {};
+      cumulativeTagSummary[item][tag] = (cumulativeTagSummary[item][tag] || 0) + f.amount;
+    }
+  }
+
+  const cumulativeItems = Object.keys(budgetMap).map(item => {
+    const total = cumulativeSummary[item] || 0;
+    const monthlyBudgetValue = budgetMap[item];
+    const budget = monthlyBudgetValue * cumulativeMeta.budgetMonthCount;
+    return {
+      item,
+      total,
+      budget,
+      diff: budget - total
+    };
+  });
+  const monthlySummaryRows = buildMonthlySummaryRows({
+    monthlyActual,
+    cumulativeActual,
+    monthlyBudget,
+    budgetMonthCount: cumulativeMeta.budgetMonthCount
+  });
+
+  let groupName = 'グループ';
+  if (!req.session.groupName) {
+    const group = await Group.findById(groupId);
+    if (group) {
+      groupName = group.group_name;
+      req.session.groupName = group.group_name;
+    }
+  } else {
+    groupName = req.session.groupName;
+  }
+
+  return {
+    year,
+    month,
+    totalIncome,
+    totalDeduction,
+    totalExpense,
+    totalSaving,
+    balance: totalIncome - totalDeduction - totalSaving - totalExpense,
+    monthlySummaryRows,
+    expenseItems,
+    cumulativeItems,
+    expenseTagSummary,
+    cumulativeTagSummary,
+    showTagSummary,
+    formAction: '/export/dashboard/monthly-g',
+    excelAction: '/export/dashboard/monthly-g-exls',
+    titlePrefix: `${groupName}`,
+    viewType: 'group',
+    fiscalStartMonth,
+    cumulativeRangeLabel: cumulativeMeta.label,
+    fiscalYear
+  };
+}
+
+async function exportMonthlyDashboardWorkbook(data) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'All About me';
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet('Monthly Summary', {
+    views: [{ state: 'frozen', ySplit: 4, showGridLines: false }]
+  });
+
+  const columnCount = data.showTagSummary ? 9 : 8;
+  const darkFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF44616D' } };
+  const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAF7' } };
+  const cumulativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF4F7' } };
+  const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F4EA' } };
+  const negativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
+  const whiteFont = { name: 'Meiryo UI', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+  const baseFont = { name: 'Meiryo UI', size: 11 };
+  const border = {
+    top: { style: 'thin', color: { argb: 'FFB8C7CE' } },
+    left: { style: 'thin', color: { argb: 'FFB8C7CE' } },
+    bottom: { style: 'thin', color: { argb: 'FFB8C7CE' } },
+    right: { style: 'thin', color: { argb: 'FFB8C7CE' } }
+  };
+
+  sheet.mergeCells(1, 1, 1, columnCount);
+  sheet.getCell(1, 1).value = `${data.titlePrefix} 月間サマリー ${data.year}年${data.month}月`;
+  sheet.getCell(1, 1).fill = darkFill;
+  sheet.getCell(1, 1).font = { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.getRow(1).height = 26;
+
+  sheet.mergeCells(2, 1, 2, columnCount);
+  sheet.getCell(2, 1).value = `累計: ${data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`} / タグ別: ${data.showTagSummary ? 'あり' : 'なし'}`;
+  sheet.getCell(2, 1).font = { name: 'Meiryo UI', size: 10, color: { argb: 'FF4D5960' } };
+  sheet.getCell(2, 1).alignment = { horizontal: 'right' };
+
+  sheet.addRow([]);
+  const summaryTop = 4;
+  sheet.mergeCells(summaryTop, 2, summaryTop, 4);
+  sheet.mergeCells(summaryTop, 5, summaryTop, 7);
+  sheet.getCell(summaryTop, 1).value = '';
+  sheet.getCell(summaryTop, 2).value = '当月';
+  sheet.getCell(summaryTop, 5).value = `累計（${data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`}）`;
+  sheet.getRow(summaryTop).eachCell((cell) => {
+    cell.fill = darkFill;
+    cell.font = whiteFont;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = border;
+  });
+
+  const summaryHeader = sheet.addRow(['', '実績', '予算', '予算差', '実績', '予算', '予算差']);
+  summaryHeader.eachCell((cell, col) => {
+    cell.fill = col >= 5 ? cumulativeFill : headerFill;
+    cell.font = { ...baseFont, bold: true };
+    cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
+    cell.border = border;
+  });
+
+  for (const row of data.monthlySummaryRows || []) {
+    const excelRow = sheet.addRow([
+      `${row.label}:`,
+      row.actual,
+      row.budget,
+      row.diff,
+      row.cumulative,
+      row.cumulativeBudget,
+      row.cumulativeDiff
+    ]);
+    excelRow.eachCell((cell, col) => {
+      cell.font = { ...baseFont, bold: String(row.label || '').startsWith('収支') };
+      cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
+      cell.border = border;
+      if (col >= 5) cell.fill = cumulativeFill;
+      if (typeof cell.value === 'number') cell.numFmt = '#,##0';
+      if (typeof cell.value === 'number' && cell.value < 0) {
+        cell.fill = negativeFill;
+        cell.font = { ...cell.font, color: { argb: 'FF9C0006' } };
+      }
+    });
+  }
+
+  sheet.addRow([]);
+  const detailTitleRow = sheet.addRow([`支出内訳（${data.month}月 & 累計）`]);
+  sheet.mergeCells(detailTitleRow.number, 1, detailTitleRow.number, columnCount);
+  detailTitleRow.getCell(1).fill = darkFill;
+  detailTitleRow.getCell(1).font = whiteFont;
+  detailTitleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  const headRow1 = data.showTagSummary
+    ? ['項目', 'タグ', `${data.month}月`, '', '', data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`, '', '', '']
+    : ['項目', `${data.month}月`, '', '', data.cumulativeRangeLabel || `${data.fiscalStartMonth || 1}月〜${data.month}月`, '', '', ''];
+  const headerRow1 = sheet.addRow(headRow1);
+  const headerRow2 = data.showTagSummary
+    ? ['', '', '合計', '予算', '予算差', '累計', '予算累計', '予算-累計', '累計（％）']
+    : ['', '合計', '予算', '予算差', '累計', '予算累計', '予算-累計', '累計（％）'];
+  const headerRow2Excel = sheet.addRow(headerRow2);
+  const headerStart = headerRow1.number;
+  if (data.showTagSummary) {
+    sheet.mergeCells(headerStart, 1, headerStart + 1, 1);
+    sheet.mergeCells(headerStart, 2, headerStart + 1, 2);
+    sheet.mergeCells(headerStart, 3, headerStart, 5);
+    sheet.mergeCells(headerStart, 6, headerStart, 9);
+  } else {
+    sheet.mergeCells(headerStart, 1, headerStart + 1, 1);
+    sheet.mergeCells(headerStart, 2, headerStart, 4);
+    sheet.mergeCells(headerStart, 5, headerStart, 8);
+  }
+  [headerRow1, headerRow2Excel].forEach((row) => {
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      if (col > columnCount) return;
+      cell.fill = col >= (data.showTagSummary ? 6 : 5) ? cumulativeFill : headerFill;
+      cell.font = { ...baseFont, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
+    });
+  });
+
+  const cumulativeMap = new Map((data.cumulativeItems || []).map(item => [item.item, item]));
+  const combinedItems = (data.expenseItems || []).map(monthItem => ({
+    item: monthItem.item,
+    month: monthItem,
+    cumulative: cumulativeMap.get(monthItem.item) || { total: 0, budget: 0, diff: 0 }
+  }));
+  const totals = combinedItems.reduce((acc, item) => {
+    acc.monthTotal += item.month.total;
+    acc.monthBudget += item.month.budget;
+    acc.monthDiff += item.month.diff;
+    acc.cumTotal += item.cumulative.total;
+    acc.cumBudget += item.cumulative.budget;
+    acc.cumDiff += item.cumulative.diff;
+    return acc;
+  }, { monthTotal: 0, monthBudget: 0, monthDiff: 0, cumTotal: 0, cumBudget: 0, cumDiff: 0 });
+
+  const writeDetailRow = ({ values, isTotal = false, isTag = false }) => {
+    const row = sheet.addRow(values);
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      if (col > columnCount) return;
+      cell.font = { ...baseFont, bold: isTotal, italic: isTag };
+      cell.alignment = { horizontal: col <= (data.showTagSummary ? 2 : 1) ? 'left' : 'right', vertical: 'middle' };
+      cell.border = border;
+      if (isTotal) cell.fill = totalFill;
+      if (col >= (data.showTagSummary ? 6 : 5) && !isTotal) cell.fill = cumulativeFill;
+      if (typeof cell.value === 'number') cell.numFmt = '#,##0';
+      if (typeof cell.value === 'number' && cell.value < 0) {
+        cell.fill = negativeFill;
+        cell.font = { ...cell.font, color: { argb: 'FF9C0006' } };
+      }
+    });
+    const rateCell = row.getCell(columnCount);
+    const rateValue = formatBudgetRatePercentValue(values[columnCount - 4], values[columnCount - 3]);
+    rateCell.value = rateValue === null ? '-' : rateValue;
+    if (rateValue !== null) rateCell.numFmt = '0.0%';
+    rateCell.fill = isTotal ? totalFill : { type: 'pattern', pattern: 'solid', fgColor: { argb: getBudgetRateToneArgb(rateValue) } };
+  };
+
+  writeDetailRow({
+    isTotal: true,
+    values: data.showTagSummary
+      ? ['合計', '', totals.monthTotal, totals.monthBudget, totals.monthDiff, totals.cumTotal, totals.cumBudget, totals.cumDiff, '']
+      : ['合計', totals.monthTotal, totals.monthBudget, totals.monthDiff, totals.cumTotal, totals.cumBudget, totals.cumDiff, '']
+  });
+
+  for (const itemData of combinedItems) {
+    const { item, month, cumulative } = itemData;
+    writeDetailRow({
+      values: data.showTagSummary
+        ? [item, '', month.total, month.budget, month.diff, cumulative.total, cumulative.budget, cumulative.diff, '']
+        : [item, month.total, month.budget, month.diff, cumulative.total, cumulative.budget, cumulative.diff, '']
+    });
+
+    if (data.showTagSummary) {
+      const rawTagSet = new Set([
+        ...Object.keys(data.expenseTagSummary?.[item] || {}),
+        ...Object.keys(data.cumulativeTagSummary?.[item] || {})
+      ]);
+      const hasNamedTag = Array.from(rawTagSet).some(tag => tag !== '他');
+      const tagList = hasNamedTag ? Array.from(rawTagSet).sort((a, b) => {
+        if (a === '他') return 1;
+        if (b === '他') return -1;
+        return a.localeCompare(b, 'ja');
+      }) : [];
+      for (const tag of tagList) {
+        writeDetailRow({
+          isTag: true,
+          values: [
+            '',
+            tag,
+            data.expenseTagSummary?.[item]?.[tag] || 0,
+            '',
+            '',
+            data.cumulativeTagSummary?.[item]?.[tag] || 0,
+            '',
+            '',
+            ''
+          ]
+        });
+      }
+    }
+  }
+
+  const widths = data.showTagSummary
+    ? [24, 18, 13, 13, 13, 13, 13, 13, 13]
+    : [24, 13, 13, 13, 13, 13, 13, 13];
+  widths.forEach((width, index) => {
+    sheet.getColumn(index + 1).width = width;
+  });
+
+  sheet.eachRow((row) => {
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      if (col > columnCount) return;
+      cell.font = cell.font || baseFont;
+      cell.alignment = cell.alignment || { vertical: 'middle' };
+    });
+  });
+
+  sheet.pageSetup = {
+    orientation: 'landscape',
+    paperSize: 9,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 1,
+    horizontalCentered: true,
+    margins: { left: 0.25, right: 0.25, top: 0.3, bottom: 0.3, header: 0, footer: 0 }
+  };
+
+  return workbook;
+}
+
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
 router.use(express.urlencoded({ extended: true }));
 router.use(methodOverride('_method'));
@@ -1559,152 +1936,30 @@ router.get('/dashboard/monthly-calendar-m-exls', isLoggedIn, async (req, res) =>
 
 //月別のDashboard表示のルート（グループ）
 router.get('/dashboard/monthly-g', isLoggedIn, async (req, res) => {
-  let year, month;
-  if (req.query.ym) {
-    const [y, m] = req.query.ym.split('-');
-    year = parseInt(y);
-    month = parseInt(m);
-  } else {
-    year = new Date().getFullYear();
-    month = new Date().getMonth() + 1;
+  try {
+    const dashboardData = await buildMonthlyGroupDashboardData(req);
+    res.render('dashboard/monthly', dashboardData);
+  } catch (err) {
+    console.error('❌ 月次集計ルートエラー:', err);
+    res.status(500).send('月次集計エラー');
   }
+});
 
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 1);
+//月別のDashboardをEXCELで出力（グループ）
+router.get('/dashboard/monthly-g-exls', isLoggedIn, async (req, res) => {
+  try {
+    const dashboardData = await buildMonthlyGroupDashboardData(req);
+    const workbook = await exportMonthlyDashboardWorkbook(dashboardData);
+    const fileName = `${dashboardData.year}-${String(dashboardData.month).padStart(2, '0')}_月次集計_${dashboardData.titlePrefix}.xlsx`;
 
-  const groupId = req.session.activeGroupId;
-  const showTagSummary = resolveDashboardTagSummary(req, 'monthly-g');
-  const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
-  const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
-  const fiscalYear = cumulativeMeta.fiscalYear;
-
-  const finances = await Finance.find({
-    group: groupId,
-    date: { $gte: start, $lt: end }
-  });
-
-  // 集計
-  let totalIncome = 0, totalDeduction = 0, totalSaving = 0, totalExpense = 0;
-  const monthlyActual = createFinanceSummaryActuals();
-  let expenseSummary = {};
-  let expenseTagSummary = {};
-
-  for (let f of finances) {
-    addFinanceSummaryActual(monthlyActual, f);
-    if (f.cf === '収入') totalIncome += f.amount;
-    else if (f.cf === '貯蓄') totalSaving += f.amount;
-    else if (f.cf === '控除') totalDeduction += f.amount;
-    else if (f.cf === '支出') {
-      totalExpense += f.amount;
-      const item = f.expense_item || '未分類';
-      const tag = (f.sub_tag || '').trim() || '他';
-      expenseSummary[item] = (expenseSummary[item] || 0) + f.amount;
-      if (!expenseTagSummary[item]) expenseTagSummary[item] = {};
-      expenseTagSummary[item][tag] = (expenseTagSummary[item][tag] || 0) + f.amount;
-    }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('❌ 月次集計Excel出力エラー:', err);
+    res.status(500).send('月次集計Excel出力エラー');
   }
-
-  // 予算取得
-  const [budgets, otherBudgetItems] = await Promise.all([
-    FinanceExBudget.find({ group: groupId, year: String(fiscalYear) }),
-    fetchItemsByYear(groupId, fiscalYear)
-  ]);
-  const monthlyBudget = sumOtherFinanceBudgets(otherBudgetItems);
-  const budgetMap = {};
-  for (let b of budgets) {
-    budgetMap[b.expense_item] = Number(b.budget) || 0;
-    monthlyBudget.expense += Number(b.budget) || 0;
-  }
-
-  //予算のある項目全てまわす
-  const expenseItems = Object.keys(budgetMap)
-    .map(item => {
-      const matched = budgets.find(b => b.expense_item === item);
-      const order = matched?.display_order || 9999;
-      const total = expenseSummary[item] || 0;
-      const budget = budgetMap[item];
-      return {
-        item,
-        total,
-        budget,
-        diff: budget - total,
-        display_order: order
-      };
-    })
-    .sort((a, b) => a.display_order - b.display_order);
-
-  // === 累計集計: 年度開始月から表示中の月まで ===
-  const startOfYear = cumulativeMeta.start;
-  const endOfCurrentMonth = cumulativeMeta.end;
-
-  const cumulativeFinances = await Finance.find({
-    group: groupId,
-    date: { $gte: startOfYear, $lte: endOfCurrentMonth }
-  });
-
-  const cumulativeActual = createFinanceSummaryActuals();
-  let cumulativeSummary = {};
-  let cumulativeTagSummary = {};
-  for (let f of cumulativeFinances) {
-    addFinanceSummaryActual(cumulativeActual, f);
-    if (f.cf === '支出') {
-      const item = f.expense_item || '未分類';
-      const tag = (f.sub_tag || '').trim() || '他';
-      cumulativeSummary[item] = (cumulativeSummary[item] || 0) + f.amount;
-      if (!cumulativeTagSummary[item]) cumulativeTagSummary[item] = {};
-      cumulativeTagSummary[item][tag] = (cumulativeTagSummary[item][tag] || 0) + f.amount;
-    }
-  }
-
-  const cumulativeItems = Object.keys(budgetMap).map(item => {
-    const total = cumulativeSummary[item] || 0;
-    const monthlyBudget = budgetMap[item];
-    const budget = monthlyBudget * cumulativeMeta.budgetMonthCount;
-    return {
-      item,
-      total,
-      budget,
-      diff: budget - total
-    };
-  });
-  const monthlySummaryRows = buildMonthlySummaryRows({
-    monthlyActual,
-    cumulativeActual,
-    monthlyBudget,
-    budgetMonthCount: cumulativeMeta.budgetMonthCount
-  });
-
-  let groupName = 'グループ';
-  if (!req.session.groupName) {
-    const group = await Group.findById(groupId);
-    if (group) {
-      groupName = group.group_name;
-      req.session.groupName = group.group_name; // 次回以降の表示を高速化
-    }
-  } else {
-    groupName = req.session.groupName;
-  }
-
-  res.render('dashboard/monthly', {
-    year, month,
-    totalIncome,
-    totalDeduction,
-    totalExpense,
-    totalSaving,
-    balance: totalIncome - totalDeduction - totalSaving - totalExpense,
-    monthlySummaryRows,
-    expenseItems,
-    cumulativeItems,
-    expenseTagSummary,
-    cumulativeTagSummary,
-    showTagSummary,
-    formAction: '/export/dashboard/monthly-g',
-    titlePrefix: `${groupName}`,
-    viewType: 'group',
-    fiscalStartMonth,
-    cumulativeRangeLabel: cumulativeMeta.label,
-    fiscalYear
-  });
 });
 
 //年間収支実績（個人）

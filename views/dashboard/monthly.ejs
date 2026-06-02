@@ -5,17 +5,26 @@
     <div class="card-body text-white p-2 rounded" style="background-color: #44616D;">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="card-title mb-0"><%= titlePrefix %> 月間サマリー</h5>
-        <form method="GET" action="<%= formAction %>" class="d-flex">
-          <div class="d-flex align-items-center flex-nowrap gap-2">
-            <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;">
-            <div class="form-check form-switch mb-0 text-nowrap">
-              <input type="hidden" name="tagSummary" value="0">
-              <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %>>
-              <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
+        <div class="d-flex align-items-center flex-nowrap gap-2">
+          <form method="GET" action="<%= formAction %>" class="d-flex mb-0">
+            <div class="d-flex align-items-center flex-nowrap gap-2">
+              <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;">
+              <div class="form-check form-switch mb-0 text-nowrap">
+                <input type="hidden" name="tagSummary" value="0">
+                <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %>>
+                <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm" style="width: 60px;">表示</button>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm" style="width: 60px;">表示</button>
-          </div>
-        </form>
+          </form>
+          <% if (typeof excelAction !== 'undefined' && excelAction) { %>
+            <form method="GET" action="<%= excelAction %>" class="mb-0" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '出力中...'; setTimeout(() => { this.querySelector('button').disabled = false; this.querySelector('button').textContent = 'Excel出力'; }, 3000);">
+              <input type="hidden" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>">
+              <input type="hidden" name="tagSummary" value="<%= showTagSummary ? '1' : '0' %>">
+              <button type="submit" class="btn btn-sm btn-light">Excel出力</button>
+            </form>
+          <% } %>
+        </div>
       </div>
       <%
         const fallbackSummaryRows = [
