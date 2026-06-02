@@ -557,7 +557,7 @@
     }
   }
 
-  const hasDuplicateWarning = <%- JSON.stringify(Boolean(duplicateWarning)) %>;
+  const hasDuplicateWarning = <%- JSON.stringify(typeof duplicateWarning !== 'undefined' && Boolean(duplicateWarning)) %>;
   if (hasDuplicateWarning) {
     const entryForm = document.querySelector('form[action="/finance/entry"]');
     if (entryForm) {
