@@ -10,6 +10,7 @@ const FinanceUser = require('../models/users');
 const FinanceExBudget = require('../models/finance_ex_budget');
 const FinanceExBudgetPersonal = require('../models/finance_ex_budget_personal');
 const FinanceMonthlyCalendar = require('../models/finance_monthly_calendar');
+const FinanceMonthlyReflection = require('../models/finance_monthly_reflection');
 const FinancePaymentTypeCheck = require('../models/finance_payment_type_check');
 const FinanceItemCategoryGroup = require('../models/finance_item_category_group');
 const Group = require('../models/groups');
@@ -1028,6 +1029,41 @@ const getBudgetRateToneArgb = (rateValue) => {
     return 'FFFFE5CC';
 };
 
+const formatReflectionDateTime = (value) => {
+    const dt = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(dt.getTime())) return '';
+    return new Intl.DateTimeFormat('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(dt).replace(/\//g, '-');
+};
+
+const buildReflectionPayload = (reflection, currentUser) => {
+    const currentUserId = currentUser?._id ? currentUser._id.toString() : '';
+    const isAdmin = currentUser?.isAdmin === true;
+    return {
+        id: reflection._id.toString(),
+        item: reflection.item,
+        comments: (reflection.comments || []).map((comment) => {
+            const user = comment.user || {};
+            const userId = user._id ? user._id.toString() : String(comment.user || '');
+            return {
+                id: comment._id.toString(),
+                body: comment.body || '',
+                authorName: user.displayname || user.username || '未設定',
+                authorId: userId,
+                createdAt: formatReflectionDateTime(comment.createdAt),
+                updatedAt: comment.updatedAt ? formatReflectionDateTime(comment.updatedAt) : '',
+                canEdit: isAdmin || (currentUserId && userId === currentUserId)
+            };
+        })
+    };
+};
+
 async function buildMonthlyGroupDashboardData(req) {
   const { year, month } = parseYearMonth(req.query.ym, new Date());
   const start = new Date(year, month - 1, 1);
@@ -1128,6 +1164,19 @@ async function buildMonthlyGroupDashboardData(req) {
     budgetMonthCount: cumulativeMeta.budgetMonthCount
   });
 
+  const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+  const reflectionDocs = await FinanceMonthlyReflection.find({
+    group: groupId,
+    ym: ymValue,
+    item: { $in: Object.keys(budgetMap) }
+  })
+    .populate('comments.user', 'displayname username')
+    .lean();
+  const monthlyReflections = {};
+  reflectionDocs.forEach((reflection) => {
+    monthlyReflections[reflection.item] = buildReflectionPayload(reflection, req.user);
+  });
+
   let groupName = 'グループ';
   if (!req.session.groupName) {
     const group = await Group.findById(groupId);
@@ -1142,6 +1191,7 @@ async function buildMonthlyGroupDashboardData(req) {
   return {
     year,
     month,
+    ymValue,
     totalIncome,
     totalDeduction,
     totalExpense,
@@ -1152,6 +1202,8 @@ async function buildMonthlyGroupDashboardData(req) {
     cumulativeItems,
     expenseTagSummary,
     cumulativeTagSummary,
+    monthlyReflections,
+    reflectionAction: '/export/dashboard/monthly-g/reflections',
     showTagSummary,
     formAction: '/export/dashboard/monthly-g',
     excelAction: '/export/dashboard/monthly-g-exls',
@@ -2012,6 +2064,126 @@ router.get('/dashboard/monthly-g-exls', isLoggedIn, async (req, res) => {
   } catch (err) {
     console.error('❌ 月次集計Excel出力エラー:', err);
     res.status(500).send('月次集計Excel出力エラー');
+  }
+});
+
+// 月次振り返りコメント追加（グループ）
+router.post('/dashboard/monthly-g/reflections', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    if (!groupId) {
+      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
+    }
+
+    const { year, month } = parseYearMonth(req.body.ym, new Date());
+    const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+    const item = String(req.body.item || '').trim();
+    const body = String(req.body.body || '').trim();
+    if (!item) {
+      return res.status(400).json({ ok: false, message: '項目が未指定です' });
+    }
+    if (!body) {
+      return res.status(400).json({ ok: false, message: 'コメントを入力してください' });
+    }
+
+    const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
+    const fiscalYear = getFiscalYearForDate(new Date(year, month - 1, 1), fiscalStartMonth) ?? year;
+    const now = new Date();
+    const reflection = await FinanceMonthlyReflection.findOneAndUpdate(
+      { group: groupId, ym: ymValue, item },
+      {
+        $setOnInsert: { group: groupId, fiscalYear, year, month, ym: ymValue, item },
+        $push: {
+          comments: {
+            user: req.user._id,
+            body,
+            createdAt: now
+          }
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    )
+      .populate('comments.user', 'displayname username');
+
+    return res.json({ ok: true, reflection: buildReflectionPayload(reflection, req.user) });
+  } catch (err) {
+    console.error('❌ 月次振り返りコメント追加エラー:', err);
+    return res.status(500).json({ ok: false, message: 'コメントの保存に失敗しました' });
+  }
+});
+
+// 月次振り返りコメント更新（グループ）
+router.put('/dashboard/monthly-g/reflections/:reflectionId/comments/:commentId', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    const { reflectionId, commentId } = req.params;
+    const body = String(req.body.body || '').trim();
+    if (!groupId) {
+      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(reflectionId) || !mongoose.Types.ObjectId.isValid(commentId)) {
+      return res.status(400).json({ ok: false, message: '対象コメントが不正です' });
+    }
+    if (!body) {
+      return res.status(400).json({ ok: false, message: 'コメントを入力してください' });
+    }
+
+    const reflection = await FinanceMonthlyReflection.findOne({ _id: reflectionId, group: groupId });
+    const comment = reflection?.comments?.id(commentId);
+    if (!reflection || !comment) {
+      return res.status(404).json({ ok: false, message: 'コメントが見つかりません' });
+    }
+    const canEdit = req.user?.isAdmin === true || comment.user?.toString() === req.user._id.toString();
+    if (!canEdit) {
+      return res.status(403).json({ ok: false, message: 'このコメントは編集できません' });
+    }
+
+    comment.body = body;
+    comment.updatedAt = new Date();
+    await reflection.save();
+    await reflection.populate('comments.user', 'displayname username');
+
+    return res.json({ ok: true, reflection: buildReflectionPayload(reflection, req.user) });
+  } catch (err) {
+    console.error('❌ 月次振り返りコメント更新エラー:', err);
+    return res.status(500).json({ ok: false, message: 'コメントの更新に失敗しました' });
+  }
+});
+
+// 月次振り返りコメント削除（グループ）
+router.delete('/dashboard/monthly-g/reflections/:reflectionId/comments/:commentId', isLoggedIn, async (req, res) => {
+  try {
+    const groupId = req.session.activeGroupId;
+    const { reflectionId, commentId } = req.params;
+    if (!groupId) {
+      return res.status(400).json({ ok: false, message: 'アクティブなグループが選択されていません' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(reflectionId) || !mongoose.Types.ObjectId.isValid(commentId)) {
+      return res.status(400).json({ ok: false, message: '対象コメントが不正です' });
+    }
+
+    const reflection = await FinanceMonthlyReflection.findOne({ _id: reflectionId, group: groupId });
+    const comment = reflection?.comments?.id(commentId);
+    if (!reflection || !comment) {
+      return res.status(404).json({ ok: false, message: 'コメントが見つかりません' });
+    }
+    const canDelete = req.user?.isAdmin === true || comment.user?.toString() === req.user._id.toString();
+    if (!canDelete) {
+      return res.status(403).json({ ok: false, message: 'このコメントは削除できません' });
+    }
+
+    comment.deleteOne();
+    if (reflection.comments.length === 0) {
+      await FinanceMonthlyReflection.deleteOne({ _id: reflection._id });
+      return res.json({ ok: true, reflection: null, item: reflection.item });
+    }
+
+    await reflection.save();
+    await reflection.populate('comments.user', 'displayname username');
+    return res.json({ ok: true, reflection: buildReflectionPayload(reflection, req.user) });
+  } catch (err) {
+    console.error('❌ 月次振り返りコメント削除エラー:', err);
+    return res.status(500).json({ ok: false, message: 'コメントの削除に失敗しました' });
   }
 });
 

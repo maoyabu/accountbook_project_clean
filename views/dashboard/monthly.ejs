@@ -1,4 +1,9 @@
 <% layout('layouts/boilerplate') %>
+<%
+  const monthlyReflectionMap = typeof monthlyReflections !== 'undefined' ? monthlyReflections : {};
+  const monthlyReflectionAction = typeof reflectionAction !== 'undefined' ? reflectionAction : '';
+  const reflectionEnabled = Boolean(monthlyReflectionAction);
+%>
 
 
   <div class="card mb-3 mt-4">
@@ -74,6 +79,277 @@
     </div>
   </div>
 
+<% if (reflectionEnabled) { %>
+<style>
+  .monthly-reflection-summary-table thead th {
+    --bs-table-bg: #44616D;
+    --bs-table-color: #fff;
+    background-color: #44616D !important;
+    color: #fff !important;
+  }
+  .monthly-reflection-summary-table tbody th {
+    --bs-table-bg: #d8e6ef;
+    --bs-table-color: #17222a;
+    background-color: #d8e6ef !important;
+    color: #17222a !important;
+  }
+</style>
+<div class="modal fade" id="monthlyReflectionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">月次の振り返り</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="reflectionItemInput" value="">
+        <input type="hidden" id="reflectionIdInput" value="">
+        <input type="hidden" id="reflectionCommentIdInput" value="">
+
+        <div class="mb-3">
+          <div class="fw-bold mb-2" id="reflectionItemTitle"></div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0 monthly-reflection-summary-table">
+              <thead class="text-center">
+                <tr>
+                  <th></th>
+                  <th>実績</th>
+                  <th>予算</th>
+                  <th>予算差</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th class="text-start">当月</th>
+                  <td class="text-end" id="reflectionMonthTotal"></td>
+                  <td class="text-end" id="reflectionMonthBudget"></td>
+                  <td class="text-end" id="reflectionMonthDiff"></td>
+                </tr>
+                <tr>
+                  <th class="text-start">累計</th>
+                  <td class="text-end" id="reflectionCumTotal"></td>
+                  <td class="text-end" id="reflectionCumBudget"></td>
+                  <td class="text-end" id="reflectionCumDiff"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-bold">コメント</div>
+            <span class="badge bg-warning text-dark d-none" id="reflectionEmptyBadge">未記入</span>
+          </div>
+          <div id="reflectionCommentList" class="d-grid gap-2"></div>
+        </div>
+
+        <div class="border-top pt-3">
+          <label for="reflectionBodyInput" class="form-label fw-bold" id="reflectionFormLabel">コメントを追加</label>
+          <textarea id="reflectionBodyInput" class="form-control" rows="4" placeholder="今月の実績や予算差について振り返りを入力"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <button type="button" id="reflectionCancelEditBtn" class="btn btn-outline-secondary btn-sm d-none">編集をやめる</button>
+        <div class="d-flex gap-2 ms-auto">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">閉じる</button>
+          <button type="button" id="reflectionSaveBtn" class="btn btn-primary btn-sm">追加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const modalEl = document.getElementById('monthlyReflectionModal');
+    if (!modalEl || typeof bootstrap === 'undefined') return;
+
+    const reflections = <%- JSON.stringify(monthlyReflectionMap || {}).replace(/</g, '\\u003c') %>;
+    const ymValue = '<%= year %>-<%= String(month).padStart(2, '0') %>';
+    const reflectionAction = '<%= monthlyReflectionAction %>';
+    const modal = new bootstrap.Modal(modalEl);
+    let activeButton = null;
+
+    const itemInput = document.getElementById('reflectionItemInput');
+    const reflectionIdInput = document.getElementById('reflectionIdInput');
+    const commentIdInput = document.getElementById('reflectionCommentIdInput');
+    const bodyInput = document.getElementById('reflectionBodyInput');
+    const saveBtn = document.getElementById('reflectionSaveBtn');
+    const cancelEditBtn = document.getElementById('reflectionCancelEditBtn');
+    const formLabel = document.getElementById('reflectionFormLabel');
+    const emptyBadge = document.getElementById('reflectionEmptyBadge');
+    const commentList = document.getElementById('reflectionCommentList');
+
+    const formatNumber = (value) => Number(value || 0).toLocaleString();
+    const setMetric = (id, value) => {
+      const el = document.getElementById(id);
+      el.textContent = formatNumber(value);
+      el.classList.toggle('text-danger', Number(value || 0) < 0);
+      el.classList.toggle('fw-bold', Number(value || 0) < 0);
+    };
+    const getReflection = (item) => reflections[item] || { id: '', item, comments: [] };
+
+    const updateButton = (item) => {
+      const reflection = getReflection(item);
+      const count = reflection.comments.length;
+      document.querySelectorAll('.monthly-reflection-btn').forEach((btn) => {
+        if ((btn.dataset.item || '') !== item) return;
+        btn.classList.toggle('btn-outline-primary', count > 0);
+        btn.classList.toggle('btn-outline-warning', count === 0);
+        btn.innerHTML = `<i class="fa-regular fa-comment-dots me-1"></i>${count > 0 ? `${count}件` : '未記入'}`;
+      });
+    };
+
+    const resetForm = () => {
+      commentIdInput.value = '';
+      bodyInput.value = '';
+      saveBtn.textContent = '追加';
+      formLabel.textContent = 'コメントを追加';
+      cancelEditBtn.classList.add('d-none');
+    };
+
+    const renderComments = (item) => {
+      const reflection = getReflection(item);
+      reflectionIdInput.value = reflection.id || '';
+      const comments = reflection.comments || [];
+      emptyBadge.classList.toggle('d-none', comments.length > 0);
+      if (comments.length === 0) {
+        commentList.innerHTML = '<div class="text-muted border rounded p-3 bg-light">この項目はまだ振り返りコメントが未記入です。</div>';
+        return;
+      }
+
+      commentList.innerHTML = comments.map((comment) => `
+        <div class="border rounded p-3 bg-light" data-comment-id="${comment.id}">
+          <div class="d-flex justify-content-between gap-2 mb-2">
+            <div>
+              <span class="fw-bold">${escapeHtml(comment.authorName || '未設定')}</span>
+              <span class="text-muted small ms-2">${escapeHtml(comment.createdAt || '')}${comment.updatedAt ? ` / 更新: ${escapeHtml(comment.updatedAt)}` : ''}</span>
+            </div>
+            ${comment.canEdit ? `
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm reflection-edit-btn" data-comment-id="${comment.id}">編集</button>
+                <button type="button" class="btn btn-outline-danger btn-sm reflection-delete-btn" data-comment-id="${comment.id}">削除</button>
+              </div>
+            ` : ''}
+          </div>
+          <div style="white-space: pre-wrap;">${escapeHtml(comment.body || '')}</div>
+        </div>
+      `).join('');
+    };
+
+    const escapeHtml = (value) => String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    document.querySelectorAll('.monthly-reflection-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeButton = btn;
+        const item = btn.dataset.item || '';
+        itemInput.value = item;
+        document.getElementById('reflectionItemTitle').textContent = item;
+        setMetric('reflectionMonthTotal', btn.dataset.monthTotal);
+        setMetric('reflectionMonthBudget', btn.dataset.monthBudget);
+        setMetric('reflectionMonthDiff', btn.dataset.monthDiff);
+        setMetric('reflectionCumTotal', btn.dataset.cumTotal);
+        setMetric('reflectionCumBudget', btn.dataset.cumBudget);
+        setMetric('reflectionCumDiff', btn.dataset.cumDiff);
+        resetForm();
+        renderComments(item);
+        modal.show();
+      });
+    });
+
+    commentList.addEventListener('click', async (event) => {
+      const editBtn = event.target.closest('.reflection-edit-btn');
+      const deleteBtn = event.target.closest('.reflection-delete-btn');
+      const item = itemInput.value;
+      const reflection = getReflection(item);
+
+      if (editBtn) {
+        const comment = (reflection.comments || []).find((c) => c.id === editBtn.dataset.commentId);
+        if (!comment) return;
+        reflectionIdInput.value = reflection.id || '';
+        commentIdInput.value = comment.id;
+        bodyInput.value = comment.body || '';
+        saveBtn.textContent = '更新';
+        formLabel.textContent = 'コメントを編集';
+        cancelEditBtn.classList.remove('d-none');
+        bodyInput.focus();
+      }
+
+      if (deleteBtn) {
+        if (!reflection.id || !deleteBtn.dataset.commentId) return;
+        if (!window.confirm('このコメントを削除しますか？')) return;
+        try {
+          const res = await fetch(`${reflectionAction}/${reflection.id}/comments/${deleteBtn.dataset.commentId}`, {
+            method: 'DELETE',
+            headers: { 'Accept': 'application/json' }
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) throw new Error(data.message || '削除に失敗しました');
+          if (data.reflection) {
+            reflections[item] = data.reflection;
+          } else {
+            delete reflections[item];
+          }
+          resetForm();
+          renderComments(item);
+          updateButton(item);
+        } catch (err) {
+          alert(err.message || '削除に失敗しました');
+        }
+      }
+    });
+
+    cancelEditBtn.addEventListener('click', resetForm);
+
+    saveBtn.addEventListener('click', async () => {
+      const item = itemInput.value;
+      const body = bodyInput.value.trim();
+      if (!item || !body) {
+        alert('コメントを入力してください');
+        return;
+      }
+
+      const reflectionId = reflectionIdInput.value;
+      const commentId = commentIdInput.value;
+      const isEdit = reflectionId && commentId;
+      saveBtn.disabled = true;
+      saveBtn.textContent = isEdit ? '更新中...' : '追加中...';
+      try {
+        const res = await fetch(isEdit ? `${reflectionAction}/${reflectionId}/comments/${commentId}` : reflectionAction, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ ym: ymValue, item, body })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.message || '保存に失敗しました');
+        reflections[item] = data.reflection;
+        resetForm();
+        renderComments(item);
+        updateButton(item);
+      } catch (err) {
+        alert(err.message || '保存に失敗しました');
+      } finally {
+        saveBtn.disabled = false;
+        if (commentIdInput.value) {
+          saveBtn.textContent = '更新';
+        } else {
+          saveBtn.textContent = '追加';
+        }
+      }
+    });
+  });
+</script>
+<% } %>
+
   <div class="card mt-4">
     <div class="card-body text-white p-2 rounded" style="background-color: #44616D;">
       <h5 class="card-title">支出内訳（<%= month %>月 & 累計）</h5>
@@ -86,6 +362,9 @@
             <% } %>
             <th class="text-dark" colspan="3"><%= month %>月</th>
             <th class="text-dark th-period-highlight" colspan="4"><%= cumulativeRangeLabel || `${fiscalStartMonth || 1}月〜${month}月` %></th>
+            <% if (reflectionEnabled) { %>
+              <th class="text-dark align-middle" rowspan="2">振り返り</th>
+            <% } %>
           </tr>
           <tr>
             <th class="text-dark">合計</th>
@@ -183,10 +462,13 @@
                 <span class="dashboard-monthly-rate-value"><%= formatBudgetRatePercent(cumTotalSum, cumBudgetSum) %></span>
               </div>
             </td>
+            <% if (reflectionEnabled) { %><td></td><% } %>
           </tr>
           <% for (let data of combinedItems) {
               const { item, month: monData, cumulative: cum } = data;
               const cumRateMeta = getBudgetDiffRateMeta(cum.total, cum.budget);
+              const reflection = monthlyReflectionMap?.[item] || null;
+              const reflectionCount = reflection?.comments?.length || 0;
               const rawTagSet = new Set([
                 ...Object.keys(expenseTagSummary?.[item] || {}),
                 ...Object.keys(cumulativeTagSummary?.[item] || {})
@@ -233,6 +515,23 @@
                   <span class="dashboard-monthly-rate-value"><%= formatBudgetRatePercent(cum.total, cum.budget) %></span>
                 </div>
               </td>
+              <% if (reflectionEnabled) { %>
+                <td class="text-center">
+                  <button
+                    type="button"
+                    class="btn btn-sm <%= reflectionCount > 0 ? 'btn-outline-primary' : 'btn-outline-warning' %> monthly-reflection-btn"
+                    data-item="<%= item %>"
+                    data-month-total="<%= Number(monData.total || 0) %>"
+                    data-month-budget="<%= Number(monData.budget || 0) %>"
+                    data-month-diff="<%= Number(monData.diff || 0) %>"
+                    data-cum-total="<%= Number(cum.total || 0) %>"
+                    data-cum-budget="<%= Number(cum.budget || 0) %>"
+                    data-cum-diff="<%= Number(cum.diff || 0) %>"
+                  >
+                    <i class="fa-regular fa-comment-dots me-1"></i><%= reflectionCount > 0 ? `${reflectionCount}件` : '未記入' %>
+                  </button>
+                </td>
+              <% } %>
             </tr>
             <% if (showTagSummary) { %>
               <% tagList.forEach((tag) => {
@@ -258,6 +557,7 @@
                   <td></td>
                   <td></td>
                   <td></td>
+                  <% if (reflectionEnabled) { %><td></td><% } %>
                 </tr>
               <% }) %>
             <% } %>
