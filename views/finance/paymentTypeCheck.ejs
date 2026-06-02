@@ -71,7 +71,7 @@
               </thead>
               <tbody id="uncheckedTbody">
                 <% uncheckedEntries.forEach((row) => { %>
-                  <tr class="payment-check-row" data-row-id="<%= row.id %>" data-edit-url="<%= row.editUrl %>" style="cursor: pointer;">
+                  <tr class="payment-check-row" data-row-id="<%= row.id %>" data-amount="<%= row.amount %>" data-edit-url="<%= row.editUrl %>" style="cursor: pointer;">
                     <td class="text-center payment-check-cell">
                       <input
                         type="checkbox"
@@ -90,6 +90,9 @@
             </table>
           </div>
           <div id="uncheckedEmpty" class="text-muted small p-2 <%= uncheckedEntries.length > 0 ? 'd-none' : '' %>">未チェックのデータはありません。</div>
+          <div class="border-top mt-2 pt-2 text-end fw-bold">
+            合計：<span id="uncheckedTotal"><%= uncheckedTotal.toLocaleString() %></span> 円
+          </div>
         </div>
       </div>
     </div>
@@ -112,7 +115,7 @@
               </thead>
               <tbody id="checkedTbody">
                 <% checkedEntries.forEach((row) => { %>
-                  <tr class="payment-check-row" data-row-id="<%= row.id %>" data-edit-url="<%= row.editUrl %>" style="cursor: pointer;">
+                  <tr class="payment-check-row" data-row-id="<%= row.id %>" data-amount="<%= row.amount %>" data-edit-url="<%= row.editUrl %>" style="cursor: pointer;">
                     <td class="text-center payment-check-cell">
                       <input
                         type="checkbox"
@@ -132,6 +135,9 @@
             </table>
           </div>
           <div id="checkedEmpty" class="text-muted small p-2 <%= checkedEntries.length > 0 ? 'd-none' : '' %>">チェック済みのデータはありません。</div>
+          <div class="border-top mt-2 pt-2 text-end fw-bold">
+            合計：<span id="checkedTotal"><%= checkedTotal.toLocaleString() %></span> 円
+          </div>
         </div>
       </div>
     </div>
@@ -146,14 +152,30 @@
       const checkedTbody = document.getElementById('checkedTbody');
       const uncheckedEmpty = document.getElementById('uncheckedEmpty');
       const checkedEmpty = document.getElementById('checkedEmpty');
+      const uncheckedTotal = document.getElementById('uncheckedTotal');
+      const checkedTotal = document.getElementById('checkedTotal');
       const toggles = document.querySelectorAll('.payment-check-toggle');
       const rows = document.querySelectorAll('.payment-check-row');
 
       if (!toggleAction || !paymentType || !toggles.length) return;
 
+      const formatAmount = (amount) => new Intl.NumberFormat('ja-JP').format(amount);
+
+      const sumRows = (tbody) => {
+        return Array.from(tbody.querySelectorAll('tr')).reduce((total, row) => {
+          return total + (Number(row.dataset.amount) || 0);
+        }, 0);
+      };
+
+      const updateTotals = () => {
+        uncheckedTotal.textContent = formatAmount(sumRows(uncheckedTbody));
+        checkedTotal.textContent = formatAmount(sumRows(checkedTbody));
+      };
+
       const updateEmptyState = () => {
         uncheckedEmpty.classList.toggle('d-none', uncheckedTbody.querySelectorAll('tr').length > 0);
         checkedEmpty.classList.toggle('d-none', checkedTbody.querySelectorAll('tr').length > 0);
+        updateTotals();
       };
 
       const moveRow = (checkbox) => {

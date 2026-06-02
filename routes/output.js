@@ -2839,6 +2839,8 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
 
     let uncheckedEntries = [];
     let checkedEntries = [];
+    let uncheckedTotal = 0;
+    let checkedTotal = 0;
 
     if (selectedPaymentType) {
       const currentPath = (typeof req.originalUrl === 'string' && req.originalUrl.startsWith('/'))
@@ -2878,8 +2880,10 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
 
         if (checkedIdSet.has(row.id)) {
           checkedEntries.push(row);
+          checkedTotal += row.amount;
         } else {
           uncheckedEntries.push(row);
+          uncheckedTotal += row.amount;
         }
       });
     }
@@ -2892,6 +2896,8 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
       paymentTypeOptions,
       uncheckedEntries,
       checkedEntries,
+      uncheckedTotal,
+      checkedTotal,
       formAction: '/export/payment-check',
       toggleAction: '/export/payment-check/toggle'
     });
