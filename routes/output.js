@@ -106,13 +106,16 @@ const buildMonthlySummaryRows = ({ monthlyActual, cumulativeActual, monthlyBudge
     };
     const cumulativeBalanceActual = getSummaryBalance(cumulativeActual);
     const cumulativeBalanceBudget = getSummaryBalance(cumulativeBudget);
-    const makeRow = (label, key, diffType) => {
+    const makeRow = (label, key, diffType, canReflect = true) => {
         const actual = key === 'balance' ? monthlyBalanceActual : Number(monthlyActual[key]) || 0;
         const budget = key === 'balance' ? monthlyBalanceBudget : Number(monthlyBudget[key]) || 0;
         const cumulative = key === 'balance' ? cumulativeBalanceActual : Number(cumulativeActual[key]) || 0;
         const cumulativeBudgetValue = key === 'balance' ? cumulativeBalanceBudget : Number(cumulativeBudget[key]) || 0;
         return {
             label,
+            key,
+            reflectionItem: `summary:${key}`,
+            canReflect,
             actual,
             budget,
             diff: diffType === 'actual-minus-budget' ? actual - budget : budget - actual,
@@ -128,7 +131,7 @@ const buildMonthlySummaryRows = ({ monthlyActual, cumulativeActual, monthlyBudge
         makeRow('収入', 'income', 'actual-minus-budget'),
         makeRow('控除', 'deduction', 'budget-minus-actual'),
         makeRow('貯蓄', 'saving', 'actual-minus-budget'),
-        makeRow('支出', 'expense', 'budget-minus-actual'),
+        makeRow('支出', 'expense', 'budget-minus-actual', false),
         makeRow('収支（収入 - 控除 - 貯蓄 - 支出）', 'balance', 'actual-minus-budget')
     ];
 };
@@ -1165,10 +1168,13 @@ async function buildMonthlyGroupDashboardData(req) {
   });
 
   const ymValue = `${year}-${String(month).padStart(2, '0')}`;
+  const summaryReflectionItems = monthlySummaryRows
+    .filter(row => row.canReflect !== false && row.reflectionItem)
+    .map(row => row.reflectionItem);
   const reflectionDocs = await FinanceMonthlyReflection.find({
     group: groupId,
     ym: ymValue,
-    item: { $in: Object.keys(budgetMap) }
+    item: { $in: [...Object.keys(budgetMap), ...summaryReflectionItems] }
   })
     .populate('comments.user', 'displayname username')
     .lean();
@@ -1225,11 +1231,12 @@ async function exportMonthlyDashboardWorkbook(data) {
 
   const columnCount = 11;
   const darkFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF44616D' } };
-  const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAF7' } };
+  const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAF7' }, bgColor: { argb: 'FFD9EAF7' } };
   const cumulativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF4F7' } };
   const totalFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F4EA' } };
   const negativeFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
   const subtleFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF7FBFD' } };
+  const commentFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF4F7' }, bgColor: { argb: 'FFEFF4F7' } };
   const whiteFont = { name: 'Meiryo UI', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
   const baseFont = { name: 'Meiryo UI', size: 11 };
   const smallFont = { name: 'Meiryo UI', size: 10 };
@@ -1245,6 +1252,14 @@ async function exportMonthlyDashboardWorkbook(data) {
     bottom: { style: 'medium', color: { argb: 'FF44616D' } },
     right: { style: 'medium', color: { argb: 'FF44616D' } }
   };
+  const commentBorder = {
+    top: { style: 'medium', color: { argb: 'FF000000' } },
+    left: { style: 'medium', color: { argb: 'FF000000' } },
+    bottom: { style: 'medium', color: { argb: 'FF000000' } },
+    right: { style: 'medium', color: { argb: 'FF000000' } }
+  };
+  const commentDottedBorder = { style: 'dotted', color: { argb: 'FF000000' } };
+  const titleFont = { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
 
   const applyCellStyle = (cell, options = {}) => {
     cell.font = options.font || baseFont;
@@ -1257,6 +1272,43 @@ async function exportMonthlyDashboardWorkbook(data) {
     for (let r = rowStart; r <= rowEnd; r++) {
       for (let c = colStart; c <= colEnd; c++) {
         applyCellStyle(sheet.getCell(r, c), options);
+      }
+    }
+  };
+  const forceMergedRowStyle = (rowNumber, colStart, colEnd, value, options = {}) => {
+    const master = sheet.getCell(rowNumber, colStart);
+    master.value = value;
+    for (let col = colStart; col <= colEnd; col++) {
+      const cell = sheet.getCell(rowNumber, col);
+      cell.fill = options.fill;
+      cell.font = options.font || baseFont;
+      cell.alignment = options.alignment || { vertical: 'middle' };
+      cell.border = options.border || border;
+      cell.style = {
+        ...cell.style,
+        fill: options.fill,
+        font: options.font || baseFont,
+        alignment: options.alignment || { vertical: 'middle' },
+        border: options.border || border
+      };
+    }
+    master.value = value;
+  };
+  const forceRangeStyle = (rowStart, rowEnd, colStart, colEnd, options = {}) => {
+    for (let row = rowStart; row <= rowEnd; row++) {
+      for (let col = colStart; col <= colEnd; col++) {
+        const cell = sheet.getCell(row, col);
+        cell.fill = options.fill;
+        cell.font = options.font || baseFont;
+        cell.alignment = options.alignment || { vertical: 'middle' };
+        cell.border = options.border || border;
+        cell.style = {
+          ...cell.style,
+          fill: options.fill,
+          font: options.font || baseFont,
+          alignment: options.alignment || { vertical: 'middle' },
+          border: options.border || border
+        };
       }
     }
   };
@@ -1301,13 +1353,13 @@ async function exportMonthlyDashboardWorkbook(data) {
   sheet.mergeCells(1, 2, 1, 11);
   applyRange(1, 1, 2, 11, {
     fill: darkFill,
-    font: { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } },
+    font: titleFont,
     alignment: { horizontal: 'center', vertical: 'middle' },
     border: false
   });
   sheet.getCell(1, 2).value = `${data.titlePrefix} 月間サマリー ${data.year}年${data.month}月`;
   sheet.getCell(1, 2).fill = darkFill;
-  sheet.getCell(1, 2).font = { name: 'Meiryo UI', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getCell(1, 2).font = titleFont;
   sheet.getCell(1, 2).alignment = { horizontal: 'center', vertical: 'middle' };
   sheet.getRow(1).height = 26;
 
@@ -1452,6 +1504,115 @@ async function exportMonthlyDashboardWorkbook(data) {
     cumDiff: totals.cumDiff
   });
 
+  const reflectionEntries = [];
+  const appendReflectionEntries = (reflectionKey, label) => {
+    const reflection = data.monthlyReflections?.[reflectionKey];
+    for (const comment of reflection?.comments || []) {
+      if (!comment?.body) continue;
+      reflectionEntries.push({
+        label,
+        authorName: comment.authorName || '未設定',
+        createdAt: comment.createdAt || '',
+        updatedAt: comment.updatedAt || '',
+        body: comment.body
+      });
+    }
+  };
+
+  for (const row of data.monthlySummaryRows || []) {
+    if (row.canReflect === false || !row.reflectionItem) continue;
+    appendReflectionEntries(row.reflectionItem, row.label);
+  }
+  for (const itemData of combinedItems) {
+    appendReflectionEntries(itemData.item, itemData.item);
+  }
+  const reflectionGroups = [];
+  for (const entry of reflectionEntries) {
+    const lastGroup = reflectionGroups[reflectionGroups.length - 1];
+    if (lastGroup && lastGroup.label === entry.label) {
+      lastGroup.comments.push(entry);
+    } else {
+      reflectionGroups.push({ label: entry.label, comments: [entry] });
+    }
+  }
+
+  const commentMergedRows = [];
+  const commentItemMergedRanges = [];
+  if (reflectionGroups.length > 0) {
+    currentRow += 2;
+
+    applyRange(currentRow, currentRow, 2, 3, { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' }, border: commentBorder });
+    setTextCell(currentRow, 2, '項目', { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' }, border: commentBorder });
+    setTextCell(currentRow, 3, '記入者', { fill: headerFill, font: { ...baseFont, bold: true }, alignment: { horizontal: 'center', vertical: 'middle' }, border: commentBorder });
+    sheet.mergeCells(currentRow, 4, currentRow, 11);
+    forceMergedRowStyle(currentRow, 4, 11, 'コメント', {
+      fill: headerFill,
+      font: { ...baseFont, bold: true },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: commentBorder
+    });
+    commentMergedRows.push({
+      rowNumber: currentRow,
+      value: 'コメント',
+      fill: headerFill,
+      font: { ...baseFont, bold: true },
+      alignment: { horizontal: 'center', vertical: 'middle' }
+    });
+    sheet.getRow(currentRow).height = 18;
+    currentRow += 1;
+
+    for (const group of reflectionGroups) {
+      const groupStartRow = currentRow;
+      const groupEndRow = currentRow + group.comments.length - 1;
+      if (group.comments.length > 1) {
+        sheet.mergeCells(groupStartRow, 2, groupEndRow, 2);
+      }
+      setTextCell(groupStartRow, 2, group.label, {
+        fill: commentFill,
+        font: baseFont,
+        alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+        border: commentBorder
+      });
+      commentItemMergedRanges.push({ rowStart: groupStartRow, rowEnd: groupEndRow, value: group.label });
+
+      group.comments.forEach((entry, index) => {
+        const isFirstComment = index === 0;
+        const isLastComment = index === group.comments.length - 1;
+        const rowBorder = {
+          top: isFirstComment ? commentBorder.top : commentDottedBorder,
+          left: commentBorder.left,
+          bottom: isLastComment ? commentBorder.bottom : commentDottedBorder,
+          right: commentBorder.right
+        };
+        const authorText = entry.updatedAt
+          ? `${entry.authorName}\n${entry.createdAt}\n更新: ${entry.updatedAt}`
+          : `${entry.authorName}\n${entry.createdAt}`;
+
+        setTextCell(currentRow, 3, authorText, { fill: commentFill, font: smallFont, alignment: { horizontal: 'left', vertical: 'top', wrapText: true }, border: rowBorder });
+        sheet.mergeCells(currentRow, 4, currentRow, 11);
+        forceMergedRowStyle(currentRow, 4, 11, entry.body, {
+          fill: commentFill,
+          font: baseFont,
+          alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+          border: rowBorder
+        });
+        commentMergedRows.push({
+          rowNumber: currentRow,
+          value: entry.body,
+          fill: commentFill,
+          font: baseFont,
+          alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+          border: rowBorder
+        });
+        const bodyLineCount = String(entry.body || '')
+          .split(/\r?\n/)
+          .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / 80)), 0);
+        sheet.getRow(currentRow).height = Math.max(42, Math.min(140, 18 + bodyLineCount * 16));
+        currentRow += 1;
+      });
+    }
+  }
+
   const widths = [3, 28, 14, 13, 12, 13, 3, 13, 13, 13, 12];
   widths.forEach((width, index) => {
     sheet.getColumn(index + 1).width = width;
@@ -1471,6 +1632,31 @@ async function exportMonthlyDashboardWorkbook(data) {
   sheet.getColumn(7).eachCell({ includeEmpty: true }, cell => {
     cell.border = {};
   });
+  for (const range of commentItemMergedRanges) {
+    forceRangeStyle(range.rowStart, range.rowEnd, 2, 2, {
+      fill: commentFill,
+      font: baseFont,
+      alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+      border: commentBorder
+    });
+    sheet.getCell(range.rowStart, 2).value = range.value;
+  }
+  for (const row of commentMergedRows) {
+    forceMergedRowStyle(row.rowNumber, 4, 11, row.value, {
+      fill: row.fill,
+      font: row.font,
+      alignment: row.alignment,
+      border: row.border || commentBorder
+    });
+  }
+  applyRange(1, 1, 2, 11, {
+    fill: darkFill,
+    font: titleFont,
+    alignment: { horizontal: 'center', vertical: 'middle' },
+    border: false
+  });
+  sheet.getCell(1, 2).value = `${data.titlePrefix} 月間サマリー ${data.year}年${data.month}月`;
+  sheet.getRow(1).height = 26;
 
   sheet.pageSetup = {
     orientation: 'landscape',
@@ -2067,7 +2253,7 @@ router.get('/dashboard/monthly-g-exls', isLoggedIn, async (req, res) => {
   }
 });
 
-// 月次振り返りコメント追加（グループ）
+// 月次振返りコメント追加（グループ）
 router.post('/dashboard/monthly-g/reflections', isLoggedIn, async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
@@ -2107,12 +2293,12 @@ router.post('/dashboard/monthly-g/reflections', isLoggedIn, async (req, res) => 
 
     return res.json({ ok: true, reflection: buildReflectionPayload(reflection, req.user) });
   } catch (err) {
-    console.error('❌ 月次振り返りコメント追加エラー:', err);
+    console.error('❌ 月次振返りコメント追加エラー:', err);
     return res.status(500).json({ ok: false, message: 'コメントの保存に失敗しました' });
   }
 });
 
-// 月次振り返りコメント更新（グループ）
+// 月次振返りコメント更新（グループ）
 router.put('/dashboard/monthly-g/reflections/:reflectionId/comments/:commentId', isLoggedIn, async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
@@ -2145,12 +2331,12 @@ router.put('/dashboard/monthly-g/reflections/:reflectionId/comments/:commentId',
 
     return res.json({ ok: true, reflection: buildReflectionPayload(reflection, req.user) });
   } catch (err) {
-    console.error('❌ 月次振り返りコメント更新エラー:', err);
+    console.error('❌ 月次振返りコメント更新エラー:', err);
     return res.status(500).json({ ok: false, message: 'コメントの更新に失敗しました' });
   }
 });
 
-// 月次振り返りコメント削除（グループ）
+// 月次振返りコメント削除（グループ）
 router.delete('/dashboard/monthly-g/reflections/:reflectionId/comments/:commentId', isLoggedIn, async (req, res) => {
   try {
     const groupId = req.session.activeGroupId;
@@ -2182,7 +2368,7 @@ router.delete('/dashboard/monthly-g/reflections/:reflectionId/comments/:commentI
     await reflection.populate('comments.user', 'displayname username');
     return res.json({ ok: true, reflection: buildReflectionPayload(reflection, req.user) });
   } catch (err) {
-    console.error('❌ 月次振り返りコメント削除エラー:', err);
+    console.error('❌ 月次振返りコメント削除エラー:', err);
     return res.status(500).json({ ok: false, message: 'コメントの削除に失敗しました' });
   }
 });
