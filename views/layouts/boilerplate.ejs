@@ -38,6 +38,9 @@
           <button type="button" class="finance-quick-fab-control finance-quick-fab-handle" aria-label="よく使う項目を移動" title="移動">
             <i class="fa-solid fa-up-down-left-right"></i>
           </button>
+          <a href="/finance/budget#financeQuickMenuSettings" class="finance-quick-fab-control" aria-label="よく使う項目を設定" title="設定">
+            <i class="fa-solid fa-gear"></i>
+          </a>
           <label class="finance-quick-toggle finance-quick-fab-toggle" title="よく使う項目の表示切替">
             <span>ON/OFF</span>
             <input type="checkbox" data-finance-quick-toggle <%= fabQuickEnabled ? 'checked' : '' %>>
@@ -45,11 +48,6 @@
           </label>
         </div>
         <div class="finance-quick-fab-content">
-          <div class="finance-quick-fab-controls">
-            <a href="/finance/budget#financeQuickMenuSettings" class="finance-quick-fab-control" aria-label="よく使う項目を設定" title="設定">
-              <i class="fa-solid fa-gear"></i>
-            </a>
-          </div>
           <div class="finance-quick-fab-items">
             <a
               href="/finance/entry"
