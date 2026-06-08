@@ -158,6 +158,35 @@
     <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
   </form>
 </div>
+<h5 class="mb-2"><i class="fa-solid fa-tags"></i> タグ登録</h5>
+<div class="p-3 border rounded bg-light mb-4">
+    <form action="/finance/budget/tag-settings" method="POST" class="mb-2">
+        <div class="form-check">
+            <input
+                class="form-check-input"
+                type="radio"
+                name="tag_registration"
+                id="tagRegistrationEnabled"
+                value="enabled"
+                <%= financeTagRegistrationEnabled ? 'checked' : '' %>
+            >
+            <label class="form-check-label" for="tagRegistrationEnabled">タグを登録する</label>
+        </div>
+        <div class="form-check">
+            <input
+                class="form-check-input"
+                type="radio"
+                name="tag_registration"
+                id="tagRegistrationDisabled"
+                value="disabled"
+                <%= financeTagRegistrationEnabled ? '' : 'checked' %>
+            >
+            <label class="form-check-label" for="tagRegistrationDisabled">タグを登録しない</label>
+        </div>
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-2">保存</button>
+    </form>
+    <div class="text-muted small">※ 登録しない場合、新規登録・編集画面のタグ欄を非表示にします。</div>
+</div>
 <h5 class="mb-2"><i class="fa-solid fa-wallet"></i> お財布管理</h5>
 <div class="p-3 border rounded bg-light mb-4">
     <form action="/finance/budget/wallet-settings" method="POST" class="mb-2">

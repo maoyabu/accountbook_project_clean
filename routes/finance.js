@@ -635,6 +635,10 @@ const buildDuplicateQuery = (financeData) => {
 //formのリクエストが来たときにパースしてreq.bodyに入れてくれる
 router.use(express.urlencoded({ extended: true }));
 router.use(methodOverride('_method'));
+router.use((req, res, next) => {
+  res.locals.financeTagRegistrationEnabled = req.user?.financeTagRegistrationEnabled === true;
+  next();
+});
 
 //新規登録　表示用
 router.get('/entry', isLoggedIn, async(req, res) => {
@@ -650,6 +654,7 @@ router.get('/entry', isLoggedIn, async(req, res) => {
     const allUsers = await FinanceUser.find({ groups: activeGroupId });
     const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
     const common_tags = await getFrequentFinanceTags(activeGroupId, req.user?._id);
+    const financeTagRegistrationEnabled = req.user?.financeTagRegistrationEnabled === true;
 
     res.render('finance/entry', {
         page: 'entry',
@@ -664,7 +669,8 @@ router.get('/entry', isLoggedIn, async(req, res) => {
         formData: {},   // 初期値として空のオブジェクトを渡す
         errors: {},     // 初期値として空のオブジェクトを渡す
         duplicateWarning: false,
-        common_tags
+        common_tags,
+        financeTagRegistrationEnabled
     });
 });
 
@@ -682,6 +688,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     const nextAction = Array.isArray(req.body.nextAction) ? req.body.nextAction[0] : req.body.nextAction;
     const allUsers = await FinanceUser.find({ groups: req.session.activeGroupId });
     const common_tags = await getFrequentFinanceTags(activeGroupId, req.user?._id);
+    const financeTagRegistrationEnabled = req.user?.financeTagRegistrationEnabled === true;
     let errors = {};
 
     let extractedAmount = null;
@@ -737,7 +744,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             allUsers,
             ocrAmount: extractedAmount || '',
             duplicateWarning: false,
-            common_tags
+            common_tags,
+            financeTagRegistrationEnabled
         });
     }
 
@@ -798,7 +806,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         allUsers,
         ocrAmount: extractedAmount || '',
         duplicateWarning: true,
-        common_tags
+        common_tags,
+        financeTagRegistrationEnabled
       });
     }
 
@@ -813,8 +822,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         entry_date: toJST(new Date()),
         update_date: toJST(new Date()),
         memo: finance.memo || '',
-        sub_tag: normalizeSubTag(finance.sub_tag),
-        tags: Array.isArray(req.body.finance.tags)
+        sub_tag: financeTagRegistrationEnabled ? normalizeSubTag(finance.sub_tag) : '',
+        tags: financeTagRegistrationEnabled && Array.isArray(req.body.finance.tags)
             ? req.body.finance.tags.map((name, i) => ({
                 name,
                 category: req.body.finance.tag_categories?.[i] || '',
@@ -830,7 +839,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
     });
 
     // --- Handle tagItems for tags array ---
-    const tagItems = req.body.tagItems || [];
+    const tagItems = financeTagRegistrationEnabled ? (req.body.tagItems || []) : [];
     const tags = [];
 
     if (Array.isArray(tagItems)) {
@@ -845,7 +854,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
       });
     }
 
-    newFinance.tags = tags;
+    newFinance.tags = financeTagRegistrationEnabled ? tags : [];
 
     await newFinance.save();
     await logAction({ req, action: '登録', target: '家計簿' });
@@ -896,7 +905,8 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             allUsers,
             currentUser,
             availableGroups,
-            common_tags
+            common_tags,
+            financeTagRegistrationEnabled
         });
     }
 
@@ -1477,7 +1487,8 @@ router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
         duplicateWarning: req.query.duplicateWarning === '1',
         continueEntry: req.query.continueEntry === '1',
         returnTo,
-        common_tags
+        common_tags,
+        financeTagRegistrationEnabled: req.user?.financeTagRegistrationEnabled === true
     });
 }));
 
@@ -1529,7 +1540,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
     const validUserIds = new Set(allUsers.map(candidate => normalizeIdString(candidate._id)));
 
     let errors = {};
-    const tags = extractTagsFromRequest(req.body.tagItems);
+    const financeTagRegistrationEnabled = req.user?.financeTagRegistrationEnabled === true;
+    const tags = financeTagRegistrationEnabled ? extractTagsFromRequest(req.body.tagItems) : [];
 
     // 各項目のバリデーションをチェック
     if (!requestedGroupId) {
@@ -1583,7 +1595,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             currentUser,
             duplicateWarning: false,
             returnTo,
-            common_tags
+            common_tags,
+            financeTagRegistrationEnabled
         });
     }
 
@@ -1612,7 +1625,7 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         user: financeInput.user === 'Please Choice' ? '' : financeInput.user,
         group: targetGroupId,
         memo: financeInput.memo || '',
-        sub_tag: normalizeSubTag(financeInput.sub_tag),
+        sub_tag: financeTagRegistrationEnabled ? normalizeSubTag(financeInput.sub_tag) : '',
         update_date: getJSTDate(),
         month,
         day,
@@ -1682,7 +1695,8 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
             currentUser,
             availableGroups,
             returnTo,
-            common_tags: duplicateCommonTags
+            common_tags: duplicateCommonTags,
+            financeTagRegistrationEnabled
         });
     }
 
@@ -2849,8 +2863,21 @@ router.get('/budget', isLoggedIn, async (req, res) => {
     quickMenuSettings: buildQuickMenuItems(req.user?.financeQuickMenuItems).map((item) => ({
       key: item.key,
       customLabel: item.customLabel
-    }))
+    })),
+    financeTagRegistrationEnabled: req.user?.financeTagRegistrationEnabled === true
   });
+});
+
+// タグ登録設定
+router.post('/budget/tag-settings', isLoggedIn, async (req, res) => {
+  const enabled = req.body.tag_registration === 'enabled';
+
+  await FinanceUser.findByIdAndUpdate(req.user._id, {
+    financeTagRegistrationEnabled: enabled
+  });
+
+  req.flash('success', `タグ登録を「${enabled ? 'する' : 'しない'}」に更新しました`);
+  res.redirect('/finance/budget');
 });
 
 // よく使う項目フローティングメニュー設定
