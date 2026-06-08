@@ -497,7 +497,7 @@ main {
     transform: translateX(18px);
 }
 .finance-quick-fab-toggle {
-    padding: 7px 9px 7px 12px;
+    padding: 7px 9px;
     border-radius: 999px;
     border: 1px solid rgba(13, 110, 253, 0.28);
     background: #ffffff;
