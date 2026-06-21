@@ -19,6 +19,7 @@ const cron = require('node-cron');
 const Group = require('../models/groups');
 const FinanceBudgetNotice = require('../models/finance_budget_notice');
 const { sendMail } = require('../Utils/mailer');
+const { sendFinanceDailySummaries } = require('../Utils/financeDailySummary');
 const MatometeSetting = require('../models/matomete_setting');
 const FinanceBudgetNoticeSetting = require('../models/finance_budget_notice_setting');
 const FinanceItemCategoryGroup = require('../models/finance_item_category_group');
@@ -658,6 +659,9 @@ router.get('/entry', isLoggedIn, async(req, res) => {
 
     res.render('finance/entry', {
         page: 'entry',
+        fiscalStartMonth,
+        initialFiscalYear: yearForItems,
+        currentFiscalYear: getCurrentFiscalYear(fiscalStartMonth),
         la_cfs,
         ex_cfs,
         in_items,
@@ -669,6 +673,7 @@ router.get('/entry', isLoggedIn, async(req, res) => {
         formData: {},   // 初期値として空のオブジェクトを渡す
         errors: {},     // 初期値として空のオブジェクトを渡す
         duplicateWarning: false,
+        pendingNextAction: 'list',
         common_tags,
         financeTagRegistrationEnabled
     });
@@ -732,6 +737,9 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         }
         return res.render('finance/entry', {
             page: 'entry',
+            fiscalStartMonth,
+            initialFiscalYear: yearForItems,
+            currentFiscalYear: getCurrentFiscalYear(fiscalStartMonth),
             errors,
             formData,
             la_cfs,
@@ -744,6 +752,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
             allUsers,
             ocrAmount: extractedAmount || '',
             duplicateWarning: false,
+            pendingNextAction: nextAction || 'list',
             common_tags,
             financeTagRegistrationEnabled
         });
@@ -794,6 +803,9 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
       }
       return res.render('finance/entry', {
         page: 'entry',
+        fiscalStartMonth,
+        initialFiscalYear: yearForItems,
+        currentFiscalYear: getCurrentFiscalYear(fiscalStartMonth),
         errors,
         formData,
         la_cfs,
@@ -806,6 +818,7 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         allUsers,
         ocrAmount: extractedAmount || '',
         duplicateWarning: true,
+        pendingNextAction: nextAction || 'list',
         common_tags,
         financeTagRegistrationEnabled
       });
@@ -1976,6 +1989,17 @@ cron.schedule('0 * * * *', async () => {
   timezone: 'Asia/Tokyo'
 });
 
+// 前日の家計簿入力サマリー（設定時刻内の再試行と重複送信防止のため10分ごとに確認）
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    await sendFinanceDailySummaries();
+  } catch (error) {
+    console.error('Finance daily summary cron error:', error);
+  }
+}, {
+  timezone: 'Asia/Tokyo'
+});
+
 
 // 前月の締め完了（ユーザーがボタンで完了）
 router.post('/month-close/complete', isLoggedIn, async (req, res) => {
@@ -2853,6 +2877,10 @@ router.get('/budget', isLoggedIn, async (req, res) => {
       budgetNoticeHour: Number.isInteger(noticeSetting?.noticeHour)
         ? noticeSetting.noticeHour
         : 8,
+      dailySummaryEnabled: req.user?.financeDailySummaryEnabled === true,
+      dailySummaryHour: Number.isInteger(req.user?.financeDailySummaryHour)
+        ? req.user.financeDailySummaryHour
+        : 7,
       walletManagementEnabled: groupDoc?.financeWalletManagementEnabled === true
     },
     categoryGroupTypes: CATEGORY_GROUP_TYPES,
@@ -3031,6 +3059,21 @@ router.post('/budget/notice-settings', isLoggedIn, async (req, res) => {
   });
 
   req.flash('success', '予算通知の設定を更新しました');
+  res.redirect('/finance/budget');
+});
+
+// 前日の入力サマリーメール設定
+router.post('/budget/daily-summary-settings', isLoggedIn, async (req, res) => {
+  const enabled = req.body.daily_summary_enabled === 'on';
+  const hour = Number(req.body.daily_summary_hour);
+  const validHour = Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 7;
+
+  await FinanceUser.findByIdAndUpdate(req.user._id, {
+    financeDailySummaryEnabled: enabled,
+    financeDailySummaryHour: validHour
+  });
+
+  req.flash('success', '前日の入力サマリーメール設定を更新しました');
   res.redirect('/finance/budget');
 });
 

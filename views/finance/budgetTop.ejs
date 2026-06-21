@@ -254,6 +254,36 @@
       </form>
     <% } %>
 </div>
+<h5 class="mb-2"><i class="fa-regular fa-envelope"></i> 前日の入力サマリー</h5>
+<div class="p-3 border rounded bg-light mb-4">
+    <form action="/finance/budget/daily-summary-settings" method="POST">
+        <div class="form-check mb-3">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                id="dailySummaryEnabled"
+                name="daily_summary_enabled"
+                <%= noticeSettings?.dailySummaryEnabled ? 'checked' : '' %>
+            >
+            <label class="form-check-label" for="dailySummaryEnabled">前日の入力内容をメールで受け取る</label>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <label class="form-label mb-0" for="dailySummaryHour">送信時間（0〜23時）</label>
+            <input
+                type="number"
+                class="form-control"
+                id="dailySummaryHour"
+                name="daily_summary_hour"
+                min="0"
+                max="23"
+                value="<%= noticeSettings?.dailySummaryHour ?? 7 %>"
+                style="max-width:6rem;"
+            >
+            <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
+        </div>
+        <div class="text-muted small mt-2">※ 毎日、指定時刻に前日の入力を1件1行でまとめ、支出合計とともに送信します。初期設定は「送信しない」、送信時間は7時です。</div>
+    </form>
+</div>
 <h5 class="mb-2"><i class="fa-regular fa-envelope"></i> まとめて入力の催促</h5>
 <div class="p-3 border rounded bg-light mb-4">
     <form action="/finance/budget/matomete-settings" method="POST" class="mb-2">

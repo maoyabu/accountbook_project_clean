@@ -89,6 +89,16 @@ const userSchema = new Schema({
         type: [Number],
         default: [50, 80, 90]
     },
+    financeDailySummaryEnabled: {
+        type: Boolean,
+        default: false
+    },
+    financeDailySummaryHour: {
+        type: Number,
+        min: 0,
+        max: 23,
+        default: 7
+    },
     matometeReminderDays: {
         type: Number,
         default: 7

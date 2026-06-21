@@ -18,11 +18,25 @@
           <div class="alert alert-success text-center" role="alert"><%= duplicateMessage %></div>
         <% } %>
         <% if (typeof duplicateWarning !== 'undefined' && duplicateWarning) { %>
-          <div class="alert alert-warning text-center" role="alert">
-            同じ内容の入力が見つかりました。内容を確認の上、もう一度「登録」すると登録されます。
+          <div class="alert alert-warning text-center" id="duplicateDecisionPanel" role="alert">
+            <p class="fw-bold mb-2">同じ内容の入力が見つかりました。</p>
+            <p class="mb-3">このまま登録するか、入力内容を修正するか、登録をキャンセルしてください。</p>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+              <button
+                type="submit"
+                form="financeEntryForm"
+                class="btn btn-warning"
+                onclick="document.getElementById('confirmDuplicate').value='1'">
+                このまま登録
+              </button>
+              <button type="button" class="btn btn-outline-primary" onclick="editDuplicateEntry()">
+                別の項目を入力
+              </button>
+              <a href="/finance/top" class="btn btn-outline-secondary">キャンセル</a>
+            </div>
           </div>
         <% } %>
-        <form action="/finance/entry" method="POST" enctype="multipart/form-data">
+        <form id="financeEntryForm" action="/finance/entry" method="POST" enctype="multipart/form-data">
           <input type="hidden" name="confirmDuplicate" id="confirmDuplicate" value="0">
           <input type="hidden" name="finance[corrected_storeName]" id="corrected_storeName" value="<%= formData?.corrected_storeName || '' %>">
           <input type="hidden" name="finance[corrected_amount]" id="corrected_amount" value="<%= formData?.corrected_amount || '' %>">
@@ -205,7 +219,8 @@
                   </div>
                 <% } %>
                 <hr>
-                <input type="hidden" name="nextAction" id="nextActionInput" value="list">
+                <div id="entrySubmitActions" class="<%= duplicateWarning ? 'd-none' : '' %>">
+                <input type="hidden" name="nextAction" id="nextActionInput" value="<%= typeof pendingNextAction !== 'undefined' ? pendingNextAction : 'list' %>">
                 <div class="form-group mb-0">
                     <button type="submit" class="c-button" onclick="document.getElementById('nextActionInput').value='list'">保存</button>
                     
@@ -218,7 +233,6 @@
                 </div>
                 <hr>
                 <div class="form-group mb-0">
-                        <input type="hidden" name="nextAction" value="duplicate">
                         <button type="submit" class="d-button" onclick="document.getElementById('nextActionInput').value='duplicate'">続けて入力</button>
                     <div class="spinner-border text-primary d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
                         <span class="visually-hidden">送信中...</span>
@@ -226,6 +240,7 @@
                 </div>
                 <div class="text-center">
                     <small class="form-text text-muted">このデータを保存して、同じ内容を複製して変更点だけを編集する</small>
+                </div>
                 </div>
         </form>
 
@@ -239,6 +254,10 @@
 <script>
   let categories = <%- JSON.stringify(ex_cfs) %>;
   let commonTags = <%- JSON.stringify(typeof common_tags !== 'undefined' ? common_tags : []) %>;
+  const fiscalStartMonth = <%- JSON.stringify(fiscalStartMonth) %>;
+  const currentFiscalYear = <%- JSON.stringify(currentFiscalYear) %>;
+  let loadedFiscalYear = <%- JSON.stringify(initialFiscalYear) %>;
+  const itemsByFiscalYear = new Map();
   let tagItemCount = 1;
   const cfSelect = document.getElementById('cf');
   const expenseGroup = document.getElementById('expense_group');
@@ -255,6 +274,14 @@
   const subTagInput = document.getElementById('sub_tag');
   const commonTagButtons = document.getElementById('commonTagButtons');
   const commonTagDatalist = document.getElementById('commonTagDatalist');
+
+  itemsByFiscalYear.set(String(loadedFiscalYear), {
+    ex_cfs: <%- JSON.stringify(ex_cfs) %>,
+    in_items: <%- JSON.stringify(in_items) %>,
+    dedu_cfs: <%- JSON.stringify(dedu_cfs) %>,
+    saving_cfs: <%- JSON.stringify(saving_cfs) %>,
+    common_tags: commonTags
+  });
 
   function setSelectOptions(select, items, selectedValue) {
     if (!select) return;
@@ -366,37 +393,55 @@
   }
 
   function applyDateLockState() {
-    const hasDate = Boolean(dateInput.value);
-    cfSelect.disabled = !hasDate;
-    if (!hasDate) {
-      cfSelect.value = 'Please Choice';
-    }
+    cfSelect.disabled = false;
     updateCategoryVisibility();
-    expenseSelect.disabled = !hasDate || cfSelect.value !== '支出';
-    incomeSelect.disabled = !hasDate || cfSelect.value !== '収入';
-    deductionSelect.disabled = !hasDate || cfSelect.value !== '控除';
-    savingSelect.disabled = !hasDate || cfSelect.value !== '貯蓄';
+    expenseSelect.disabled = cfSelect.value !== '支出';
+    incomeSelect.disabled = cfSelect.value !== '収入';
+    deductionSelect.disabled = cfSelect.value !== '控除';
+    savingSelect.disabled = cfSelect.value !== '貯蓄';
+    renderCommonTags();
+  }
+
+  function getFiscalYearForDateValue(dateValue) {
+    if (!dateValue) return currentFiscalYear;
+    const [year, month] = dateValue.split('-').map(Number);
+    if (!year || !month) return currentFiscalYear;
+    return month >= fiscalStartMonth ? year : year - 1;
+  }
+
+  function applyFiscalYearItems(data) {
+    setSelectOptions(expenseSelect, data.ex_cfs || [], expenseSelect.value);
+    setSelectOptions(incomeSelect, data.in_items || [], incomeSelect.value);
+    setSelectOptions(deductionSelect, data.dedu_cfs || [], deductionSelect.value);
+    setSelectOptions(savingSelect, data.saving_cfs || [], savingSelect.value);
+    updateTagCategoryOptions(data.ex_cfs || []);
+    commonTags = data.common_tags || commonTags;
     renderCommonTags();
   }
 
   async function refreshItemsByDate() {
-    const dateValue = dateInput.value;
-    if (!dateValue) {
+    const targetFiscalYear = getFiscalYearForDateValue(dateInput.value);
+    if (String(targetFiscalYear) === String(loadedFiscalYear)) {
       applyDateLockState();
       return;
     }
-    const year = new Date(dateValue).getFullYear();
+
+    const cachedItems = itemsByFiscalYear.get(String(targetFiscalYear));
+    if (cachedItems) {
+      applyFiscalYearItems(cachedItems);
+      loadedFiscalYear = targetFiscalYear;
+      applyDateLockState();
+      return;
+    }
+
     try {
-      const res = await fetch(`/finance/budget/items?year=${year}`, { headers: { 'Accept': 'application/json' } });
+      const res = await fetch(`/finance/budget/items?year=${targetFiscalYear}`, { headers: { 'Accept': 'application/json' } });
       if (!res.ok) return;
       const data = await res.json();
-      setSelectOptions(expenseSelect, data.ex_cfs || [], expenseSelect.value);
-      setSelectOptions(incomeSelect, data.in_items || [], incomeSelect.value);
-      setSelectOptions(deductionSelect, data.dedu_cfs || [], deductionSelect.value);
-      setSelectOptions(savingSelect, data.saving_cfs || [], savingSelect.value);
-      updateTagCategoryOptions(data.ex_cfs || []);
-      commonTags = data.common_tags || commonTags;
-      renderCommonTags();
+      if (targetFiscalYear !== getFiscalYearForDateValue(dateInput.value)) return;
+      itemsByFiscalYear.set(String(targetFiscalYear), data);
+      applyFiscalYearItems(data);
+      loadedFiscalYear = targetFiscalYear;
     } catch (err) {
       console.error('❌ 区分の取得に失敗:', err);
     } finally {
@@ -405,13 +450,6 @@
   }
 
   function updateCategoryVisibility() {
-    if (!dateInput.value) {
-      expenseGroup.style.display = 'none';
-      incomeGroup.style.display = 'none';
-      deductionGroup.style.display = 'none';
-      savingGroup.style.display = 'none';
-      return;
-    }
     expenseGroup.style.display = 'none';
     incomeGroup.style.display = 'none';
     deductionGroup.style.display = 'none';
@@ -507,9 +545,6 @@
     expenseSelect.addEventListener('change', renderCommonTags);
     dateInput.addEventListener('change', refreshItemsByDate);
     applyDateLockState();
-    if (dateInput.value) {
-      refreshItemsByDate();
-    }
     // store original button labels for reset
     document.querySelectorAll('button[type=\"submit\"]').forEach(b => {
       if (!b.dataset.originalLabel) b.dataset.originalLabel = b.textContent;
@@ -563,21 +598,12 @@
     }
   }
 
-  const hasDuplicateWarning = <%- JSON.stringify(typeof duplicateWarning !== 'undefined' && Boolean(duplicateWarning)) %>;
-  if (hasDuplicateWarning) {
-    const entryForm = document.querySelector('form[action="/finance/entry"]');
-    if (entryForm) {
-      entryForm.addEventListener('submit', (e) => {
-        const confirmInput = document.getElementById('confirmDuplicate');
-        if (confirmInput && confirmInput.value !== '1') {
-          const ok = window.confirm('同じ内容の入力が既にあります。続けて登録しますか？');
-          if (!ok) {
-            e.preventDefault();
-            return;
-          }
-          confirmInput.value = '1';
-        }
-      });
-    }
+  function editDuplicateEntry() {
+    document.getElementById('duplicateDecisionPanel')?.classList.add('d-none');
+    document.getElementById('entrySubmitActions')?.classList.remove('d-none');
+    document.getElementById('confirmDuplicate').value = '0';
+    const contentInput = document.getElementById('content');
+    contentInput?.focus();
+    contentInput?.select();
   }
 </script>

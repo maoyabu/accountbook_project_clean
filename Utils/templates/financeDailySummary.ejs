@@ -1,0 +1,45 @@
+<%- include('_mailHeader') %>
+<div class="email-container">
+  <div class="email-header">
+    <h1>前日の家計簿サマリー</h1>
+  </div>
+  <p><%= name %> さん</p>
+  <p><strong><%= summaryDate %></strong> に入力した内容をお知らせします。</p>
+
+  <% if (rows.length === 0) { %>
+    <p style="padding:16px;background:#f5f7f8;border-radius:8px;">前日の入力はありませんでした。</p>
+  <% } else { %>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="background:#44616d;color:#fff;">
+            <th style="padding:8px;border:1px solid #d7dee2;text-align:left;">グループ</th>
+            <th style="padding:8px;border:1px solid #d7dee2;text-align:left;">収支区分</th>
+            <th style="padding:8px;border:1px solid #d7dee2;text-align:left;">区分</th>
+            <th style="padding:8px;border:1px solid #d7dee2;text-align:left;">内容</th>
+            <th style="padding:8px;border:1px solid #d7dee2;text-align:right;">金額</th>
+            <th style="padding:8px;border:1px solid #d7dee2;text-align:left;">支払種別</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.forEach(row => { %>
+            <tr>
+              <td style="padding:8px;border:1px solid #d7dee2;"><%= row.groupName %></td>
+              <td style="padding:8px;border:1px solid #d7dee2;"><%= row.category %></td>
+              <td style="padding:8px;border:1px solid #d7dee2;"><%= row.item || '-' %></td>
+              <td style="padding:8px;border:1px solid #d7dee2;"><%= row.content || '-' %></td>
+              <td style="padding:8px;border:1px solid #d7dee2;text-align:right;white-space:nowrap;">¥<%= row.amount.toLocaleString('ja-JP') %></td>
+              <td style="padding:8px;border:1px solid #d7dee2;"><%= row.paymentType || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+  <p style="margin-top:20px;font-size:18px;">
+    前日の支出合計: <strong style="color:#c0392b;">¥<%= expenseTotal.toLocaleString('ja-JP') %></strong>
+  </p>
+  <p>入力内容の確認はこちら: <a href="<%= financeUrl %>"><%= financeUrl %></a></p>
+</div>
+<%- include('_mailFooter') %>
