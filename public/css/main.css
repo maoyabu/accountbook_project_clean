@@ -434,22 +434,37 @@ main {
     z-index: 1060;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    align-items: stretch;
+    width: min(260px, calc(100vw - 32px));
+    overflow: hidden;
+    border: 1px solid rgba(30, 64, 175, 0.16);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 18px 38px rgba(30, 64, 175, 0.18), 0 4px 12px rgba(15, 23, 42, 0.12);
     user-select: none;
     touch-action: none;
 }
 .finance-quick-fab-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
+    display: block;
+    background: #ffffff;
 }
 .finance-quick-fab-top {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
+    min-height: 44px;
+    padding: 8px 12px;
+    background: #2f6fe4;
+    color: #ffffff;
+    cursor: grab;
+}
+.finance-quick-fab-top:active {
+    cursor: grabbing;
 }
 .finance-quick-fab.is-disabled .finance-quick-fab-items {
+    display: none;
+}
+.finance-quick-fab.is-disabled .finance-quick-fab-content {
     display: none;
 }
 .finance-quick-toggle {
@@ -496,14 +511,6 @@ main {
 .finance-quick-toggle input:checked ~ .finance-quick-toggle-track::after {
     transform: translateX(18px);
 }
-.finance-quick-fab-toggle {
-    padding: 7px 9px;
-    border-radius: 999px;
-    border: 1px solid rgba(13, 110, 253, 0.28);
-    background: #ffffff;
-    color: #0b5ed7;
-    box-shadow: 0 8px 18px rgba(13, 110, 253, 0.14), 0 2px 6px rgba(0, 0, 0, 0.12);
-}
 .menu-quick-toggle-section {
     padding-top: 10px;
 }
@@ -523,68 +530,105 @@ main {
     gap: 6px;
 }
 .finance-quick-fab-control {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid rgba(0, 0, 0, 0.14);
-    background: #ffffff;
-    color: #0d6efd;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.13);
+    color: #ffffff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     text-decoration: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+    box-shadow: none;
 }
 .finance-quick-fab-control:hover {
-    background: #f4f8ff;
-    color: #084298;
+    background: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
 }
-.finance-quick-fab-handle {
-    cursor: grab;
+.finance-quick-fab-collapse i {
+    transition: transform 0.18s ease;
 }
-.finance-quick-fab-handle:active {
-    cursor: grabbing;
+.finance-quick-fab.is-disabled .finance-quick-fab-collapse i {
+    transform: rotate(180deg);
+}
+.finance-quick-fab-title {
+    min-width: 0;
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.88rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #ffffff;
+}
+.finance-quick-fab-dots {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    display: grid;
+    grid-template-columns: repeat(3, 3px);
+    grid-template-rows: repeat(3, 3px);
+    gap: 2px;
+    align-content: center;
+    justify-content: center;
+}
+.finance-quick-fab-dots span {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.finance-quick-fab-title > span:not(.finance-quick-fab-dots) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .finance-quick-fab-items {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
+    gap: 0;
+    align-items: stretch;
+    padding: 5px 0;
 }
 .finance-quick-fab-item {
-    min-height: 42px;
-    max-width: min(240px, calc(100vw - 72px));
-    padding: 9px 13px;
-    border-radius: 999px;
-    border: 1px solid rgba(13, 110, 253, 0.32);
+    min-height: 34px;
+    width: 100%;
+    max-width: none;
+    padding: 7px 16px;
+    border: 0;
+    border-radius: 0;
     background: #ffffff;
-    color: #0b5ed7;
+    color: #1f2937;
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 9px;
+    gap: 12px;
     text-decoration: none;
-    box-shadow: 0 8px 18px rgba(13, 110, 253, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
-    font-size: 0.88rem;
+    box-shadow: none;
+    font-size: 0.82rem;
     font-weight: 600;
     line-height: 1.2;
     cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
 }
 .finance-quick-fab-item.finance-quick-fab-mobile-entry {
     display: none;
 }
 .finance-quick-fab-item:hover {
-    background: #f4f8ff;
-    color: #084298;
+    background: #e9f2ff;
+    color: #1e40af;
 }
 .finance-quick-fab-item:active {
-    transform: scale(0.99);
+    background: #dbeafe;
 }
 .finance-quick-fab-item i {
-    width: 1rem;
-    flex: 0 0 1rem;
+    width: 1.05rem;
+    flex: 0 0 1.05rem;
     text-align: center;
+    color: #2f6fe4;
 }
 .finance-quick-fab-item span {
     overflow: hidden;
@@ -597,58 +641,24 @@ button.finance-quick-fab-item {
 @media (max-width: 576px) {
     .finance-quick-fab {
         right: 12px;
-        top: 8px;
-        gap: 6px;
+        top: 76px;
+        width: min(260px, calc(100vw - 24px));
     }
     .menu-quick-toggle-section {
         display: none;
     }
-    .finance-quick-fab-top,
-    .finance-quick-fab-controls,
-    .finance-quick-fab-items .finance-quick-fab-item:not(.finance-quick-fab-mobile-entry) {
-        display: none;
-    }
-    .finance-quick-fab.is-disabled .finance-quick-fab-items {
-        display: flex;
-    }
     .finance-quick-fab-content {
-        gap: 6px;
-    }
-    .finance-quick-fab-controls {
-        gap: 5px;
+        display: block;
     }
     .finance-quick-fab-control {
         width: 26px;
         height: 26px;
         font-size: 0.75rem;
     }
-    .finance-quick-fab-items {
-        gap: 7px;
-    }
     .finance-quick-fab-item {
-        width: 44px;
-        height: 44px;
-        min-height: 44px;
-        max-width: 44px;
-        padding: 0;
-        border-radius: 50%;
-        justify-content: center;
-        font-size: 1.05rem;
-    }
-    .finance-quick-fab-item.finance-quick-fab-mobile-entry {
-        display: inline-flex;
-        background-color: #0b4fb3;
-        border-color: #0b4fb3;
-        color: #ffffff;
-        box-shadow: 0 8px 18px rgba(11, 79, 179, 0.28), 0 2px 6px rgba(0, 0, 0, 0.16);
-    }
-    .finance-quick-fab-item.finance-quick-fab-mobile-entry:hover {
-        background-color: #083f91;
-        border-color: #083f91;
-        color: #ffffff;
-    }
-    .finance-quick-fab-mobile-entry span {
-        display: none;
+        min-height: 34px;
+        padding: 7px 14px;
+        font-size: 0.82rem;
     }
 }
 

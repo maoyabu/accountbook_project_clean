@@ -296,7 +296,8 @@ function renderTags(tags) {
     const toggles = Array.from(document.querySelectorAll("[data-finance-quick-toggle]"));
     if (!fab && toggles.length === 0) return;
 
-    const handle = fab?.querySelector(".finance-quick-fab-handle");
+    const header = fab?.querySelector(".finance-quick-fab-top");
+    const collapseButton = fab?.querySelector("[data-finance-quick-collapse]");
     const mobileEntry = fab?.querySelector(".finance-quick-fab-mobile-entry");
     const groupSwitch = fab?.querySelector('[data-finance-quick-action="group-switch"]');
     const dragThreshold = 4;
@@ -309,6 +310,9 @@ function renderTags(tags) {
         if (fab) {
             fab.dataset.financeQuickEnabled = enabled ? "true" : "false";
             fab.classList.toggle("is-disabled", !enabled);
+        }
+        if (collapseButton) {
+            collapseButton.setAttribute("aria-expanded", enabled ? "true" : "false");
         }
         toggles.forEach((toggle) => {
             toggle.checked = enabled;
@@ -346,6 +350,26 @@ function renderTags(tags) {
     });
 
     if (!fab) return;
+
+    if (collapseButton) {
+        collapseButton.addEventListener("click", async (event) => {
+            event.preventDefault();
+            if (syncing || moved) return;
+            const nextEnabled = fab.dataset.financeQuickEnabled !== "true";
+            const previousEnabled = !nextEnabled;
+            syncing = true;
+            setQuickMenuEnabled(nextEnabled);
+            try {
+                const savedEnabled = await persistQuickMenuEnabled(nextEnabled);
+                setQuickMenuEnabled(savedEnabled);
+            } catch (_) {
+                setQuickMenuEnabled(previousEnabled);
+                window.alert("よく使う項目の表示設定を更新できませんでした。時間をおいて再度お試しください。");
+            } finally {
+                syncing = false;
+            }
+        });
+    }
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -435,12 +459,18 @@ function renderTags(tags) {
         groupSwitch.addEventListener("click", openGroupMenu);
     }
 
-    const dragTargets = [handle, mobileEntry].filter(Boolean);
+    const canStartHeaderDrag = (event) => {
+        if (!header || event.currentTarget !== header) return true;
+        return !event.target.closest("a, button, input, label, select, textarea");
+    };
+
+    const dragTargets = [header, mobileEntry].filter(Boolean);
     if (dragTargets.length === 0) return;
 
     dragTargets.forEach((target) => {
         target.addEventListener("pointerdown", (event) => {
             if (event.button !== 0 && event.pointerType === "mouse") return;
+            if (!canStartHeaderDrag(event)) return;
             beginDrag(event.clientX, event.clientY);
         });
     });
@@ -455,6 +485,7 @@ function renderTags(tags) {
     dragTargets.forEach((target) => {
         target.addEventListener("mousedown", (event) => {
             if (event.button !== 0) return;
+            if (!canStartHeaderDrag(event)) return;
             beginDrag(event.clientX, event.clientY);
         });
     });
@@ -467,6 +498,7 @@ function renderTags(tags) {
 
     dragTargets.forEach((target) => {
         target.addEventListener("touchstart", (event) => {
+            if (!canStartHeaderDrag(event)) return;
             const touch = event.touches[0];
             if (!touch) return;
             beginDrag(touch.clientX, touch.clientY);
