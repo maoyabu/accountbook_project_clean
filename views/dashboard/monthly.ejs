@@ -13,19 +13,26 @@
         <div class="d-flex align-items-center flex-nowrap gap-2">
           <form method="GET" action="<%= formAction %>" class="d-flex mb-0">
             <div class="d-flex align-items-center flex-nowrap gap-2">
-              <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;">
+              <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;" onchange="this.form.submit()">
               <div class="form-check form-switch mb-0 text-nowrap">
                 <input type="hidden" name="tagSummary" value="0">
-                <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %>>
+                <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %> onchange="this.form.submit()">
                 <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
               </div>
-              <button type="submit" class="btn btn-primary btn-sm" style="width: 60px;">表示</button>
+              <% if ((expenseCategorySummaries || []).length > 0) { %>
+                <div class="form-check form-switch mb-0 text-nowrap">
+                  <input type="hidden" name="categorySummary" value="0">
+                  <input class="form-check-input" type="checkbox" id="categorySummarySwitch" name="categorySummary" value="1" <%= showCategorySummary ? 'checked' : '' %> onchange="this.form.submit()">
+                  <label class="form-check-label" for="categorySummarySwitch">上位カテゴリー別</label>
+                </div>
+              <% } %>
             </div>
           </form>
           <% if (typeof excelAction !== 'undefined' && excelAction) { %>
             <form method="GET" action="<%= excelAction %>" class="mb-0" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button').textContent = '出力中...'; setTimeout(() => { this.querySelector('button').disabled = false; this.querySelector('button').textContent = 'Excel出力'; }, 3000);">
               <input type="hidden" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>">
               <input type="hidden" name="tagSummary" value="<%= showTagSummary ? '1' : '0' %>">
+              <input type="hidden" name="categorySummary" value="<%= showCategorySummary ? '1' : '0' %>">
               <button type="submit" class="btn btn-sm btn-light">Excel出力</button>
             </form>
           <% } %>
@@ -384,6 +391,9 @@
       <table class="table table-bordered mt-3 dashboard-monthly">
         <thead class="table-primary text-center">
           <tr>
+            <% if (showCategorySummary) { %>
+              <th class="text-dark align-middle" rowspan="2">上位カテゴリー</th>
+            <% } %>
             <th class="text-dark align-middle" rowspan="2">項目</th>
             <% if (showTagSummary) { %>
               <th class="text-dark align-middle" rowspan="2">タグ</th>
@@ -465,6 +475,7 @@
             const totalRateMeta = getBudgetDiffRateMeta(cumTotalSum, cumBudgetSum);
           %>
           <tr class="dashboard-monthly-total-row fw-bold">
+            <% if (showCategorySummary) { %><td></td><% } %>
             <td class="text-start">合計</td>
             <% if (showTagSummary) { %><td></td><% } %>
             <td class="text-end"><%= totalSum.toLocaleString() %></td>
@@ -492,8 +503,28 @@
             </td>
             <% if (reflectionEnabled) { %><td></td><% } %>
           </tr>
+          <% if (showCategorySummary) { %>
+            <% (expenseCategorySummaries || []).forEach((category) => { %>
+              <tr class="table-info fw-bold">
+                <td class="text-start"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
+                <td class="text-start">合計 <span class="small fw-normal text-muted">（<%= category.itemNames.join('、') || '対象項目なし' %>）</span></td>
+                <% if (showTagSummary) { %><td></td><% } %>
+                <td class="text-end"><%= category.month.total.toLocaleString() %></td>
+                <td class="text-end"><%= category.month.budget.toLocaleString() %></td>
+                <td class="text-end <%= category.month.diff < 0 ? 'text-danger' : '' %>"><%= category.month.diff.toLocaleString() %></td>
+                <td class="text-end"><%= category.cumulative.total.toLocaleString() %></td>
+                <td class="text-end"><%= category.cumulative.budget.toLocaleString() %></td>
+                <td class="text-end <%= category.cumulative.diff < 0 ? 'text-danger' : '' %>"><%= category.cumulative.diff.toLocaleString() %></td>
+                <td class="text-end col-cumulative-diff-rate"><%= formatBudgetRatePercent(category.cumulative.total, category.cumulative.budget) %></td>
+                <% if (reflectionEnabled) { %><td></td><% } %>
+              </tr>
+            <% }) %>
+          <% } %>
           <% for (let data of combinedItems) {
               const { item, month: monData, cumulative: cum } = data;
+              const parentCategoryNames = (expenseCategorySummaries || [])
+                .filter(category => category.itemNames.includes(item))
+                .map(category => category.name);
               const cumRateMeta = getBudgetDiffRateMeta(cum.total, cum.budget);
               const reflection = monthlyReflectionMap?.[item] || null;
               const reflectionCount = reflection?.comments?.length || 0;
@@ -510,6 +541,7 @@
               });
           %>
             <tr>
+              <% if (showCategorySummary) { %><td class="text-start"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
               <td class="text-start"><%= item %></td>
               <% if (showTagSummary) { %><td></td><% } %>
               <td class="text-end">
@@ -569,6 +601,7 @@
                 const tagQuery = tag === '他' ? '__none__' : tag;
               %>
                 <tr>
+                  <% if (showCategorySummary) { %><td></td><% } %>
                   <td></td>
                   <td class="text-start ps-3"><%= tag %></td>
                   <td class="text-end">

@@ -17,6 +17,13 @@
           <input class="form-check-input" type="checkbox" id="tagSummarySwitch" name="tagSummary" value="1" <%= showTagSummary ? 'checked' : '' %> onchange="this.form.submit()">
           <label class="form-check-label" for="tagSummarySwitch">タグ別</label>
         </div>
+        <% if ((expenseCategorySummaries || []).length > 0) { %>
+          <div class="form-check form-switch mb-0">
+            <input type="hidden" name="categorySummary" value="0">
+            <input class="form-check-input" type="checkbox" id="categorySummarySwitch" name="categorySummary" value="1" <%= showCategorySummary ? 'checked' : '' %> onchange="this.form.submit()">
+            <label class="form-check-label" for="categorySummarySwitch">上位カテゴリー別</label>
+          </div>
+        <% } %>
         <span>年度 <%= titlePrefix %>の年間サマリー</span>
       </form>
 
@@ -36,7 +43,10 @@
           <!-- <table class="table table-bordered table-sm text-end align-middle" style="width: 80%; margin: auto; table-layout: auto;"> -->
           <thead>
             <tr>
-              <th class="sticky-top sticky-col header-fixed" style="border-left: none; border-right: none;">項目</th>
+              <% if (showCategorySummary) { %>
+                <th class="sticky-top sticky-col header-fixed" style="border-left: none; border-right: none;">上位カテゴリー</th>
+              <% } %>
+              <th class="sticky-top <%= showCategorySummary ? '' : 'sticky-col' %> header-fixed" style="border-left: none; border-right: none;">項目</th>
               <% if (showTagSummary) { %>
                 <th class="sticky-top header-fixed" style="background-color: #44616D; color: white; border-left: none; border-right: none;">タグ</th>
               <% } %>
@@ -52,7 +62,8 @@
             <% const cfList = ['収入', '貯蓄', '控除', '支出']; %>
             <% cfList.forEach((cf, index) => { %>
               <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
-                <td class="sticky-col fw-bold text-center"><%= cf %></td>
+                <% if (showCategorySummary) { %><td class="sticky-col"></td><% } %>
+                <td class="<%= showCategorySummary ? '' : 'sticky-col' %> fw-bold text-center"><%= cf %></td>
                 <% if (showTagSummary) { %><td></td><% } %>
                 <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= totalBudgets[cf]?.toLocaleString() || '0' %></td>
                 <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>
@@ -80,7 +91,8 @@
         
             <!-- 収支計 -->
             <tr class="table-warning">
-              <td class="sticky-col fw-bold text-center">収支</td>
+              <% if (showCategorySummary) { %><td class="sticky-col"></td><% } %>
+              <td class="<%= showCategorySummary ? '' : 'sticky-col' %> fw-bold text-center">収支</td>
               <% if (showTagSummary) { %><td></td><% } %>
               <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"></td>
               <% for (let m = 1; m <= 12; m++) {
@@ -103,13 +115,36 @@
             </tr>
         
             <!-- 空行 -->
-            <tr><td colspan="<%= showTagSummary ? 17 : 16 %>" style="height: 10px; border: none;"></td></tr>
+            <tr><td colspan="<%= (showTagSummary ? 17 : 16) + (showCategorySummary ? 1 : 0) %>" style="height: 10px; border: none;"></td></tr>
         
             <!-- 支出内訳 -->
-            <% ex_cfs.forEach((item, index) => { %>
+            <% if (showCategorySummary) { %>
+              <% (expenseCategorySummaries || []).forEach((category, index) => {
+                const categoryDiff = category.budget * 12 - category.total;
+              %>
+                <tr class="table-primary fw-bold">
+                  <td class="sticky-col text-start"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
+                  <td class="text-start">合計 <span class="small fw-normal text-muted">（<%= category.itemNames.join('、') || '対象項目なし' %>）</span></td>
+                  <% if (showTagSummary) { %><td></td><% } %>
+                  <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= category.budget.toLocaleString() %></td>
+                  <% (fiscalMonths || []).forEach((m, idx) => { %>
+                    <td><%= (category.monthlyTotals[idx + 1] || 0).toLocaleString() %></td>
+                  <% }) %>
+                  <td class="fw-bold"><%= category.total.toLocaleString() %></td>
+                  <td class="fw-bold <%= categoryDiff < 0 ? 'text-danger' : '' %>"><%= categoryDiff.toLocaleString() %></td>
+                </tr>
+              <% }) %>
+              <tr><td colspan="<%= (showTagSummary ? 17 : 16) + 1 %>" style="height: 6px; border: none;"></td></tr>
+            <% } %>
+            <% ex_cfs.forEach((item, index) => {
+              const parentCategoryNames = (expenseCategorySummaries || [])
+                .filter(category => category.itemNames.includes(item))
+                .map(category => category.name);
+            %>
               <!-- <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>"> -->
                 <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
-                <td class="sticky-col text-start"><%= item %></td>
+                <% if (showCategorySummary) { %><td class="sticky-col text-start"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
+                <td class="<%= showCategorySummary ? '' : 'sticky-col' %> text-start"><%= item %></td>
                 <% if (showTagSummary) { %><td></td><% } %>
                 <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= budgetMap[item]?.toLocaleString() || '0' %></td>
                 <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>
@@ -154,7 +189,8 @@
                   const tagQuery = tag === '他' ? '__none__' : tag;
                 %>
                   <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
-                    <td class="sticky-col"></td>
+                    <% if (showCategorySummary) { %><td class="sticky-col"></td><% } %>
+                    <td class="<%= showCategorySummary ? '' : 'sticky-col' %>"></td>
                     <td class="text-start ps-3"><%= tag %></td>
                     <td></td>
                     <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; const tagAmount = monthlyExpenseTagDetail?.[mIndex]?.[item]?.[tag] || 0; %>

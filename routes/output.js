@@ -45,6 +45,57 @@ const resolveDashboardTagSummary = (req, key) => {
   return req.session.dashboardTagSummary[key] === true;
 };
 
+const resolveDashboardCategorySummary = (req, key) => {
+  if (!req.session.dashboardCategorySummary) req.session.dashboardCategorySummary = {};
+  if (Object.prototype.hasOwnProperty.call(req.query, 'categorySummary')) {
+    const rawValue = req.query.categorySummary;
+    const enabled = Array.isArray(rawValue) ? rawValue.includes('1') : rawValue === '1';
+    req.session.dashboardCategorySummary[key] = enabled;
+    return enabled;
+  }
+  return req.session.dashboardCategorySummary[key] === true;
+};
+
+const fetchExpenseCategoryGroups = (groupId, year) => FinanceItemCategoryGroup.find({
+  group: groupId,
+  year: String(year),
+  target_type: '支出項目'
+}).sort({ display_order: 1, name: 1 }).lean();
+
+const buildMonthlyExpenseCategorySummaries = (groups, expenseItems, cumulativeItems) => {
+  const monthMap = new Map((expenseItems || []).map(row => [row.item, row]));
+  const cumulativeMap = new Map((cumulativeItems || []).map(row => [row.item, row]));
+  return (groups || []).map(group => {
+    const itemNames = Array.from(new Set(group.item_names || []));
+    const sum = (map, key) => itemNames.reduce((total, item) => total + (Number(map.get(item)?.[key]) || 0), 0);
+    return {
+      name: group.name,
+      itemNames,
+      month: { total: sum(monthMap, 'total'), budget: sum(monthMap, 'budget'), diff: sum(monthMap, 'diff') },
+      cumulative: { total: sum(cumulativeMap, 'total'), budget: sum(cumulativeMap, 'budget'), diff: sum(cumulativeMap, 'diff') }
+    };
+  });
+};
+
+const buildYearlyExpenseCategorySummaries = (groups, monthlyExpensesDetail, budgetMap) => (
+  (groups || []).map(group => {
+    const itemNames = Array.from(new Set(group.item_names || []));
+    const monthlyTotals = {};
+    for (let month = 1; month <= 12; month++) {
+      monthlyTotals[month] = itemNames.reduce(
+        (total, item) => total + (Number(monthlyExpensesDetail?.[month]?.[item]) || 0), 0
+      );
+    }
+    return {
+      name: group.name,
+      itemNames,
+      budget: itemNames.reduce((total, item) => total + (Number(budgetMap?.[item]) || 0), 0),
+      monthlyTotals,
+      total: Object.values(monthlyTotals).reduce((sum, value) => sum + value, 0)
+    };
+  })
+);
+
 async function fetchItemsByYear(groupId, year) {
     const yearStr = String(year);
     let items = await Items.find({ group: groupId, year: yearStr });
@@ -1074,6 +1125,7 @@ async function buildMonthlyGroupDashboardData(req) {
 
   const groupId = req.session.activeGroupId;
   const showTagSummary = resolveDashboardTagSummary(req, 'monthly-g');
+  const showCategorySummary = resolveDashboardCategorySummary(req, 'monthly-g');
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
   const fiscalYear = cumulativeMeta.fiscalYear;
@@ -1166,6 +1218,8 @@ async function buildMonthlyGroupDashboardData(req) {
     monthlyBudget,
     budgetMonthCount: cumulativeMeta.budgetMonthCount
   });
+  const categoryGroups = await fetchExpenseCategoryGroups(groupId, fiscalYear);
+  const expenseCategorySummaries = buildMonthlyExpenseCategorySummaries(categoryGroups, expenseItems, cumulativeItems);
 
   const ymValue = `${year}-${String(month).padStart(2, '0')}`;
   const summaryReflectionItems = monthlySummaryRows
@@ -1211,6 +1265,8 @@ async function buildMonthlyGroupDashboardData(req) {
     monthlyReflections,
     reflectionAction: '/export/dashboard/monthly-g/reflections',
     showTagSummary,
+    showCategorySummary,
+    expenseCategorySummaries,
     formAction: '/export/dashboard/monthly-g',
     excelAction: '/export/dashboard/monthly-g-exls',
     titlePrefix: `${groupName}`,
@@ -1878,6 +1934,7 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
   const userId = req.user._id;
   const groupId = req.session.activeGroupId;
   const showTagSummary = resolveDashboardTagSummary(req, 'monthly-m');
+  const showCategorySummary = resolveDashboardCategorySummary(req, 'monthly-m');
   const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
   const cumulativeMeta = getMonthlyCumulativeMeta(year, month, fiscalStartMonth);
   const fiscalYear = cumulativeMeta.fiscalYear;
@@ -1984,6 +2041,8 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     monthlyBudget,
     budgetMonthCount: cumulativeMeta.budgetMonthCount
   });
+  const categoryGroups = await fetchExpenseCategoryGroups(groupId, fiscalYear);
+  const expenseCategorySummaries = buildMonthlyExpenseCategorySummaries(categoryGroups, expenseItems, cumulativeItems);
 
   res.render('dashboard/monthly', {
     year, month,
@@ -1998,6 +2057,8 @@ router.get('/dashboard/monthly-m', isLoggedIn, async (req, res) => {
     expenseTagSummary,
     cumulativeTagSummary,
     showTagSummary,
+    showCategorySummary,
+    expenseCategorySummaries,
     formAction: '/export/dashboard/monthly-m',
     titlePrefix: `${req.user.displayname}さん`,
     viewType: 'user',
@@ -2382,6 +2443,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
     const showTagSummary = resolveDashboardTagSummary(req, 'yearly-m');
+    const showCategorySummary = resolveDashboardCategorySummary(req, 'yearly-m');
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -2516,12 +2578,16 @@ router.get('/dashboard/yearly-m', async (req, res) => {
       availableYears.sort((a, b) => a - b);
     }
 
+    const categoryGroups = await fetchExpenseCategoryGroups(groupId, year);
+    const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
     res.render('dashboard/yearly', {
       year,
       monthlySummary,
       monthlyExpensesDetail,
       monthlyExpenseTagDetail,
       showTagSummary,
+      showCategorySummary,
+      expenseCategorySummaries,
       budgetMap,
       cumulativeBudgetMap,
       ex_cfs,
@@ -2549,6 +2615,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
     const showTagSummary = resolveDashboardTagSummary(req, 'yearly-g');
+    const showCategorySummary = resolveDashboardCategorySummary(req, 'yearly-g');
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -2693,12 +2760,16 @@ router.get('/dashboard/yearly-g', async (req, res) => {
       availableYears.sort((a, b) => a - b);
     }
 
+    const categoryGroups = await fetchExpenseCategoryGroups(groupId, year);
+    const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
     res.render('dashboard/yearly', {
       year,
       monthlySummary,
       monthlyExpensesDetail,
       monthlyExpenseTagDetail,
       showTagSummary,
+      showCategorySummary,
+      expenseCategorySummaries,
       budgetMap,
       cumulativeBudgetMap,
       ex_cfs,
