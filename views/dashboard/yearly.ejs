@@ -59,7 +59,10 @@
             </tr>
           </thead>
           <tbody>
-            <% const cfList = ['収入', '貯蓄', '控除', '支出']; %>
+            <%
+              const cfList = ['収入', '貯蓄', '控除', '支出'];
+              const categoryColors = ['#dbeafe', '#dcfce7', '#fef3c7', '#fce7f3', '#ede9fe', '#cffafe', '#ffedd5', '#e2e8f0'];
+            %>
             <% cfList.forEach((cf, index) => { %>
               <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
                 <% if (showCategorySummary) { %><td class="sticky-col"></td><% } %>
@@ -123,8 +126,8 @@
                 const categoryDiff = category.budget * 12 - category.total;
               %>
                 <tr class="table-primary fw-bold">
-                  <td class="sticky-col text-start"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
-                  <td class="text-start">合計 <span class="small fw-normal text-muted">（<%= category.itemNames.join('、') || '対象項目なし' %>）</span></td>
+                  <td class="sticky-col text-start" style="background-color: <%= categoryColors[index % categoryColors.length] %>;"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
+                  <td class="text-start" style="background-color: <%= categoryColors[index % categoryColors.length] %>;">合計</td>
                   <% if (showTagSummary) { %><td></td><% } %>
                   <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= category.budget.toLocaleString() %></td>
                   <% (fiscalMonths || []).forEach((m, idx) => { %>
@@ -140,11 +143,16 @@
               const parentCategoryNames = (expenseCategorySummaries || [])
                 .filter(category => category.itemNames.includes(item))
                 .map(category => category.name);
+              const parentCategoryIndex = (expenseCategorySummaries || [])
+                .findIndex(category => category.itemNames.includes(item));
+              const parentCategoryColor = parentCategoryIndex >= 0
+                ? categoryColors[parentCategoryIndex % categoryColors.length]
+                : '';
             %>
               <!-- <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>"> -->
                 <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
-                <% if (showCategorySummary) { %><td class="sticky-col text-start"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
-                <td class="<%= showCategorySummary ? '' : 'sticky-col' %> text-start"><%= item %></td>
+                <% if (showCategorySummary) { %><td class="sticky-col text-start" style="<%= parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
+                <td class="<%= showCategorySummary ? '' : 'sticky-col' %> text-start" style="<%= showCategorySummary && parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= item %></td>
                 <% if (showTagSummary) { %><td></td><% } %>
                 <td class="<%= showTagSummary ? '' : 'sticky-col2' %>"><%= budgetMap[item]?.toLocaleString() || '0' %></td>
                 <% (fiscalMonths || []).forEach((m, idx) => { const mIndex = idx + 1; %>

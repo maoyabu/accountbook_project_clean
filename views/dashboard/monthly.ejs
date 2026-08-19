@@ -418,6 +418,7 @@
           <% 
             let totalSum = 0, totalBudget = 0, totalDiff = 0;
             let cumTotalSum = 0, cumBudgetSum = 0, cumDiffSum = 0;
+            const categoryColors = ['#dbeafe', '#dcfce7', '#fef3c7', '#fce7f3', '#ede9fe', '#cffafe', '#ffedd5', '#e2e8f0'];
             const getBudgetRatePercentValue = (total, budget) => (
               budget ? ((total / budget) * 100) : null
             );
@@ -504,10 +505,10 @@
             <% if (reflectionEnabled) { %><td></td><% } %>
           </tr>
           <% if (showCategorySummary) { %>
-            <% (expenseCategorySummaries || []).forEach((category) => { %>
+            <% (expenseCategorySummaries || []).forEach((category, categoryIndex) => { %>
               <tr class="table-info fw-bold">
-                <td class="text-start"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
-                <td class="text-start">合計 <span class="small fw-normal text-muted">（<%= category.itemNames.join('、') || '対象項目なし' %>）</span></td>
+                <td class="text-start" style="background-color: <%= categoryColors[categoryIndex % categoryColors.length] %>;"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
+                <td class="text-start" style="background-color: <%= categoryColors[categoryIndex % categoryColors.length] %>;">合計</td>
                 <% if (showTagSummary) { %><td></td><% } %>
                 <td class="text-end"><%= category.month.total.toLocaleString() %></td>
                 <td class="text-end"><%= category.month.budget.toLocaleString() %></td>
@@ -525,6 +526,11 @@
               const parentCategoryNames = (expenseCategorySummaries || [])
                 .filter(category => category.itemNames.includes(item))
                 .map(category => category.name);
+              const parentCategoryIndex = (expenseCategorySummaries || [])
+                .findIndex(category => category.itemNames.includes(item));
+              const parentCategoryColor = parentCategoryIndex >= 0
+                ? categoryColors[parentCategoryIndex % categoryColors.length]
+                : '';
               const cumRateMeta = getBudgetDiffRateMeta(cum.total, cum.budget);
               const reflection = monthlyReflectionMap?.[item] || null;
               const reflectionCount = reflection?.comments?.length || 0;
@@ -541,8 +547,8 @@
               });
           %>
             <tr>
-              <% if (showCategorySummary) { %><td class="text-start"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
-              <td class="text-start"><%= item %></td>
+              <% if (showCategorySummary) { %><td class="text-start" style="<%= parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
+              <td class="text-start" style="<%= showCategorySummary && parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= item %></td>
               <% if (showTagSummary) { %><td></td><% } %>
               <td class="text-end">
                 <a href="/export/dashboard/monthly-detail?scope=<%= viewType === 'user' ? 'user' : 'group' %>&year=<%= year %>&month=<%= String(month) %>&item=<%= encodeURIComponent(item) %>&fy=<%= fiscalYear %>" class="text-decoration-none">
