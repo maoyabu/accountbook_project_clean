@@ -679,6 +679,41 @@ router.get('/entry', isLoggedIn, async(req, res) => {
     });
 });
 
+// 新規登録（会話）表示用
+router.get('/entry-conversation', isLoggedIn, async (req, res) => {
+    const activeGroupId = req.session.activeGroupId;
+    if (!activeGroupId) {
+        req.flash('error', 'アクティブなグループが選択されていません');
+        return res.redirect('/group_list');
+    }
+
+    const fiscalStartMonth = await getGroupFiscalStartMonth(activeGroupId);
+    const yearForItems = resolveFiscalYearForValue(req.query?.date, fiscalStartMonth);
+    await loadCfItems(req, yearForItems, fiscalStartMonth);
+    const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
+    const common_tags = await getFrequentFinanceTags(activeGroupId, req.user?._id);
+
+    const now = new Date();
+    const tokyoDateParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(now);
+    const tokyoDateMap = Object.fromEntries(tokyoDateParts.map(part => [part.type, part.value]));
+    const tokyoToday = `${tokyoDateMap.year}-${tokyoDateMap.month}-${tokyoDateMap.day}`;
+
+    res.render('finance/entryConversation', {
+        page: 'entry-conversation',
+        ex_cfs,
+        in_items,
+        dedu_cfs,
+        saving_cfs,
+        pay_cfs: global.pay_cfs,
+        common_tags,
+        financeTagRegistrationEnabled: req.user?.financeTagRegistrationEnabled === true,
+        currentUserName: req.user?.displayname || req.user?.username || '',
+        tokyoToday
+    });
+});
+
 //新規でデータを登録する
 router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res, next) => {
     // レシート画像のパスをログ出力

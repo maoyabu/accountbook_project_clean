@@ -1,0 +1,251 @@
+<% layout('layouts/boilerplate') %>
+<% page = 'entry-conversation' %>
+
+<div class="container finance-form-container mt-4 mb-5">
+  <div class="card shadow-sm conversation-entry-card">
+    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#44616D;">
+      <h5 class="mb-0"><i class="fa-solid fa-microphone-lines me-2"></i>収支の新規入力（会話）</h5>
+      <a href="/finance/entry" class="btn btn-sm btn-light">通常入力へ</a>
+    </div>
+    <div class="card-body">
+      <div id="voiceNotice" class="alert alert-info small mb-3">
+        マイクで回答するか、下の入力欄へ文字を入力してください。登録前に内容を確認できます。
+      </div>
+
+      <div id="conversationLog" class="conversation-log mb-3" aria-live="polite"></div>
+
+      <div id="answerPanel" class="border rounded p-3 bg-light">
+        <div class="fw-bold mb-2" id="currentPrompt"></div>
+        <div id="choiceButtons" class="d-flex flex-wrap gap-2 mb-2"></div>
+        <div class="input-group">
+          <input type="text" id="conversationAnswer" class="form-control" autocomplete="off" placeholder="回答を入力">
+          <button type="button" id="micButton" class="btn btn-outline-danger"><i class="fa-solid fa-microphone"></i> 話す</button>
+          <button type="button" id="answerButton" class="btn btn-primary">次へ</button>
+        </div>
+        <div id="recognitionStatus" class="small text-muted mt-2"></div>
+      </div>
+
+      <form id="conversationFinanceForm" action="/finance/entry" method="POST" class="d-none mt-4">
+        <input type="hidden" name="nextAction" value="list">
+        <input type="hidden" name="finance[user]" value="<%= currentUserName %>">
+        <input type="hidden" name="finance[income_item]" id="financeIncomeItem">
+        <input type="hidden" name="finance[expense_item]" id="financeExpenseItem">
+        <input type="hidden" name="finance[dedu_item]" id="financeDeduItem">
+        <input type="hidden" name="finance[saving_item]" id="financeSavingItem">
+
+        <div class="card border-success">
+          <div class="card-header bg-success text-white fw-bold">登録内容の確認</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4"><label class="form-label">日付</label><input type="date" class="form-control" name="finance[date]" id="reviewDate" required></div>
+              <div class="col-md-4"><label class="form-label">収支区分</label><select class="form-select" name="finance[cf]" id="reviewCf"><% ['支出','収入','控除','貯蓄'].forEach(v => { %><option value="<%= v %>"><%= v %></option><% }) %></select></div>
+              <div class="col-md-4"><label class="form-label">項目</label><select class="form-select" id="reviewItem"></select></div>
+              <div class="col-md-6"><label class="form-label">内容</label><input type="text" class="form-control" name="finance[content]" id="reviewContent"></div>
+              <div class="col-md-3"><label class="form-label">金額</label><div class="input-group"><input type="number" min="1" class="form-control" name="finance[amount]" id="reviewAmount" required><span class="input-group-text">円</span></div></div>
+              <div class="col-md-3"><label class="form-label">支払種別</label><select class="form-select" name="finance[payment_type]" id="reviewPayment"></select></div>
+              <% if (financeTagRegistrationEnabled) { %>
+                <div class="col-md-6"><label class="form-label">タグ</label><input type="text" class="form-control" name="finance[sub_tag]" id="reviewTag"></div>
+              <% } %>
+              <div class="col-md-6"><label class="form-label">メモ</label><input type="text" class="form-control" name="finance[memo]" id="reviewMemo"></div>
+            </div>
+          </div>
+          <div class="card-footer d-flex flex-wrap justify-content-end gap-2">
+            <button type="button" id="restartButton" class="btn btn-outline-secondary">最初からやり直す</button>
+            <button type="submit" id="saveButton" class="btn btn-success"><i class="fa-solid fa-check me-1"></i>この内容で登録</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .conversation-entry-card { max-width: 920px; margin: 0 auto; }
+  .conversation-log { min-height: 210px; max-height: 390px; overflow-y: auto; padding: 1rem; border: 1px solid #d7dee2; border-radius: .5rem; background: #f8fafb; }
+  .conversation-message { display: flex; margin-bottom: .75rem; }
+  .conversation-message.user { justify-content: flex-end; }
+  .conversation-bubble { max-width: 82%; padding: .65rem .85rem; border-radius: 1rem; white-space: pre-wrap; }
+  .conversation-message.assistant .conversation-bubble { background: #dce8ed; color: #24343b; border-bottom-left-radius: .25rem; }
+  .conversation-message.user .conversation-bubble { background: #0d6efd; color: #fff; border-bottom-right-radius: .25rem; }
+  #micButton.is-listening { color: #fff; background: #dc3545; animation: conversation-pulse 1.1s infinite; }
+  @keyframes conversation-pulse { 50% { opacity: .65; } }
+</style>
+
+<script>
+(() => {
+  const itemOptions = {
+    '支出': <%- JSON.stringify(ex_cfs || []).replace(/</g, '\\u003c') %>,
+    '収入': <%- JSON.stringify(in_items || []).replace(/</g, '\\u003c') %>,
+    '控除': <%- JSON.stringify(dedu_cfs || []).replace(/</g, '\\u003c') %>,
+    '貯蓄': <%- JSON.stringify(saving_cfs || []).replace(/</g, '\\u003c') %>
+  };
+  const paymentOptions = <%- JSON.stringify(pay_cfs || []).replace(/</g, '\\u003c') %>.filter(v => v && v !== 'Please Choice');
+  const tagOptions = <%- JSON.stringify(common_tags || []).replace(/</g, '\\u003c') %>;
+  const tagEnabled = <%= financeTagRegistrationEnabled ? 'true' : 'false' %>;
+  const today = '<%= tokyoToday %>';
+  const state = { date: today, cf: '', item: '', content: '', amount: '', payment: '', tag: '', memo: '' };
+  const steps = ['date', 'cf', 'item', 'content', 'amount', 'payment', ...(tagEnabled ? ['tag'] : []), 'memo'];
+  let stepIndex = 0;
+
+  const prompts = {
+    date: 'いつの収支ですか？ 「今日」「昨日」または日付で回答してください。',
+    cf: '収支区分を選んでください。',
+    item: '項目を選んでください。',
+    content: '何の収支ですか？ 内容を話してください。',
+    amount: '金額はいくらですか？',
+    payment: '支払種別を選んでください。',
+    tag: 'タグがあれば回答してください。なければ「なし」と回答してください。',
+    memo: 'メモがあれば回答してください。なければ「なし」と回答してください。'
+  };
+  const log = document.getElementById('conversationLog');
+  const promptEl = document.getElementById('currentPrompt');
+  const answer = document.getElementById('conversationAnswer');
+  const choices = document.getElementById('choiceButtons');
+  const answerPanel = document.getElementById('answerPanel');
+  const form = document.getElementById('conversationFinanceForm');
+  const status = document.getElementById('recognitionStatus');
+  const micButton = document.getElementById('micButton');
+
+  const cleanOptions = list => (list || []).filter(v => v && v !== 'Please Choice');
+  const addMessage = (role, text) => {
+    const row = document.createElement('div');
+    row.className = `conversation-message ${role}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'conversation-bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  };
+  const speak = text => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ja-JP';
+    window.speechSynthesis.speak(utterance);
+  };
+  const normalize = value => String(value || '').trim().replace(/[\s　]/g, '').toLowerCase();
+  const matchOption = (value, options) => {
+    const target = normalize(value);
+    return cleanOptions(options).find(option => normalize(option) === target)
+      || cleanOptions(options).find(option => normalize(option).includes(target) || target.includes(normalize(option)))
+      || '';
+  };
+  const parseDate = value => {
+    const raw = normalize(value);
+    const base = new Date(`${today}T12:00:00+09:00`);
+    if (raw.includes('今日')) return today;
+    if (raw.includes('昨日')) { base.setDate(base.getDate() - 1); return base.toISOString().slice(0, 10); }
+    const parts = raw.match(/(?:(\d{4})[年/.-])?(\d{1,2})[月/.-](\d{1,2})日?/);
+    if (!parts) return '';
+    const year = Number(parts[1] || today.slice(0, 4));
+    const month = Number(parts[2]); const day = Number(parts[3]);
+    const candidate = new Date(Date.UTC(year, month - 1, day));
+    if (candidate.getUTCFullYear() !== year || candidate.getUTCMonth() !== month - 1 || candidate.getUTCDate() !== day) return '';
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+  const parseCf = value => {
+    const raw = normalize(value);
+    if (raw.includes('支出') || raw.includes('使った') || raw.includes('購入')) return '支出';
+    if (raw.includes('収入') || raw.includes('入金')) return '収入';
+    if (raw.includes('控除')) return '控除';
+    if (raw.includes('貯蓄') || raw.includes('貯金')) return '貯蓄';
+    return '';
+  };
+  const parseAmount = value => {
+    const digits = String(value || '').replace(/[，,円\s]/g, '').match(/\d+/g);
+    return digits ? Number(digits.join('')) : 0;
+  };
+  const currentStep = () => steps[stepIndex];
+  const getChoices = step => {
+    if (step === 'date') return ['今日', '昨日'];
+    if (step === 'cf') return ['支出', '収入', '控除', '貯蓄'];
+    if (step === 'item') return cleanOptions(itemOptions[state.cf]);
+    if (step === 'payment') return paymentOptions;
+    if (step === 'tag') return [...tagOptions.slice(0, 8), 'なし'];
+    if (step === 'memo') return ['なし'];
+    return [];
+  };
+  const showStep = () => {
+    const step = currentStep();
+    const prompt = prompts[step];
+    promptEl.textContent = prompt;
+    answer.value = '';
+    answer.type = step === 'amount' ? 'number' : 'text';
+    answer.inputMode = step === 'amount' ? 'numeric' : 'text';
+    choices.innerHTML = '';
+    getChoices(step).forEach(value => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'btn btn-sm btn-outline-primary'; button.textContent = value;
+      button.addEventListener('click', () => submitAnswer(value));
+      choices.appendChild(button);
+    });
+    addMessage('assistant', prompt);
+    speak(prompt);
+    answer.focus();
+  };
+  const submitAnswer = rawValue => {
+    const step = currentStep();
+    const value = String(rawValue ?? answer.value).trim();
+    if (!value) { status.textContent = '回答を入力してください。'; return; }
+    let parsed = value; let error = '';
+    if (step === 'date') { parsed = parseDate(value); if (!parsed) error = '日付を認識できませんでした。例：今日、昨日、8月20日'; }
+    if (step === 'cf') { parsed = parseCf(value); if (!parsed) error = '支出・収入・控除・貯蓄から選んでください。'; }
+    if (step === 'item') { parsed = matchOption(value, itemOptions[state.cf]); if (!parsed) error = '登録済みの項目から選んでください。'; }
+    if (step === 'amount') { parsed = parseAmount(value); if (!parsed) error = '金額を数字で回答してください。'; }
+    if (step === 'payment') { parsed = matchOption(value, paymentOptions); if (!parsed) error = '登録済みの支払種別から選んでください。'; }
+    if ((step === 'tag' || step === 'memo') && ['なし', '無し', 'ない'].includes(value)) parsed = '';
+    if (error) { status.textContent = error; speak(error); return; }
+    status.textContent = '';
+    state[step] = parsed;
+    addMessage('user', value);
+    stepIndex += 1;
+    if (stepIndex >= steps.length) return showReview();
+    showStep();
+  };
+  const setSelectOptions = (select, options, selected) => {
+    select.innerHTML = '';
+    cleanOptions(options).forEach(value => select.add(new Option(value, value, false, value === selected)));
+  };
+  const syncItemHidden = () => {
+    ['Income', 'Expense', 'Dedu', 'Saving'].forEach(key => document.getElementById(`finance${key}Item`).value = '');
+    const idMap = { '収入': 'financeIncomeItem', '支出': 'financeExpenseItem', '控除': 'financeDeduItem', '貯蓄': 'financeSavingItem' };
+    document.getElementById(idMap[document.getElementById('reviewCf').value]).value = document.getElementById('reviewItem').value;
+  };
+  const showReview = () => {
+    answerPanel.classList.add('d-none'); form.classList.remove('d-none');
+    addMessage('assistant', '内容を確認してください。必要なら各欄を修正してから登録してください。');
+    speak('内容を確認してください。');
+    document.getElementById('reviewDate').value = state.date;
+    document.getElementById('reviewCf').value = state.cf;
+    setSelectOptions(document.getElementById('reviewItem'), itemOptions[state.cf], state.item);
+    document.getElementById('reviewContent').value = state.content;
+    document.getElementById('reviewAmount').value = state.amount;
+    setSelectOptions(document.getElementById('reviewPayment'), paymentOptions, state.payment);
+    if (tagEnabled) document.getElementById('reviewTag').value = state.tag;
+    document.getElementById('reviewMemo').value = state.memo;
+    syncItemHidden();
+  };
+
+  document.getElementById('answerButton').addEventListener('click', () => submitAnswer(answer.value));
+  answer.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); submitAnswer(answer.value); } });
+  document.getElementById('reviewCf').addEventListener('change', event => { setSelectOptions(document.getElementById('reviewItem'), itemOptions[event.target.value], ''); syncItemHidden(); });
+  document.getElementById('reviewItem').addEventListener('change', syncItemHidden);
+  form.addEventListener('submit', () => { syncItemHidden(); document.getElementById('saveButton').disabled = true; });
+  document.getElementById('restartButton').addEventListener('click', () => window.location.reload());
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+    micButton.addEventListener('click', () => { window.speechSynthesis?.cancel(); status.textContent = '聞き取り中です…'; micButton.classList.add('is-listening'); recognition.start(); });
+    recognition.addEventListener('result', event => { const transcript = event.results[0][0].transcript; answer.value = transcript; submitAnswer(transcript); });
+    recognition.addEventListener('end', () => micButton.classList.remove('is-listening'));
+    recognition.addEventListener('error', event => { micButton.classList.remove('is-listening'); status.textContent = event.error === 'not-allowed' ? 'マイクの利用が許可されていません。文字入力をご利用ください。' : '音声を認識できませんでした。もう一度お試しください。'; });
+  } else {
+    micButton.disabled = true; status.textContent = 'このブラウザは音声認識に対応していません。文字入力をご利用ください。';
+  }
+
+  addMessage('assistant', '会話形式で収支を入力します。');
+  showStep();
+})();
+</script>
