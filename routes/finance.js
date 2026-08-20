@@ -955,6 +955,11 @@ router.post('/entry', upload.single('receiptImage'), catchAsync(async (req, res,
         });
     }
 
+    // 会話形式で続けて入力
+    if (nextAction === 'conversation') {
+        return res.redirect('/finance/entry-conversation');
+    }
+
     await logAction({ req, action: '登録', target: '家計簿' });
     res.redirect('/finance/list');
 }));

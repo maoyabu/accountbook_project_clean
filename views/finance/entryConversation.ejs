@@ -28,7 +28,7 @@
       </div>
 
       <form id="conversationFinanceForm" action="/finance/entry" method="POST" class="d-none mt-4">
-        <input type="hidden" name="nextAction" value="list">
+        <input type="hidden" name="nextAction" id="nextActionInput" value="list">
         <input type="hidden" name="finance[user]" value="<%= currentUserName %>">
         <input type="hidden" name="finance[income_item]" id="financeIncomeItem">
         <input type="hidden" name="finance[expense_item]" id="financeExpenseItem">
@@ -49,7 +49,8 @@
           </div>
           <div class="card-footer d-flex flex-wrap justify-content-end gap-2">
             <button type="button" id="restartButton" class="btn btn-outline-secondary">最初からやり直す</button>
-            <button type="submit" id="saveButton" class="btn btn-success"><i class="fa-solid fa-check me-1"></i>この内容で登録</button>
+            <button type="submit" id="saveButton" class="btn btn-success" onclick="document.getElementById('nextActionInput').value='list'"><i class="fa-solid fa-check me-1"></i>この内容で登録</button>
+            <button type="submit" id="continueButton" class="btn btn-primary" onclick="document.getElementById('nextActionInput').value='conversation'"><i class="fa-solid fa-plus me-1"></i>続けて入力</button>
           </div>
         </div>
       </form>
@@ -220,7 +221,11 @@
   answer.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); submitAnswer(answer.value); } });
   document.getElementById('reviewCf').addEventListener('change', event => { setSelectOptions(document.getElementById('reviewItem'), itemOptions[event.target.value], ''); syncItemHidden(); });
   document.getElementById('reviewItem').addEventListener('change', syncItemHidden);
-  form.addEventListener('submit', () => { syncItemHidden(); document.getElementById('saveButton').disabled = true; });
+  form.addEventListener('submit', () => {
+    syncItemHidden();
+    document.getElementById('saveButton').disabled = true;
+    document.getElementById('continueButton').disabled = true;
+  });
   document.getElementById('restartButton').addEventListener('click', () => window.location.reload());
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
