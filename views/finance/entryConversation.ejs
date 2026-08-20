@@ -17,9 +17,11 @@
       <div id="answerPanel" class="border rounded p-3 bg-light">
         <div class="fw-bold mb-2" id="currentPrompt"></div>
         <div id="choiceButtons" class="d-flex flex-wrap gap-2 mb-2"></div>
+        <div class="mb-2">
+          <button type="button" id="micButton" class="btn btn-outline-danger"><i class="fa-solid fa-microphone"></i> 話す</button>
+        </div>
         <div class="input-group">
           <input type="text" id="conversationAnswer" class="form-control" autocomplete="off" placeholder="回答を入力">
-          <button type="button" id="micButton" class="btn btn-outline-danger"><i class="fa-solid fa-microphone"></i> 話す</button>
           <button type="button" id="answerButton" class="btn btn-primary">次へ</button>
         </div>
         <div id="recognitionStatus" class="small text-muted mt-2"></div>
@@ -43,10 +45,6 @@
               <div class="col-md-6"><label class="form-label">内容</label><input type="text" class="form-control" name="finance[content]" id="reviewContent"></div>
               <div class="col-md-3"><label class="form-label">金額</label><div class="input-group"><input type="number" min="1" class="form-control" name="finance[amount]" id="reviewAmount" required><span class="input-group-text">円</span></div></div>
               <div class="col-md-3"><label class="form-label">支払種別</label><select class="form-select" name="finance[payment_type]" id="reviewPayment"></select></div>
-              <% if (financeTagRegistrationEnabled) { %>
-                <div class="col-md-6"><label class="form-label">タグ</label><input type="text" class="form-control" name="finance[sub_tag]" id="reviewTag"></div>
-              <% } %>
-              <div class="col-md-6"><label class="form-label">メモ</label><input type="text" class="form-control" name="finance[memo]" id="reviewMemo"></div>
             </div>
           </div>
           <div class="card-footer d-flex flex-wrap justify-content-end gap-2">
@@ -80,11 +78,9 @@
     '貯蓄': <%- JSON.stringify(saving_cfs || []).replace(/</g, '\\u003c') %>
   };
   const paymentOptions = <%- JSON.stringify(pay_cfs || []).replace(/</g, '\\u003c') %>.filter(v => v && v !== 'Please Choice');
-  const tagOptions = <%- JSON.stringify(common_tags || []).replace(/</g, '\\u003c') %>;
-  const tagEnabled = <%= financeTagRegistrationEnabled ? 'true' : 'false' %>;
   const today = '<%= tokyoToday %>';
-  const state = { date: today, cf: '', item: '', content: '', amount: '', payment: '', tag: '', memo: '' };
-  const steps = ['date', 'cf', 'item', 'content', 'amount', 'payment', ...(tagEnabled ? ['tag'] : []), 'memo'];
+  const state = { date: today, cf: '', item: '', content: '', amount: '', payment: '' };
+  const steps = ['date', 'cf', 'item', 'content', 'amount', 'payment'];
   let stepIndex = 0;
 
   const prompts = {
@@ -93,9 +89,7 @@
     item: '項目を選んでください。',
     content: '何の収支ですか？ 内容を話してください。',
     amount: '金額はいくらですか？',
-    payment: '支払種別を選んでください。',
-    tag: 'タグがあれば回答してください。なければ「なし」と回答してください。',
-    memo: 'メモがあれば回答してください。なければ「なし」と回答してください。'
+    payment: '支払種別を選んでください。'
   };
   const log = document.getElementById('conversationLog');
   const promptEl = document.getElementById('currentPrompt');
@@ -162,8 +156,6 @@
     if (step === 'cf') return ['支出', '収入', '控除', '貯蓄'];
     if (step === 'item') return cleanOptions(itemOptions[state.cf]);
     if (step === 'payment') return paymentOptions;
-    if (step === 'tag') return [...tagOptions.slice(0, 8), 'なし'];
-    if (step === 'memo') return ['なし'];
     return [];
   };
   const showStep = () => {
@@ -194,7 +186,6 @@
     if (step === 'item') { parsed = matchOption(value, itemOptions[state.cf]); if (!parsed) error = '登録済みの項目から選んでください。'; }
     if (step === 'amount') { parsed = parseAmount(value); if (!parsed) error = '金額を数字で回答してください。'; }
     if (step === 'payment') { parsed = matchOption(value, paymentOptions); if (!parsed) error = '登録済みの支払種別から選んでください。'; }
-    if ((step === 'tag' || step === 'memo') && ['なし', '無し', 'ない'].includes(value)) parsed = '';
     if (error) { status.textContent = error; speak(error); return; }
     status.textContent = '';
     state[step] = parsed;
@@ -222,8 +213,6 @@
     document.getElementById('reviewContent').value = state.content;
     document.getElementById('reviewAmount').value = state.amount;
     setSelectOptions(document.getElementById('reviewPayment'), paymentOptions, state.payment);
-    if (tagEnabled) document.getElementById('reviewTag').value = state.tag;
-    document.getElementById('reviewMemo').value = state.memo;
     syncItemHidden();
   };
 

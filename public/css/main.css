@@ -557,6 +557,16 @@ main {
     background: #e9f2ff;
     color: #1e40af;
 }
+.finance-quick-fab-voice {
+    border-radius: 50%;
+    background: #ffffff;
+    color: #dc3545;
+    font-size: 0.78rem;
+}
+.finance-quick-fab-voice:hover {
+    background: #fff1f2;
+    color: #b91c1c;
+}
 .finance-quick-fab-collapse i {
     transition: transform 0.18s ease;
 }

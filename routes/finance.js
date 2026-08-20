@@ -691,7 +691,6 @@ router.get('/entry-conversation', isLoggedIn, async (req, res) => {
     const yearForItems = resolveFiscalYearForValue(req.query?.date, fiscalStartMonth);
     await loadCfItems(req, yearForItems, fiscalStartMonth);
     const ex_cfs = await fetchExpenseItemsByYear(activeGroupId, yearForItems);
-    const common_tags = await getFrequentFinanceTags(activeGroupId, req.user?._id);
 
     const now = new Date();
     const tokyoDateParts = new Intl.DateTimeFormat('en-US', {
@@ -707,8 +706,6 @@ router.get('/entry-conversation', isLoggedIn, async (req, res) => {
         dedu_cfs,
         saving_cfs,
         pay_cfs: global.pay_cfs,
-        common_tags,
-        financeTagRegistrationEnabled: req.user?.financeTagRegistrationEnabled === true,
         currentUserName: req.user?.displayname || req.user?.username || '',
         tokyoToday
     });
