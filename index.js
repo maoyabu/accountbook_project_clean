@@ -62,7 +62,7 @@ const ExpressError = require('./Utils/ExpressError');
 const session = require('express-session');
 
 // ✅ ここから下は後半で参照しているので必ず require する
-const flash = require('express-flash');
+const flash = require('./Utils/flash');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const FinanceUser = require('./models/users');
@@ -235,8 +235,7 @@ passport.use(new LocalStrategy(FinanceUser.authenticate()));
 passport.serializeUser(FinanceUser.serializeUser());
 passport.deserializeUser(FinanceUser.deserializeUser());
 
-//flashの設定
-//flashの設定
+// flashメッセージの設定
 app.use(flash());
 
 
