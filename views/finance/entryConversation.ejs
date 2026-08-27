@@ -85,7 +85,7 @@
   let stepIndex = 0;
 
   const prompts = {
-    date: 'いつの収支ですか？ 「今日」「昨日」または日付で回答してください。',
+    date: 'いつの収支ですか？ 過去1週間から選んでください。',
     cf: '収支区分を選んでください。',
     item: '項目を選んでください。',
     content: '何の収支ですか？ 内容を話してください。',
@@ -112,11 +112,15 @@
     log.appendChild(row);
     log.scrollTop = log.scrollHeight;
   };
-  const speak = text => {
-    if (!('speechSynthesis' in window)) return;
+  let speechSequence = 0;
+  const speak = (text, onEnd) => {
+    const sequence = ++speechSequence;
+    if (!('speechSynthesis' in window)) { onEnd?.(); return; }
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ja-JP';
+    utterance.addEventListener('end', () => { if (sequence === speechSequence) onEnd?.(); });
+    utterance.addEventListener('error', () => { if (sequence === speechSequence) onEnd?.(); });
     window.speechSynthesis.speak(utterance);
   };
   const normalize = value => String(value || '').trim().replace(/[\s　]/g, '').toLowerCase();
@@ -151,12 +155,24 @@
     const digits = String(value || '').replace(/[，,円\s]/g, '').match(/\d+/g);
     return digits ? Number(digits.join('')) : 0;
   };
+  const pastDateChoices = () => {
+    const [year, month, day] = today.split('-').map(Number);
+    return Array.from({ length: 7 }, (_, daysAgo) => {
+      const date = new Date(Date.UTC(year, month - 1, day - daysAgo));
+      const dateValue = date.toISOString().slice(0, 10);
+      const dateLabel = `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`;
+      if (daysAgo === 0) return { label: '今日', value: '今日' };
+      if (daysAgo === 1) return { label: `昨日（${dateLabel}）`, value: '昨日' };
+      return { label: dateLabel, value: dateValue };
+    });
+  };
   const currentStep = () => steps[stepIndex];
+  const isVoiceAnswerStep = step => step === 'content' || step === 'amount';
   const getChoices = step => {
-    if (step === 'date') return ['今日', '昨日'];
-    if (step === 'cf') return ['支出', '収入', '控除', '貯蓄'];
-    if (step === 'item') return cleanOptions(itemOptions[state.cf]);
-    if (step === 'payment') return paymentOptions;
+    if (step === 'date') return pastDateChoices();
+    if (step === 'cf') return ['支出', '収入', '控除', '貯蓄'].map(value => ({ label: value, value }));
+    if (step === 'item') return cleanOptions(itemOptions[state.cf]).map(value => ({ label: value, value }));
+    if (step === 'payment') return paymentOptions.map(value => ({ label: value, value }));
     return [];
   };
   const showStep = () => {
@@ -167,14 +183,16 @@
     answer.type = step === 'amount' ? 'number' : 'text';
     answer.inputMode = step === 'amount' ? 'numeric' : 'text';
     choices.innerHTML = '';
-    getChoices(step).forEach(value => {
+    const stepChoices = getChoices(step);
+    stepChoices.forEach(choice => {
       const button = document.createElement('button');
-      button.type = 'button'; button.className = 'btn btn-sm btn-outline-primary'; button.textContent = value;
-      button.addEventListener('click', () => submitAnswer(value));
+      button.type = 'button'; button.className = 'btn btn-sm btn-outline-primary'; button.textContent = choice.label;
+      button.addEventListener('click', () => submitAnswer(choice.value));
       choices.appendChild(button);
     });
     addMessage('assistant', prompt);
-    speak(prompt);
+    autoListenRequested = isVoiceAnswerStep(step);
+    speak(prompt, () => { if (autoListenRequested) startListening(); });
     answer.focus();
   };
   const submitAnswer = rawValue => {
@@ -187,7 +205,12 @@
     if (step === 'item') { parsed = matchOption(value, itemOptions[state.cf]); if (!parsed) error = '登録済みの項目から選んでください。'; }
     if (step === 'amount') { parsed = parseAmount(value); if (!parsed) error = '金額を数字で回答してください。'; }
     if (step === 'payment') { parsed = matchOption(value, paymentOptions); if (!parsed) error = '登録済みの支払種別から選んでください。'; }
-    if (error) { status.textContent = error; speak(error); return; }
+    if (error) {
+      status.textContent = error;
+      autoListenRequested = isVoiceAnswerStep(step);
+      speak(error, () => { if (autoListenRequested) startListening(); });
+      return;
+    }
     status.textContent = '';
     state[step] = parsed;
     addMessage('user', value);
@@ -228,13 +251,50 @@
   });
   document.getElementById('restartButton').addEventListener('click', () => window.location.reload());
 
+  let recognition = null;
+  let isListening = false;
+  let autoListenRequested = false;
+  let recognizedTranscript = '';
+  const startListening = () => {
+    if (!recognition || isListening) return;
+    window.speechSynthesis?.cancel();
+    status.textContent = '聞き取り中です…';
+    micButton.classList.add('is-listening');
+    try {
+      recognition.start();
+      isListening = true;
+      autoListenRequested = false;
+    } catch (error) {
+      micButton.classList.remove('is-listening');
+      status.textContent = '音声入力を開始できませんでした。「話す」ボタンを押すか、文字入力をご利用ください。';
+    }
+  };
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRecognition) {
-    const recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.interimResults = false; recognition.maxAlternatives = 1;
-    micButton.addEventListener('click', () => { window.speechSynthesis?.cancel(); status.textContent = '聞き取り中です…'; micButton.classList.add('is-listening'); recognition.start(); });
-    recognition.addEventListener('result', event => { const transcript = event.results[0][0].transcript; answer.value = transcript; submitAnswer(transcript); });
-    recognition.addEventListener('end', () => micButton.classList.remove('is-listening'));
-    recognition.addEventListener('error', event => { micButton.classList.remove('is-listening'); status.textContent = event.error === 'not-allowed' ? 'マイクの利用が許可されていません。文字入力をご利用ください。' : '音声を認識できませんでした。もう一度お試しください。'; });
+    recognition = new SpeechRecognition(); recognition.lang = 'ja-JP'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+    micButton.addEventListener('click', startListening);
+    recognition.addEventListener('result', event => {
+      recognizedTranscript = event.results[0][0].transcript;
+      answer.value = recognizedTranscript;
+    });
+    recognition.addEventListener('end', () => {
+      isListening = false;
+      micButton.classList.remove('is-listening');
+      if (recognizedTranscript) {
+        const transcript = recognizedTranscript;
+        recognizedTranscript = '';
+        submitAnswer(transcript);
+        return;
+      }
+      if (autoListenRequested) startListening();
+    });
+    recognition.addEventListener('error', event => {
+      isListening = false;
+      autoListenRequested = false;
+      recognizedTranscript = '';
+      micButton.classList.remove('is-listening');
+      status.textContent = event.error === 'not-allowed' ? 'マイクの利用が許可されていません。文字入力をご利用ください。' : '音声を認識できませんでした。もう一度お試しください。';
+    });
   } else {
     micButton.disabled = true; status.textContent = 'このブラウザは音声認識に対応していません。文字入力をご利用ください。';
   }
