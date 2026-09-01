@@ -3083,6 +3083,39 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
       }
     });
 
+    // 上位カテゴリーのサマリー行と、その配下の項目・タグ行を同じ色で表示する。
+    const categoryFillArgb = ['FFFCE4D6', 'FFC8C2A1'];
+    const categoryIndexByItem = new Map();
+    expenseCategorySummaries.forEach((category, categoryIndex) => {
+      category.itemNames.forEach(item => {
+        if (!categoryIndexByItem.has(item)) categoryIndexByItem.set(item, categoryIndex);
+      });
+    });
+    let currentCategoryIndex = null;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const itemCell = row.getCell(1);
+      const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+      let categoryIndex = null;
+      if (itemLabel.startsWith('上位カテゴリー:')) {
+        const categoryName = itemLabel.slice('上位カテゴリー:'.length).trim();
+        categoryIndex = expenseCategorySummaries.findIndex(category => category.name === categoryName);
+        currentCategoryIndex = null;
+      } else if (itemLabel.startsWith('タグ:') || itemLabel.startsWith('タグ：')) {
+        categoryIndex = currentCategoryIndex;
+      } else if (categoryIndexByItem.has(itemLabel)) {
+        categoryIndex = categoryIndexByItem.get(itemLabel);
+        currentCategoryIndex = categoryIndex;
+      } else if (itemLabel && !cfList.includes(itemLabel) && itemLabel !== '収支' && itemLabel !== detailTitle) {
+        currentCategoryIndex = null;
+      }
+      if (categoryIndex == null || categoryIndex < 0) return;
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        if (sheet.getColumn(colNumber).header === '') return;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: categoryFillArgb[categoryIndex % categoryFillArgb.length] } };
+      });
+    });
+
     sheet.eachRow((row, rowNumber) => {
       row.eachCell((cell) => {
         if (rowNumber > 1 && typeof cell.value === 'number') {
@@ -3133,8 +3166,12 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     const lastCol = sheet.columnCount;
     const summaryRows = cfList.length + 1; // 収入〜収支
     const summaryEndRow = 1 + summaryRows;
-    const detailStartRow = summaryEndRow + 3; // 空行+タイトル行の次から
-    const detailEndRow = detailStartRow + ex_cfs.length - 1;
+    const categoryStartRow = summaryEndRow + 3; // 空行+タイトル行の次から
+    const categoryEndRow = expenseCategorySummaries.length > 0
+      ? categoryStartRow + expenseCategorySummaries.length - 1
+      : 0;
+    const detailStartRow = categoryEndRow ? categoryEndRow + 2 : categoryStartRow;
+    const detailEndRow = sheet.rowCount; // タグ行も含めた明細の最終行
 
     const applyThickBorder = (startRow, endRow) => {
       if (!endRow || endRow < startRow) return;
@@ -3152,6 +3189,7 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     };
 
     applyThickBorder(1, summaryEndRow);
+    applyThickBorder(categoryStartRow, categoryEndRow);
     applyThickBorder(detailStartRow, detailEndRow);
 
     sheet.pageSetup = {
@@ -3449,6 +3487,39 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
       }
     });
 
+    // 上位カテゴリーのサマリー行と、その配下の項目・タグ行を同じ色で表示する。
+    const categoryFillArgb = ['FFFCE4D6', 'FFC8C2A1'];
+    const categoryIndexByItem = new Map();
+    expenseCategorySummaries.forEach((category, categoryIndex) => {
+      category.itemNames.forEach(item => {
+        if (!categoryIndexByItem.has(item)) categoryIndexByItem.set(item, categoryIndex);
+      });
+    });
+    let currentCategoryIndex = null;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const itemCell = row.getCell(1);
+      const itemLabel = itemCell.value != null ? String(itemCell.value).trim() : '';
+      let categoryIndex = null;
+      if (itemLabel.startsWith('上位カテゴリー:')) {
+        const categoryName = itemLabel.slice('上位カテゴリー:'.length).trim();
+        categoryIndex = expenseCategorySummaries.findIndex(category => category.name === categoryName);
+        currentCategoryIndex = null;
+      } else if (itemLabel.startsWith('タグ:') || itemLabel.startsWith('タグ：')) {
+        categoryIndex = currentCategoryIndex;
+      } else if (categoryIndexByItem.has(itemLabel)) {
+        categoryIndex = categoryIndexByItem.get(itemLabel);
+        currentCategoryIndex = categoryIndex;
+      } else if (itemLabel && !cfList.includes(itemLabel) && itemLabel !== '収支' && itemLabel !== detailTitle) {
+        currentCategoryIndex = null;
+      }
+      if (categoryIndex == null || categoryIndex < 0) return;
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        if (sheet.getColumn(colNumber).header === '') return;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: categoryFillArgb[categoryIndex % categoryFillArgb.length] } };
+      });
+    });
+
     sheet.eachRow((row, rowNumber) => {
       row.eachCell((cell) => {
         if (rowNumber > 1 && typeof cell.value === 'number') {
@@ -3499,8 +3570,12 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const lastCol = sheet.columnCount;
     const summaryRows = cfList.length + 1; // 収入〜収支
     const summaryEndRow = 1 + summaryRows;
-    const detailStartRow = summaryEndRow + 3; // 空行+タイトル行の次から
-    const detailEndRow = detailStartRow + ex_cfs.length - 1;
+    const categoryStartRow = summaryEndRow + 3; // 空行+タイトル行の次から
+    const categoryEndRow = expenseCategorySummaries.length > 0
+      ? categoryStartRow + expenseCategorySummaries.length - 1
+      : 0;
+    const detailStartRow = categoryEndRow ? categoryEndRow + 2 : categoryStartRow;
+    const detailEndRow = sheet.rowCount; // タグ行も含めた明細の最終行
 
     const applyThickBorder = (startRow, endRow) => {
       if (!endRow || endRow < startRow) return;
@@ -3518,6 +3593,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     };
 
     applyThickBorder(1, summaryEndRow);
+    applyThickBorder(categoryStartRow, categoryEndRow);
     applyThickBorder(detailStartRow, detailEndRow);
 
     sheet.pageSetup = {
