@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const { EJSON } = mongoose.mongo.BSON;
 // const Finance = require('../models/finance');
 const Info = require('../models/info');
 const Group = require('../models/groups');
@@ -112,6 +113,110 @@ const parseBackupZip = async (buffer) => {
   }
 
   return entries.sort((a, b) => a.modelName.localeCompare(b.modelName));
+};
+
+const parseBackupDocuments = (raw, model) => {
+  const docs = EJSON.parse(raw, { relaxed: false });
+  if (!Array.isArray(docs)) return null;
+
+  // 旧バックアップ（通常JSON）の文字列ObjectIdは現行スキーマで型変換しつつ、
+  // スキーマ未定義フィールドも失わないよう元データへマージする。
+  return docs.map((doc) => ({ ...doc, ...model.castObject(doc) }));
+};
+
+const validateRestoreIntegrity = (preparedEntries) => {
+  const errors = [];
+  const warnings = [];
+  const byModelName = new Map(preparedEntries.map(entry => [entry.modelName, entry.docs]));
+  const users = byModelName.get('users');
+  const groups = byModelName.get('groups');
+
+  if ((users && !groups) || (!users && groups)) {
+    errors.push('users.json と groups.json は必ずセットで復元してください');
+    return { errors, warnings };
+  }
+  if (!users && !groups) return { errors, warnings };
+
+  const idOf = value => value == null ? '' : String(value);
+  const userIds = new Set(users.map(user => idOf(user._id)).filter(Boolean));
+  const groupIds = new Set(groups.map(group => idOf(group._id)).filter(Boolean));
+
+  users.forEach(user => {
+    if (!user.hash || !user.salt) {
+      errors.push(`ユーザー ${user.username || idOf(user._id) || '(不明)'} に認証用hash/saltがありません`);
+    }
+    (user.groups || []).forEach(groupId => {
+      if (!groupIds.has(idOf(groupId))) {
+        warnings.push(`ユーザー ${user.username || idOf(user._id)} の存在しないグループ参照 ${idOf(groupId)} を除去します`);
+      }
+    });
+  });
+
+  groups.forEach(group => {
+    const groupLabel = group.group_name || idOf(group._id) || '(不明)';
+    if (!userIds.has(idOf(group.createdBy))) {
+      errors.push(`グループ ${groupLabel} の作成者 ${idOf(group.createdBy)} がusers.jsonに存在しません`);
+    }
+    (group.members || []).forEach(userId => {
+      if (!userIds.has(idOf(userId))) {
+        warnings.push(`グループ ${groupLabel} の存在しないユーザー参照 ${idOf(userId)} を除去します`);
+      }
+    });
+  });
+
+  return {
+    errors: Array.from(new Set(errors)),
+    warnings: Array.from(new Set(warnings))
+  };
+};
+
+const reconcileUserGroupMemberships = async () => {
+  const [users, groups] = await Promise.all([
+    FinanceUser.find({}).select('_id groups').lean(),
+    Group.find({}).select('_id createdBy members').lean()
+  ]);
+  const idOf = value => value == null ? '' : String(value);
+  const usersById = new Map(users.map(user => [idOf(user._id), user]));
+  const groupsById = new Map(groups.map(group => [idOf(group._id), group]));
+  const memberIdsByGroup = new Map(groups.map(group => [idOf(group._id), new Set()]));
+
+  groups.forEach(group => {
+    const groupId = idOf(group._id);
+    const memberIds = memberIdsByGroup.get(groupId);
+    [group.createdBy, ...(group.members || [])].forEach(userId => {
+      const normalizedUserId = idOf(userId);
+      if (usersById.has(normalizedUserId)) memberIds.add(normalizedUserId);
+    });
+  });
+  users.forEach(user => {
+    (user.groups || []).forEach(groupId => {
+      const normalizedGroupId = idOf(groupId);
+      if (groupsById.has(normalizedGroupId)) {
+        memberIdsByGroup.get(normalizedGroupId).add(idOf(user._id));
+      }
+    });
+  });
+
+  const groupWrites = groups.map(group => ({
+    updateOne: {
+      filter: { _id: group._id },
+      update: { $set: { members: Array.from(memberIdsByGroup.get(idOf(group._id)) || []) } }
+    }
+  }));
+  const groupIdsByUser = new Map(users.map(user => [idOf(user._id), new Set()]));
+  memberIdsByGroup.forEach((memberIds, groupId) => {
+    memberIds.forEach(userId => groupIdsByUser.get(userId)?.add(groupId));
+  });
+  const userWrites = users.map(user => ({
+    updateOne: {
+      filter: { _id: user._id },
+      update: { $set: { groups: Array.from(groupIdsByUser.get(idOf(user._id)) || []) } }
+    }
+  }));
+
+  if (groupWrites.length > 0) await Group.bulkWrite(groupWrites, { ordered: true });
+  if (userWrites.length > 0) await FinanceUser.bulkWrite(userWrites, { ordered: true });
+  return { users: userWrites.length, groups: groupWrites.length };
 };
 
 const saveRestoreUpload = (buffer) => {
@@ -555,13 +660,11 @@ router.get('/backup', isAdmin, async (req, res) => {
   const timestamp = moment().format('YYYYMMDD');
   const serial = '001';
   const fileName = `backup_${timestamp}_${serial}.zip`;
-  const tempDir = path.join(__dirname, '../tmp');
+  const tempRoot = path.join(__dirname, '../tmp/backup');
+  const tempDir = path.join(tempRoot, `${timestamp}_${crypto.randomBytes(8).toString('hex')}`);
   const zipPath = path.join(tempDir, fileName);
 
-  if (!fs.existsSync(tempDir)) {
-    console.log('[/backup] 一時ディレクトリが存在しないため作成:', tempDir);
-    fs.mkdirSync(tempDir);
-  }
+  fs.mkdirSync(tempDir, { recursive: true });
 
   try {
     // モデル一覧を動的に読み込み
@@ -578,7 +681,7 @@ router.get('/backup', isAdmin, async (req, res) => {
 
     // 各モデルごとに JSON ファイル出力
     for (const [name, data] of Object.entries(modelData)) {
-      fs.writeFileSync(`${tempDir}/${name}.json`, JSON.stringify(data, null, 2));
+      fs.writeFileSync(path.join(tempDir, `${name}.json`), EJSON.stringify(data, null, 2, { relaxed: false }));
     }
 
     console.log('[/backup] ZIPアーカイブ開始');
@@ -598,7 +701,7 @@ router.get('/backup', isAdmin, async (req, res) => {
 
     archive.pipe(output);
     // すべてのJSONファイルをアーカイブに追加
-    const files = fs.readdirSync(tempDir).filter(file => file.endsWith('.json'));
+    const files = Object.keys(modelData).map(name => `${name}.json`);
     for (const file of files) {
       archive.file(path.join(tempDir, file), { name: file });
     }
@@ -690,27 +793,39 @@ router.post('/restore/execute', isAdmin, async (req, res) => {
       return res.redirect('/admin/restore');
     }
 
-    const results = [];
+    // 削除を始める前に全ファイルを読み込み、認証情報と参照整合性を検査する。
+    const preparedEntries = [];
     for (const entry of readyEntries) {
       const model = modelMap.get(entry.modelName);
       const zipEntry = zip.file(entry.fileName);
       if (!zipEntry) {
-        results.push({ modelName: entry.modelName, deleted: 0, inserted: 0, status: 'missing_file' });
-        continue;
+        throw new Error(`${entry.fileName} がZIP内に見つかりません`);
       }
 
-      const docs = JSON.parse(await zipEntry.async('string'));
+      const raw = await zipEntry.async('string');
+      const docs = parseBackupDocuments(raw, model);
       if (!Array.isArray(docs)) {
-        results.push({ modelName: entry.modelName, deleted: 0, inserted: 0, status: 'not_array' });
-        continue;
+        throw new Error(`${entry.fileName} の内容が配列ではありません`);
       }
+      preparedEntries.push({ ...entry, model, docs });
+    }
 
-      const castedDocs = docs.map((doc) => model.castObject(doc));
+    const { errors: integrityErrors, warnings: integrityWarnings } = validateRestoreIntegrity(preparedEntries);
+    if (integrityErrors.length > 0) {
+      throw new Error(`バックアップの整合性検査に失敗しました: ${integrityErrors.slice(0, 10).join(' / ')}`);
+    }
+    if (integrityWarnings.length > 0) {
+      console.warn('[admin restore execute] 孤立参照を復元後に整理します:', integrityWarnings.join(' / '));
+    }
+
+    const results = [];
+    for (const entry of preparedEntries) {
+      const { model, docs } = entry;
       const deleteResult = await model.deleteMany({});
       let insertedCount = 0;
-      if (castedDocs.length > 0) {
-        const insertResult = await model.collection.insertMany(castedDocs, { ordered: true });
-        insertedCount = insertResult.insertedCount || castedDocs.length;
+      if (docs.length > 0) {
+        const insertResult = await model.collection.insertMany(docs, { ordered: true });
+        insertedCount = insertResult.insertedCount || docs.length;
       }
 
       results.push({
@@ -718,6 +833,17 @@ router.post('/restore/execute', isAdmin, async (req, res) => {
         deleted: deleteResult.deletedCount || 0,
         inserted: insertedCount,
         status: 'restored'
+      });
+    }
+
+    const restoredModelNames = new Set(preparedEntries.map(entry => entry.modelName));
+    if (restoredModelNames.has('users') && restoredModelNames.has('groups')) {
+      const reconciled = await reconcileUserGroupMemberships();
+      results.push({
+        modelName: 'users/groups relationship',
+        deleted: 0,
+        inserted: reconciled.users + reconciled.groups,
+        status: 'reconciled'
       });
     }
 
