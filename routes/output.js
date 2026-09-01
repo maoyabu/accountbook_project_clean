@@ -1420,7 +1420,7 @@ async function exportMonthlyDashboardWorkbook(data) {
   sheet.getRow(1).height = 26;
 
   sheet.mergeCells(2, 2, 2, 11);
-  sheet.getCell(2, 2).value = `累計: ${cumulativeLabel} / タグ別: ${data.showTagSummary ? 'あり' : 'なし'}`;
+  sheet.getCell(2, 2).value = `累計: ${cumulativeLabel} / タグ別: ${data.showTagSummary ? 'あり' : 'なし'} / 上位カテゴリー別: ${data.showCategorySummary ? 'あり' : 'なし'}`;
   sheet.getCell(2, 2).font = { name: 'Meiryo UI', size: 10, color: { argb: 'FF4D5960' } };
   sheet.getCell(2, 2).alignment = { horizontal: 'right' };
 
@@ -1559,6 +1559,26 @@ async function exportMonthlyDashboardWorkbook(data) {
     cumBudget: totals.cumBudget,
     cumDiff: totals.cumDiff
   });
+  currentRow += 1;
+
+  if (data.showCategorySummary && (data.expenseCategorySummaries || []).length > 0) {
+    currentRow += 1;
+    setSectionTitle(currentRow, 2, 11, '上位カテゴリー別');
+    currentRow += 1;
+    for (const category of data.expenseCategorySummaries) {
+      writeDetailRow({
+        rowNumber: currentRow,
+        item: category.name,
+        monthTotal: category.month.total,
+        monthBudget: category.month.budget,
+        monthDiff: category.month.diff,
+        cumTotal: category.cumulative.total,
+        cumBudget: category.cumulative.budget,
+        cumDiff: category.cumulative.diff
+      });
+      currentRow += 1;
+    }
+  }
 
   const reflectionEntries = [];
   const appendReflectionEntries = (reflectionKey, label) => {
@@ -2797,6 +2817,8 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
+    const showTagSummary = resolveDashboardTagSummary(req, 'yearly-m');
+    const showCategorySummary = resolveDashboardCategorySummary(req, 'yearly-m');
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -2817,7 +2839,8 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
           month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
-          expense_item: 1
+          expense_item: 1,
+          sub_tag: 1
         }
       },
       {
@@ -2825,7 +2848,8 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
           _id: {
             month: '$month',
             cf: '$cf',
-            expense_item: '$expense_item'
+            expense_item: '$expense_item',
+            sub_tag: '$sub_tag'
           },
           total: { $sum: '$amount' }
         }
@@ -2838,14 +2862,16 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     // 集計
     const monthlySummary = {};
     const monthlyExpensesDetail = {};
+    const monthlyExpenseTagDetail = {};
 
     for (let m = 1; m <= 12; m++) {
       monthlySummary[m] = { 支出: 0, 控除: 0, 収入: 0, 貯蓄: 0 };
       monthlyExpensesDetail[m] = {};
+      monthlyExpenseTagDetail[m] = {};
     }
 
     result.forEach(r => {
-      const { month, cf, expense_item } = r._id;
+      const { month, cf, expense_item, sub_tag } = r._id;
       const fiscalMonth = monthIndexMap.get(month);
       if (!fiscalMonth) return;
       const total = r.total;
@@ -2857,6 +2883,10 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
           monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
         monthlyExpensesDetail[fiscalMonth][expense_item] += total;
+        const tag = (sub_tag || '').trim() || '他';
+        if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
+        monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
+          (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
       }
     });
 
@@ -2899,6 +2929,8 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     const data = [];
 
     const budgetMonthCount = getBudgetMonthCount(year, fiscalStartMonth, new Date());
+    const categoryGroups = showCategorySummary ? await fetchExpenseCategoryGroups(groupId, year) : [];
+    const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
 
     // ヘッダー
     const header = ['項目', '予算'];
@@ -2943,6 +2975,17 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     const detailTitle = '【支出明細】';
     data.push([detailTitle]);
 
+    if (showCategorySummary && expenseCategorySummaries.length > 0) {
+      expenseCategorySummaries.forEach(category => {
+        const row = [`上位カテゴリー: ${category.name}`, category.budget || 0];
+        for (let m = 1; m <= 12; m++) row.push(category.monthlyTotals[m] || 0);
+        const budgetCumulative = (category.budget || 0) * budgetMonthCount;
+        row.push(category.total || 0, '', budgetCumulative, budgetCumulative - (category.total || 0));
+        data.push(row);
+      });
+      data.push([]);
+    }
+
     // 支出内訳
     ex_cfs.forEach(item => {
       const row = [item, budgetMap[item] || 0];
@@ -2956,6 +2999,29 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
       const diff = budgetCumulative - total;
       row.push(total, '', budgetCumulative, diff);
       data.push(row);
+      if (showTagSummary) {
+        const tagSet = new Set();
+        for (let m = 1; m <= 12; m++) {
+          Object.keys(monthlyExpenseTagDetail[m]?.[item] || {}).forEach(tag => tagSet.add(tag));
+        }
+        const hasNamedTag = Array.from(tagSet).some(tag => tag !== '他');
+        const tagList = hasNamedTag ? Array.from(tagSet).sort((a, b) => {
+          if (a === '他') return 1;
+          if (b === '他') return -1;
+          return a.localeCompare(b, 'ja');
+        }) : [];
+        tagList.forEach(tag => {
+          const tagRow = [`　タグ: ${tag}`, ''];
+          let tagTotal = 0;
+          for (let m = 1; m <= 12; m++) {
+            const value = monthlyExpenseTagDetail[m]?.[item]?.[tag] || 0;
+            tagRow.push(value);
+            tagTotal += value;
+          }
+          tagRow.push(tagTotal, '', '', '');
+          data.push(tagRow);
+        });
+      }
     });
 
     const os = require('os');
@@ -3117,6 +3183,8 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
     const defaultYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
     const year = parseInt(req.query.year) || defaultYear;
+    const showTagSummary = resolveDashboardTagSummary(req, 'yearly-g');
+    const showCategorySummary = resolveDashboardCategorySummary(req, 'yearly-g');
     const fiscalRange = getFiscalYearRange(year, fiscalStartMonth);
     const fiscalMonths = getFiscalMonths(fiscalStartMonth);
     const monthIndexMap = new Map(fiscalMonths.map((m, idx) => [m, idx + 1]));
@@ -3136,7 +3204,8 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
           month: { $month: { date: '$date', timezone: 'Asia/Tokyo' } },
           cf: 1,
           amount: 1,
-          expense_item: 1
+          expense_item: 1,
+          sub_tag: 1
         }
       },
       {
@@ -3144,7 +3213,8 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
           _id: {
             month: '$month',
             cf: '$cf',
-            expense_item: '$expense_item'
+            expense_item: '$expense_item',
+            sub_tag: '$sub_tag'
           },
           total: { $sum: '$amount' }
         }
@@ -3157,14 +3227,16 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     // 集計
     const monthlySummary = {};
     const monthlyExpensesDetail = {};
+    const monthlyExpenseTagDetail = {};
 
     for (let m = 1; m <= 12; m++) {
       monthlySummary[m] = { 支出: 0, 控除: 0, 収入: 0, 貯蓄: 0 };
       monthlyExpensesDetail[m] = {};
+      monthlyExpenseTagDetail[m] = {};
     }
 
     result.forEach(r => {
-      const { month, cf, expense_item } = r._id;
+      const { month, cf, expense_item, sub_tag } = r._id;
       const fiscalMonth = monthIndexMap.get(month);
       if (!fiscalMonth) return;
       const total = r.total;
@@ -3176,6 +3248,10 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
           monthlyExpensesDetail[fiscalMonth][expense_item] = 0;
         }
         monthlyExpensesDetail[fiscalMonth][expense_item] += total;
+        const tag = (sub_tag || '').trim() || '他';
+        if (!monthlyExpenseTagDetail[fiscalMonth][expense_item]) monthlyExpenseTagDetail[fiscalMonth][expense_item] = {};
+        monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] =
+          (monthlyExpenseTagDetail[fiscalMonth][expense_item][tag] || 0) + total;
       }
     });
 
@@ -3218,6 +3294,8 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const data = [];
 
     const budgetMonthCount = getBudgetMonthCount(year, fiscalStartMonth, new Date());
+    const categoryGroups = showCategorySummary ? await fetchExpenseCategoryGroups(groupId, year) : [];
+    const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
 
     // ヘッダー
     const header = ['項目', '予算'];
@@ -3262,6 +3340,17 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const detailTitle = '【支出明細】';
     data.push([detailTitle]);
 
+    if (showCategorySummary && expenseCategorySummaries.length > 0) {
+      expenseCategorySummaries.forEach(category => {
+        const row = [`上位カテゴリー: ${category.name}`, category.budget || 0];
+        for (let m = 1; m <= 12; m++) row.push(category.monthlyTotals[m] || 0);
+        const budgetCumulative = (category.budget || 0) * budgetMonthCount;
+        row.push(category.total || 0, '', budgetCumulative, budgetCumulative - (category.total || 0));
+        data.push(row);
+      });
+      data.push([]);
+    }
+
     // 支出内訳
     ex_cfs.forEach(item => {
       const row = [item, budgetMap[item] || 0];
@@ -3275,6 +3364,29 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
       const diff = budgetCumulative - total;
       row.push(total, '', budgetCumulative, diff);
       data.push(row);
+      if (showTagSummary) {
+        const tagSet = new Set();
+        for (let m = 1; m <= 12; m++) {
+          Object.keys(monthlyExpenseTagDetail[m]?.[item] || {}).forEach(tag => tagSet.add(tag));
+        }
+        const hasNamedTag = Array.from(tagSet).some(tag => tag !== '他');
+        const tagList = hasNamedTag ? Array.from(tagSet).sort((a, b) => {
+          if (a === '他') return 1;
+          if (b === '他') return -1;
+          return a.localeCompare(b, 'ja');
+        }) : [];
+        tagList.forEach(tag => {
+          const tagRow = [`　タグ: ${tag}`, ''];
+          let tagTotal = 0;
+          for (let m = 1; m <= 12; m++) {
+            const value = monthlyExpenseTagDetail[m]?.[item]?.[tag] || 0;
+            tagRow.push(value);
+            tagTotal += value;
+          }
+          tagRow.push(tagTotal, '', '', '');
+          data.push(tagRow);
+        });
+      }
     });
 
     const os = require('os');
