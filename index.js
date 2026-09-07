@@ -361,7 +361,9 @@ app.use((req, res, next) => {
 
     // 🔽 利用可能サービス（ナビメニュー出し分け用）
     const baseServices = { allaboutme: true, finance: true, assets: true, message: true };
-    if (req.user && req.session?.activeGroupId && req.user.servicesByGroup) {
+    const activeGroup = req.user?.groups?.find(group => String(group?._id) === String(req.session?.activeGroupId || ''));
+    const isActiveGroupOwner = activeGroup && String(activeGroup.createdBy?._id || activeGroup.createdBy) === String(req.user._id);
+    if (req.user && req.session?.activeGroupId && req.user.servicesByGroup && !isActiveGroupOwner) {
         const gid = req.session.activeGroupId.toString();
         const map = req.user.servicesByGroup;
         const groupServices = typeof map.get === 'function' ? map.get(gid) : map[gid];
@@ -374,12 +376,40 @@ app.use((req, res, next) => {
         }
     }
     res.locals.services = baseServices;
+    const selectedServiceKey = res.locals.activeService === 'myself'
+      ? 'allaboutme'
+      : res.locals.activeService;
+    if (baseServices[selectedServiceKey] === false) {
+      const fallbackService = ['finance', 'allaboutme', 'message'].find(key => baseServices[key] !== false);
+      if (fallbackService) {
+        res.locals.activeService = fallbackService === 'allaboutme' ? 'myself' : fallbackService;
+        req.session.activeService = res.locals.activeService;
+      }
+    }
     res.locals.financeQuickMenuItems = req.user
       ? buildQuickMenuItems(req.user.financeQuickMenuItems)
       : [];
     res.locals.financeQuickMenuEnabled = req.user?.financeQuickMenuEnabled !== false;
 
     next();
+});
+
+// メニューを隠すだけでなく、URLを直接指定した場合もグループ別の利用制限を適用する。
+app.use((req, res, next) => {
+  if (!req.user || !req.session?.activeGroupId) return next();
+  const path = req.path || '';
+  let requiredService = null;
+  if (path.startsWith('/finance') || path.startsWith('/export') || path.startsWith('/matomete')) requiredService = 'finance';
+  else if (path.startsWith('/asset')) requiredService = 'assets';
+  else if (path.startsWith('/message')) requiredService = 'message';
+  else if (path.startsWith('/allaboutme') || path.startsWith('/history') || path.startsWith('/relation') || path.startsWith('/resume') || path.startsWith('/myself')) requiredService = 'allaboutme';
+  if (!requiredService || res.locals.services?.[requiredService] !== false) return next();
+
+  if (req.originalUrl.startsWith('/api/') || req.get('accept')?.includes('application/json')) {
+    return res.status(403).json({ message: 'このグループではこのサービスを利用できません' });
+  }
+  req.flash('error', 'このグループではこのサービスを利用できません');
+  return res.redirect('/setting');
 });
 
 //ページアクセスログミドルウェア

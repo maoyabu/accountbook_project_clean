@@ -36,10 +36,10 @@ router.post('/', isLoggedIn, async (req, res) => {
       user.groups.push(newGroup._id);
       await user.save();
     }
+    req.session.activeGroupId = newGroup._id;
     await logAction({ req, action: 'グループ作成', target: 'グループ'});
     req.flash('success', 'グループを作成しました');
-    const groups = await Group.find({ members: req.user._id }).populate('createdBy');
-    res.render('groups/group_entry', { groups });
+    res.redirect(`/setting?section=group-management&groupId=${newGroup._id}`);
   });
 
 // グループ名編集ルート
@@ -50,21 +50,21 @@ router.put('/:id/edit-name', isLoggedIn, async (req, res) => {
     const group = await Group.findById(id);
     if (!group) {
       req.flash('error', 'グループが見つかりません');
-      return res.redirect('/group');
+      return res.redirect('/setting?section=group-list');
     }
     if (!group.createdBy.equals(req.user._id)) {
       req.flash('error', '編集できるのは作成者のみです');
-      return res.redirect('/group');
+      return res.redirect(`/setting?section=group-management&groupId=${id}`);
     }
     group.group_name = group_name;
     await group.save();
     await logAction({ req, action: 'グループ名更新', target: 'グループ'});
     req.flash('success', 'グループ名を更新しました');
-    res.redirect('/group');
+    res.redirect(`/setting?section=group-management&groupId=${id}`);
   } catch (err) {
     console.error('グループ名更新エラー:', err);
     req.flash('error', 'グループ名の更新に失敗しました');
-    res.redirect('/group');
+    res.redirect(`/setting?section=group-management&groupId=${id}`);
   }
 });
 
@@ -73,12 +73,16 @@ router.post('/invite/:id', isLoggedIn, async (req, res) => {
     const { invite_email } = req.body;
     const groupId = req.params.id;
     const group = await Group.findById(groupId);
-    await group.populate('createdBy');
   
     if (!group) {
       req.flash('error', 'グループが見つかりません');
       return res.redirect('/group/group_list');
     }
+    if (!group.createdBy.equals(req.user._id)) {
+      req.flash('error', '管理者のみ招待できます');
+      return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
+    }
+    await group.populate('createdBy');
   
     try {
       await sendMail({
@@ -96,7 +100,7 @@ router.post('/invite/:id', isLoggedIn, async (req, res) => {
     } catch (err) {
       console.error('📩 メール送信エラー:', err);
       req.flash('error', 'メールの送信に失敗しました');
-      return res.redirect(`/group/show/${groupId}`);
+      return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
     }
 
     try {
@@ -110,10 +114,10 @@ router.post('/invite/:id', isLoggedIn, async (req, res) => {
     } catch (err) {
         console.error('📁 グループ更新エラー:', err);
         req.flash('error', '招待情報の保存に失敗しました');
-        return res.redirect(`/show/${groupId}`);
+        return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
     }
   
-    res.redirect(`/group/show/${groupId}`);
+    res.redirect(`/setting?section=group-management&groupId=${groupId}`);
   });
 
 // 再招待メール送信
@@ -151,7 +155,7 @@ router.post('/group_reinvite/:id', isLoggedIn, async (req, res) => {
       req.flash('error', '再招待メールの送信に失敗しました');
     }  
 
-    res.redirect(`/group/show/${groupId}`);
+    res.redirect(`/setting?section=group-management&groupId=${groupId}`);
   }); 
 
 // グループ招待承諾ルート
@@ -217,6 +221,10 @@ router.delete('/group_cancel_invite/:groupId', isLoggedIn, async (req, res) => {
       req.flash('error', 'グループが見つかりませんでした');
       return res.redirect('/group/group_list');
     }
+    if (!group.createdBy.equals(req.user._id)) {
+      req.flash('error', '管理者のみ招待を取り消せます');
+      return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
+    }
 
     // 招待されたメールアドレスを削除
     const index = group.invitedUsers.indexOf(invite_email);
@@ -228,11 +236,11 @@ router.delete('/group_cancel_invite/:groupId', isLoggedIn, async (req, res) => {
       req.flash('info', `「${invite_email}」は招待リストにありません`);
     }
     await logAction({ req, action: '招待取消', target: 'グループ'});
-    return res.redirect(`/group/show/${groupId}`);
+    return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
   } catch (err) {
     console.error('招待取り消しエラー:', err);
     req.flash('error', '招待取り消し中にエラーが発生しました');
-    return res.redirect(`/group/show/${groupId}`);
+    return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
   }
 });
 
@@ -325,7 +333,17 @@ router.post('/service-settings/:id', isLoggedIn, async (req, res) => {
     const memberIds = new Set((group.members || []).map(id => id.toString()));
     memberIds.add(group.createdBy.toString());
 
-    const users = await FinanceUser.find({ _id: { $in: Array.from(memberIds) } });
+    const requestedMemberId = req.body.member_id;
+    if (requestedMemberId && !memberIds.has(String(requestedMemberId))) {
+      req.flash('error', '指定されたメンバーはこのグループに所属していません');
+      return res.redirect(`/setting?section=group-management&groupId=${group._id}`);
+    }
+    if (requestedMemberId && String(requestedMemberId) === String(group.createdBy)) {
+      req.flash('error', 'グループ管理者はすべてのサービスを利用できます');
+      return res.redirect(`/setting?section=group-management&groupId=${group._id}`);
+    }
+    const targetIds = requestedMemberId ? [requestedMemberId] : Array.from(memberIds);
+    const users = await FinanceUser.find({ _id: { $in: targetIds } });
     for (const user of users) {
       const key = user._id.toString();
       const entry = payload[key] || {};
@@ -348,11 +366,11 @@ router.post('/service-settings/:id', isLoggedIn, async (req, res) => {
     }
 
     req.flash('success', 'サービス利用設定を更新しました');
-    res.redirect(`/group/show/${group._id}`);
+    res.redirect(`/setting?section=group-management&groupId=${group._id}`);
   } catch (err) {
     console.error('サービス利用設定の更新エラー:', err);
     req.flash('error', '設定の更新に失敗しました');
-    res.redirect(`/group/show/${req.params.id}`);
+    res.redirect(`/setting?section=group-management&groupId=${req.params.id}`);
   }
 });
 
@@ -381,15 +399,16 @@ router.delete('/group_remove_member/:groupId/:userId', isLoggedIn, async (req, r
       const user = await FinanceUser.findById(userId);
       if (user) {
         user.groups = user.groups.filter(gid => gid.toString() !== groupId);
+        if (user.servicesByGroup?.delete) user.servicesByGroup.delete(String(groupId));
         await user.save();
       }
       await logAction({ req, action: '退会', target: 'グループ'});
       req.flash('success', 'メンバーを退会させました');
-      res.redirect('/group/show/' + groupId);
+      res.redirect(`/setting?section=group-management&groupId=${groupId}`);
     } catch (err) {
       console.error('退会エラー:', err);
       req.flash('error', '退会処理中にエラーが発生しました');
-      res.redirect('/group/show/' + groupId);
+      res.redirect(`/setting?section=group-management&groupId=${groupId}`);
     }
   });
 
@@ -413,6 +432,7 @@ router.delete('/:id', isLoggedIn, async (req, res) => {
       const members = await FinanceUser.find({ _id: { $in: group.members } });
       for (let member of members) {
         member.groups = member.groups.filter(gid => !gid.equals(group._id));
+        if (member.servicesByGroup?.delete) member.servicesByGroup.delete(String(group._id));
         await member.save();
       }
   
@@ -423,8 +443,8 @@ router.delete('/:id', isLoggedIn, async (req, res) => {
       await logAction({ req, action: '削除', target: 'グループ'});
   
       req.flash('success', 'グループを削除しました');
-      const groups = await Group.find({ members: req.user._id }).populate('createdBy');
-      res.render('groups/group_entry', { groups });
+      if (String(req.session.activeGroupId) === String(group._id)) delete req.session.activeGroupId;
+      res.redirect('/setting?section=group-list');
     } catch (err) {
       console.error('❌ グループ削除エラー:', err);
       req.flash('error', 'グループ削除中にエラーが発生しました');

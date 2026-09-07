@@ -1,10 +1,64 @@
 <% layout('layouts/boilerplate') %>
-
-    <div class="waku-1">
-        <div class="waku-7">
-            <a class = "button-3" href="profile" id="" name = "profile">プロフィール</a>
+<%
+  const section = settingsSection === 'group-list' || settingsSection === 'profile' ? settingsSection : 'group-management';
+  const isOwner = selectedGroup && String(selectedGroup.createdBy?._id || selectedGroup.createdBy) === String(currentUser._id);
+  const serviceRows = [
+    { key: 'allaboutme', label: 'All About me' }, { key: 'finance', label: '家計簿 / Dashboard' },
+    { key: 'assets', label: '資産管理' }, { key: 'message', label: 'Message' }
+  ];
+  const servicesFor = (member) => {
+    if (!selectedGroup) return {};
+    const map = member.servicesByGroup || {};
+    return (typeof map.get === 'function' ? map.get(String(selectedGroup._id)) : map[String(selectedGroup._id)]) || {};
+  };
+%>
+<div class="app-settings-page">
+  <header class="settings-page-heading"><h1>アプリ設定</h1><p>プロフィールや参加グループ、連携サービスを管理します。</p></header>
+  <div class="settings-shell">
+    <aside class="settings-sidebar" aria-label="設定メニュー">
+      <a href="/setting?section=profile" class="settings-nav-link <%= section === 'profile' ? 'is-active' : '' %>"><i class="fa-regular fa-user"></i><span>プロフィール</span></a>
+      <a href="/setting?section=group-list" class="settings-nav-link <%= section === 'group-list' ? 'is-active' : '' %>"><i class="fa-solid fa-user-group"></i><span>グループ作成・一覧</span></a>
+      <a href="/setting?section=group-management<%= selectedGroup ? '&groupId=' + selectedGroup._id : '' %>" class="settings-nav-link <%= section === 'group-management' ? 'is-active' : '' %> <%= selectedGroup ? '' : 'is-disabled' %>"><i class="fa-solid fa-users-gear"></i><span>グループ管理</span></a>
+    </aside>
+    <section class="settings-content">
+      <% if (section === 'profile') { %>
+        <div class="settings-section-title"><div><h2>プロフィール</h2><p>アカウント情報や通知設定を管理します。</p></div></div>
+        <div class="settings-card settings-profile-card"><img src="<%= currentUser.avatar || '/images/def_user_icon.png' %>" alt="" class="settings-profile-avatar"><div><strong><%= currentUser.displayname || currentUser.username %></strong><p><%= currentUser.email %></p></div><a href="/profile" class="settings-btn settings-btn-primary">プロフィールを編集</a></div>
+      <% } else if (section === 'group-list') { %>
+        <div class="settings-section-title"><div><h2>グループ作成・一覧</h2><p>新しいグループの作成や、管理するグループを選択します。</p></div></div>
+        <div class="settings-card"><h3>新しいグループを作成</h3><form action="/group" method="POST" class="settings-inline-form"><input type="text" name="group_name" class="form-control" placeholder="グループ名" required><button type="submit" class="settings-btn settings-btn-primary">作成</button></form></div>
+        <div class="settings-card"><h3>参加グループ</h3><div class="settings-group-list">
+          <% groups.forEach(group => { %><a href="/setting?section=group-management&groupId=<%= group._id %>" class="settings-group-row"><span><strong><%= group.group_name %></strong><small>管理者: <%= group.createdBy?.displayname || group.createdBy?.username %></small></span><i class="fa-solid fa-chevron-right"></i></a><% }) %>
+          <% if (!groups.length) { %><p class="settings-empty">参加しているグループはありません。</p><% } %>
+        </div></div>
+      <% } else if (!selectedGroup) { %>
+        <div class="settings-section-title"><div><h2>グループ管理</h2><p>管理するグループがありません。</p></div></div><a href="/setting?section=group-list" class="settings-btn settings-btn-primary">グループを作成</a>
+      <% } else { %>
+        <div class="settings-section-title"><div><h2>グループ管理</h2><p>参加メンバーや招待、グループ情報を管理します。</p></div>
+          <% if (isOwner) { %><form action="/group/<%= selectedGroup._id %>?_method=DELETE" method="POST" onsubmit="return confirm('本当にこのグループを削除しますか？')"><button class="settings-btn settings-btn-danger"><i class="fa-regular fa-trash-can"></i> グループを削除</button></form><% } %>
         </div>
-        <div class="waku-7">
-            <a class = "button-3" href="/group" id="" name = "">新規グループ登録 / 編集</a>
+        <% if (groups.length > 1) { %><label class="settings-group-picker">管理するグループ<select class="form-select" onchange="location.href='/setting?section=group-management&groupId=' + encodeURIComponent(this.value)"><% groups.forEach(group => { %><option value="<%= group._id %>" <%= String(group._id) === String(selectedGroup._id) ? 'selected' : '' %>><%= group.group_name %></option><% }) %></select></label><% } %>
+        <div class="settings-default-row"><span>現在のデフォルトグループ: <strong class="settings-group-chip"><i class="fa-regular fa-bookmark"></i> <%= selectedGroup.group_name %></strong></span><span class="settings-success"><%= String(activeGroupId) === String(selectedGroup._id) ? 'デフォルトに設定済みです' : '別のグループが選択されています' %></span></div>
+        <% if (isOwner) { %><form action="/group/<%= selectedGroup._id %>/edit-name?_method=PUT" method="POST" class="settings-card settings-name-form"><label for="group_name">グループ名（グループ名の変更が可能です）</label><div class="settings-inline-form"><input id="group_name" name="group_name" class="form-control" value="<%= selectedGroup.group_name %>" required><button class="settings-btn settings-btn-primary">更新</button></div></form><% } %>
+        <div class="settings-two-column">
+          <div class="settings-card"><div class="settings-card-heading"><div><h3>参加メンバー</h3><p>管理者はメンバーごとに利用可能なサービスを設定できます。</p></div><span class="settings-count"><i class="fa-solid fa-users"></i> <%= selectedGroup.members.length %>人</span></div><div class="settings-member-list">
+            <% selectedGroup.members.forEach(member => { const memberServices = servicesFor(member); %>
+              <div class="settings-member-card <%= String(member._id) === String(selectedGroup.createdBy?._id || selectedGroup.createdBy) ? 'is-owner' : '' %>">
+                <div class="settings-member-head"><span><strong><%= member.displayname || member.username %></strong><small><%= member.email %></small></span>
+                  <% if (String(member._id) === String(selectedGroup.createdBy?._id || selectedGroup.createdBy)) { %><span class="settings-owner"><i class="fa-solid fa-crown"></i> オーナー</span><% } else if (isOwner) { %><form action="/group/group_remove_member/<%= selectedGroup._id %>/<%= member._id %>?_method=DELETE" method="POST" onsubmit="return confirm('このメンバーを退会させますか？')"><button class="settings-link-danger"><i class="fa-solid fa-user-minus"></i> 退会させる</button></form><% } %>
+                </div>
+                <% if (String(member._id) !== String(selectedGroup.createdBy?._id || selectedGroup.createdBy)) { %><form action="/group/service-settings/<%= selectedGroup._id %>" method="POST"><input type="hidden" name="member_id" value="<%= member._id %>"><div class="settings-service-grid">
+                  <% serviceRows.forEach(service => { const enabled = memberServices[service.key] !== false; %><label><input type="checkbox" name="service_by_member[<%= member._id %>][<%= service.key %>]" value="true" <%= enabled ? 'checked' : '' %> <%= isOwner ? '' : 'disabled' %>><span><%= service.label %></span></label><% }) %>
+                </div><% if (isOwner) { %><div class="settings-card-action"><button class="settings-btn settings-btn-small">サービス設定を保存</button></div><% } %></form><% } %>
+              </div>
+            <% }) %>
+          </div></div>
+          <div class="settings-card"><h3>新しいメンバーを招待</h3><p>メールアドレスで招待を送信します。</p>
+            <% if (isOwner) { %><form action="/group/invite/<%= selectedGroup._id %>" method="POST" data-loading><input type="email" name="invite_email" class="form-control" placeholder="招待したいメールアドレス" required><button class="settings-btn settings-btn-primary settings-btn-block"><i class="fa-regular fa-paper-plane"></i> 招待メールを送信</button></form><% } else { %><p class="settings-empty">招待できるのはグループ管理者のみです。</p><% } %>
+            <h4 class="settings-invite-title">招待中</h4><% if (selectedGroup.invitedUsers.length) { selectedGroup.invitedUsers.forEach(email => { %><div class="settings-invite-row"><span><%= email %></span><% if (isOwner) { %><form action="/group/group_cancel_invite/<%= selectedGroup._id %>?_method=DELETE" method="POST"><input type="hidden" name="invite_email" value="<%= email %>"><button class="settings-link-danger">取消</button></form><% } %></div><% }) } else { %><p class="settings-empty">現在、招待中のユーザーはいません。</p><% } %>
+          </div>
         </div>
-    </div>
+      <% } %>
+    </section>
+  </div>
+</div>

@@ -112,24 +112,24 @@
       <div class="menu-section">
         <div class="menu-title"><i class="fa-solid fa-rotate"></i> サービス切替</div>
         <div class="menu-pills">
-          <form action="/service/select" method="POST">
+          <% if (svc.finance) { %><form action="/service/select" method="POST">
             <input type="hidden" name="service" value="finance">
-            <button type="submit" class="menu-pill <%= activeSvc === 'finance' ? 'is-active is-finance' : '' %>" <%= svc.finance ? '' : 'disabled' %>>
+            <button type="submit" class="menu-pill <%= activeSvc === 'finance' ? 'is-active is-finance' : '' %>">
               <span class="menu-pill-main"><i class="fa-solid fa-wallet"></i><span>Finance</span></span>
             </button>
-          </form>
-          <form action="/service/select" method="POST">
+          </form><% } %>
+          <% if (svc.allaboutme) { %><form action="/service/select" method="POST">
             <input type="hidden" name="service" value="myself">
-            <button type="submit" class="menu-pill <%= activeSvc === 'myself' ? 'is-active is-myself' : '' %>" <%= svc.allaboutme ? '' : 'disabled' %>>
+            <button type="submit" class="menu-pill <%= activeSvc === 'myself' ? 'is-active is-myself' : '' %>">
               <span class="menu-pill-main"><i class="fa-solid fa-user"></i><span>Myself</span></span>
             </button>
-          </form>
-          <form action="/service/select" method="POST">
+          </form><% } %>
+          <% if (svc.message) { %><form action="/service/select" method="POST">
             <input type="hidden" name="service" value="message">
-            <button type="submit" class="menu-pill <%= activeSvc === 'message' ? 'is-active is-message' : '' %>" <%= svc.message ? '' : 'disabled' %>>
+            <button type="submit" class="menu-pill <%= activeSvc === 'message' ? 'is-active is-message' : '' %>">
               <span class="menu-pill-main"><i class="fa-regular fa-envelope"></i><span>Message</span></span>
             </button>
-          </form>
+          </form><% } %>
         </div>
       </div>
 
@@ -162,7 +162,7 @@
           </ul>
 
           <ul class="nav flex-column menu-list">
-            <li class="nav-item"><a class="nav-link menu-item <%= isActive('/asset/display') ? 'is-active is-finance' : '' %> <%= svc.assets ? '' : 'disabled' %>" href="<%= svc.assets ? '/asset/display' : '#' %>"><i class="fa-regular fa-money-bill-1 icon-asset"></i> 資産管理</a></li>
+            <% if (svc.assets) { %><li class="nav-item"><a class="nav-link menu-item <%= isActive('/asset/display') ? 'is-active is-finance' : '' %>" href="/asset/display"><i class="fa-regular fa-money-bill-1 icon-asset"></i> 資産管理</a></li><% } %>
           </ul>
         <% } else if (activeSvc === 'message') { %>
           <ul class="nav flex-column menu-list">

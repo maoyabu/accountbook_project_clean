@@ -218,6 +218,19 @@ router.post('/service/select', isLoggedIn, (req, res) => {
       : req.body.service === 'myself'
         ? 'myself'
         : 'finance';
+    const serviceKey = selectedService === 'myself' ? 'allaboutme' : selectedService;
+    const groupId = req.session.activeGroupId?.toString();
+    const activeGroup = req.user.groups?.find(group => String(group?._id) === String(groupId || ''));
+    const isGroupOwner = activeGroup && String(activeGroup.createdBy?._id || activeGroup.createdBy) === String(req.user._id);
+    const groupServices = groupId && req.user.servicesByGroup && !isGroupOwner
+      ? (typeof req.user.servicesByGroup.get === 'function'
+        ? req.user.servicesByGroup.get(groupId)
+        : req.user.servicesByGroup[groupId])
+      : null;
+    if (groupServices && groupServices[serviceKey] === false) {
+      req.flash('error', 'このグループでは選択したサービスを利用できません');
+      return res.redirect('/setting');
+    }
     req.session.activeService = selectedService;
     const redirectUrl = selectedService === 'myself'
       ? '/myself/top'
@@ -406,8 +419,25 @@ router.post('/unsubscribe', isLoggedIn, async (req, res) => {
 });
 
 //設定画面の表示
-router.get('/setting', (req,res) => {
-    res.render('setting', { page: 'setting' });
+router.get('/setting', isLoggedIn, async (req,res, next) => {
+  try {
+    const groups = await Group.find({ members: req.user._id })
+      .populate('createdBy')
+      .populate('members');
+    const requestedGroupId = typeof req.query.groupId === 'string' ? req.query.groupId : '';
+    const selectedGroup = groups.find(group => group._id.toString() === requestedGroupId)
+      || groups.find(group => group._id.toString() === String(req.session.activeGroupId || ''))
+      || groups[0]
+      || null;
+    res.render('setting', {
+      page: 'setting',
+      groups,
+      selectedGroup,
+      settingsSection: req.query.section || (selectedGroup ? 'group-management' : 'group-list')
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 //プロフィール設定 表示 2）参加しているグループ、3）管理者かどうかを表示させる
