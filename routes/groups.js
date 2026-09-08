@@ -13,6 +13,8 @@ const nodemailer = require('nodemailer');
 const { sendMail } = require('../Utils/mailer');
 
 const ex_cfs = ['Please Choice','副食物費','主食費1','主食費2','調味料','光熱費','住宅・家具費','衣服費','教育費','交際費','教養費','娯楽費','保険・衛生費','職業費','特別費','公共費','車関連費','通信費'];
+const GROUP_SERVICE_KEYS = ['allaboutme', 'finance', 'assets', 'message'];
+const normalizeInviteEmail = (email) => String(email || '').trim().toLowerCase();
 
 
 //Group作成画面を表示させる
@@ -70,7 +72,7 @@ router.put('/:id/edit-name', isLoggedIn, async (req, res) => {
 
 // 招待メール送信処理
 router.post('/invite/:id', isLoggedIn, async (req, res) => {
-    const { invite_email } = req.body;
+    const invite_email = normalizeInviteEmail(req.body.invite_email);
     const groupId = req.params.id;
     const group = await Group.findById(groupId);
   
@@ -109,8 +111,16 @@ router.post('/invite/:id', isLoggedIn, async (req, res) => {
         }
         if (!group.invitedUsers.includes(invite_email)) {
             group.invitedUsers.push(invite_email);
-            await group.save();
         }
+        group.invitedUserServicePermissions = group.invitedUserServicePermissions || [];
+        const hasPermission = group.invitedUserServicePermissions.some(entry => normalizeInviteEmail(entry.email) === invite_email);
+        if (!hasPermission) {
+          group.invitedUserServicePermissions.push({
+            email: invite_email,
+            services: Object.fromEntries(GROUP_SERVICE_KEYS.map(key => [key, true]))
+          });
+        }
+        await group.save();
     } catch (err) {
         console.error('📁 グループ更新エラー:', err);
         req.flash('error', '招待情報の保存に失敗しました');
@@ -161,7 +171,7 @@ router.post('/group_reinvite/:id', isLoggedIn, async (req, res) => {
 // グループ招待承諾ルート
 router.get('/group_accept/:groupId', async (req, res) => {
     const { groupId } = req.params;
-    const { email } = req.query;
+    const email = normalizeInviteEmail(req.query.email);
 
     if (!email) {
         req.flash('error', 'メールアドレスが指定されていません');
@@ -191,15 +201,29 @@ router.get('/group_accept/:groupId', async (req, res) => {
 
         if (!user.groups.some(id => id.equals(group._id))) {
             user.groups.push(group._id);
-            await user.save();
         }
+
+        const invitePermission = (group.invitedUserServicePermissions || []).find(
+          entry => normalizeInviteEmail(entry.email) === email
+        );
+        if (invitePermission) {
+          const services = Object.fromEntries(
+            GROUP_SERVICE_KEYS.map(key => [key, invitePermission.services?.[key] !== false])
+          );
+          if (typeof user.servicesByGroup?.set === 'function') user.servicesByGroup.set(String(group._id), services);
+          else user.servicesByGroup = { ...(user.servicesByGroup || {}), [String(group._id)]: services };
+        }
+        await user.save();
 
         // 招待されたメールアドレスを削除
         const index = group.invitedUsers.indexOf(email);
         if (index !== -1) {
             group.invitedUsers.splice(index, 1);
-            await group.save();
         }
+        group.invitedUserServicePermissions = (group.invitedUserServicePermissions || []).filter(
+          entry => normalizeInviteEmail(entry.email) !== email
+        );
+        await group.save();
         await logAction({ req, action: '招待承諾', target: 'グループ'});
         req.flash('success', `${group.group_name} グループへの参加が完了しました`);
         return res.redirect('/login');
@@ -230,6 +254,9 @@ router.delete('/group_cancel_invite/:groupId', isLoggedIn, async (req, res) => {
     const index = group.invitedUsers.indexOf(invite_email);
     if (index !== -1) {
       group.invitedUsers.splice(index, 1);
+      group.invitedUserServicePermissions = (group.invitedUserServicePermissions || []).filter(
+        entry => normalizeInviteEmail(entry.email) !== normalizeInviteEmail(invite_email)
+      );
       await group.save();
       req.flash('success', `「${invite_email}」への招待を取り消しました`);
     } else {
@@ -240,6 +267,42 @@ router.delete('/group_cancel_invite/:groupId', isLoggedIn, async (req, res) => {
   } catch (err) {
     console.error('招待取り消しエラー:', err);
     req.flash('error', '招待取り消し中にエラーが発生しました');
+    return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
+  }
+});
+
+// 招待承諾前のユーザーに対するサービス利用設定（管理者のみ）
+router.post('/invite-service-settings/:id', isLoggedIn, async (req, res) => {
+  const groupId = req.params.id;
+  try {
+    const group = await Group.findById(groupId);
+    if (!group) {
+      req.flash('error', 'グループが見つかりません');
+      return res.redirect('/setting?section=group-list');
+    }
+    if (!group.createdBy.equals(req.user._id)) {
+      req.flash('error', '管理者のみ設定できます');
+      return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
+    }
+    const email = normalizeInviteEmail(req.body.invite_email);
+    if (!group.invitedUsers.some(invited => normalizeInviteEmail(invited) === email)) {
+      req.flash('error', '指定された招待中ユーザーが見つかりません');
+      return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
+    }
+    const submitted = req.body.services || {};
+    const services = Object.fromEntries(
+      GROUP_SERVICE_KEYS.map(key => [key, submitted[key] === 'true' || submitted[key] === 'on'])
+    );
+    group.invitedUserServicePermissions = group.invitedUserServicePermissions || [];
+    const existing = group.invitedUserServicePermissions.find(entry => normalizeInviteEmail(entry.email) === email);
+    if (existing) existing.services = services;
+    else group.invitedUserServicePermissions.push({ email, services });
+    await group.save();
+    req.flash('success', '招待中ユーザーのサービス設定を更新しました');
+    return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
+  } catch (err) {
+    console.error('招待中ユーザーのサービス設定エラー:', err);
+    req.flash('error', '設定の更新に失敗しました');
     return res.redirect(`/setting?section=group-management&groupId=${groupId}`);
   }
 });

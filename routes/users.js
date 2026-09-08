@@ -10,6 +10,7 @@ const Group = require('../models/groups');
 const RegularEntry = require('../models/finance_regularEntry');
 const Log = require('../models/log'); // 上部で読み込み
 const { getSafeReferrerPath } = require('../Utils/safeRedirect');
+const GROUP_SERVICE_KEYS = ['allaboutme', 'finance', 'assets', 'message'];
 
 // 必要なモジュール
 const multer = require('multer');
@@ -89,6 +90,10 @@ router.post('/register', async (req, res, next) => {
             const group = await Group.findById(groupId);
 
             if (group) {
+                const normalizedEmail = String(email || '').trim().toLowerCase();
+                const invitePermission = (group.invitedUserServicePermissions || []).find(
+                  entry => String(entry.email || '').trim().toLowerCase() === normalizedEmail
+                );
                 // ユーザーをグループに追加
                 if (Array.isArray(user.groups) && !user.groups.includes(group._id)) {
                     user.groups.push(group._id);
@@ -102,6 +107,12 @@ router.post('/register', async (req, res, next) => {
                 // グループをユーザーに追加
                 if (!registeredUser.groups.includes(group._id)) {
                     registeredUser.groups.push(group._id);
+                    if (invitePermission) {
+                      registeredUser.servicesByGroup.set(
+                        String(group._id),
+                        Object.fromEntries(GROUP_SERVICE_KEYS.map(key => [key, invitePermission.services?.[key] !== false]))
+                      );
+                    }
                     await registeredUser.save();
                 }
 
@@ -109,11 +120,16 @@ router.post('/register', async (req, res, next) => {
                 req.session.activeGroupId = group._id;
 
                 // 招待リストから削除
-                const emailIndex = group.invitedUsers.indexOf(email);
+                const emailIndex = group.invitedUsers.findIndex(
+                  invited => String(invited || '').trim().toLowerCase() === normalizedEmail
+                );
                 if (emailIndex !== -1) {
                     group.invitedUsers.splice(emailIndex, 1);
-                    await group.save();
                 }
+                group.invitedUserServicePermissions = (group.invitedUserServicePermissions || []).filter(
+                  entry => String(entry.email || '').trim().toLowerCase() !== normalizedEmail
+                );
+                await group.save();
             }
         }
 

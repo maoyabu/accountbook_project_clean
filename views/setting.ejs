@@ -11,6 +11,10 @@
     const map = member.servicesByGroup || {};
     return (typeof map.get === 'function' ? map.get(String(selectedGroup._id)) : map[String(selectedGroup._id)]) || {};
   };
+  const inviteServicesFor = (email) => {
+    const permission = (selectedGroup?.invitedUserServicePermissions || []).find(entry => String(entry.email).toLowerCase() === String(email).toLowerCase());
+    return permission?.services || {};
+  };
 %>
 <div class="app-settings-page">
   <header class="settings-page-heading"><h1>アプリ設定</h1><p>プロフィールや参加グループ、連携サービスを管理します。</p></header>
@@ -55,7 +59,19 @@
           </div></div>
           <div class="settings-card"><h3>新しいメンバーを招待</h3><p>メールアドレスで招待を送信します。</p>
             <% if (isOwner) { %><form action="/group/invite/<%= selectedGroup._id %>" method="POST" data-loading><input type="email" name="invite_email" class="form-control" placeholder="招待したいメールアドレス" required><button class="settings-btn settings-btn-primary settings-btn-block"><i class="fa-regular fa-paper-plane"></i> 招待メールを送信</button></form><% } else { %><p class="settings-empty">招待できるのはグループ管理者のみです。</p><% } %>
-            <h4 class="settings-invite-title">招待中</h4><% if (selectedGroup.invitedUsers.length) { selectedGroup.invitedUsers.forEach(email => { %><div class="settings-invite-row"><span><%= email %></span><% if (isOwner) { %><form action="/group/group_cancel_invite/<%= selectedGroup._id %>?_method=DELETE" method="POST"><input type="hidden" name="invite_email" value="<%= email %>"><button class="settings-link-danger">取消</button></form><% } %></div><% }) } else { %><p class="settings-empty">現在、招待中のユーザーはいません。</p><% } %>
+            <h4 class="settings-invite-title">招待中</h4>
+            <% if (selectedGroup.invitedUsers.length) { selectedGroup.invitedUsers.forEach(email => { const inviteServices = inviteServicesFor(email); %>
+              <div class="settings-invited-card">
+                <div class="settings-invite-row"><span><i class="fa-regular fa-envelope"></i> <%= email %></span><% if (isOwner) { %><form action="/group/group_cancel_invite/<%= selectedGroup._id %>?_method=DELETE" method="POST"><input type="hidden" name="invite_email" value="<%= email %>"><button class="settings-link-danger">招待を取消</button></form><% } %></div>
+                <form action="/group/invite-service-settings/<%= selectedGroup._id %>" method="POST">
+                  <input type="hidden" name="invite_email" value="<%= email %>">
+                  <div class="settings-service-grid">
+                    <% serviceRows.forEach(service => { const enabled = inviteServices[service.key] !== false; %><label><input type="checkbox" name="services[<%= service.key %>]" value="true" <%= enabled ? 'checked' : '' %> <%= isOwner ? '' : 'disabled' %>><span><%= service.label %></span></label><% }) %>
+                  </div>
+                  <% if (isOwner) { %><div class="settings-card-action"><button class="settings-btn settings-btn-small">サービス設定を保存</button></div><% } %>
+                </form>
+              </div>
+            <% }) } else { %><p class="settings-empty">現在、招待中のユーザーはいません。</p><% } %>
           </div>
         </div>
       <% } %>

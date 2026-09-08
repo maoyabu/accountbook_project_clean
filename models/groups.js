@@ -21,6 +21,18 @@ const groupSchema = new Schema({
         type: [String],
         default: []
       },
+    invitedUserServicePermissions: {
+        type: [{
+          email: { type: String, required: true },
+          services: {
+            allaboutme: { type: Boolean, default: true },
+            finance: { type: Boolean, default: true },
+            assets: { type: Boolean, default: true },
+            message: { type: Boolean, default: true }
+          }
+        }],
+        default: []
+      },
     financeFiscalStartMonth: {
         type: Number,
         default: 1,
