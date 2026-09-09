@@ -215,6 +215,17 @@ app.use((req, res, next) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
+// 管理画面で利用する最終アクセス日時を記録する
+app.use((req, res, next) => {
+  if (req.user?._id) {
+    FinanceUser.collection.updateOne(
+      { _id: req.user._id },
+      { $set: { lastAccessAt: new Date() } }
+    ).catch((error) => console.warn('最終アクセス日時の更新に失敗:', error.message));
+  }
+  next();
+});
+
 // ✅ EJS 側で ReferenceError を起こさないため、最低限の locals を先に定義しておく
 app.use((req, res, next) => {
   res.locals.currentUser = null;
@@ -362,8 +373,7 @@ app.use((req, res, next) => {
     // 🔽 利用可能サービス（ナビメニュー出し分け用）
     const baseServices = { allaboutme: true, finance: true, assets: true, message: true };
     const activeGroup = req.user?.groups?.find(group => String(group?._id) === String(req.session?.activeGroupId || ''));
-    const isActiveGroupOwner = activeGroup && String(activeGroup.createdBy?._id || activeGroup.createdBy) === String(req.user._id);
-    if (req.user && req.session?.activeGroupId && req.user.servicesByGroup && !isActiveGroupOwner) {
+    if (req.user && req.session?.activeGroupId && req.user.servicesByGroup) {
         const gid = req.session.activeGroupId.toString();
         const map = req.user.servicesByGroup;
         const groupServices = typeof map.get === 'function' ? map.get(gid) : map[gid];
