@@ -10,6 +10,11 @@ const Group = require('../models/groups');
 const RegularEntry = require('../models/finance_regularEntry');
 const Log = require('../models/log'); // 上部で読み込み
 const { getSafeReferrerPath } = require('../Utils/safeRedirect');
+const {
+    hashToken,
+    normalizeEmail,
+    sendRegistrationVerification
+} = require('../Utils/registrationVerification');
 const GROUP_SERVICE_KEYS = ['allaboutme', 'finance', 'assets', 'message'];
 
 // 必要なモジュール
@@ -57,13 +62,14 @@ router.get('/register', (req, res) => {
 
 //ユーザー登録処理
 router.post('/register', async (req, res, next) => {
-    const { username, email, password, password_check } = req.body;
+    const { username, password, password_check } = req.body;
+    const email = normalizeEmail(req.body.email);
     let errors = {};
-    let group = null;
 
     if (!username) errors.username = 'ユーザー名を入力してください';
     if (!email) errors.email = 'メールアドレスを入力してください';
-    if (password !== password_check) errors.password = 'パスワードが一致しません';
+    if (!password) errors.password = 'パスワードを入力してください';
+    else if (password !== password_check) errors.password = 'パスワードが一致しません';
     else if (password.length < 8) errors.password = 'パスワードは8文字以上で入力してください';
 
     if (Object.keys(errors).length > 0) {
@@ -78,67 +84,30 @@ router.post('/register', async (req, res, next) => {
     }
     const groupId = req.body.group || req.query.group;
     try {
-        const user = new FinanceUser({ username, email });
+        const user = new FinanceUser({
+            username: String(username).trim(),
+            email,
+            emailVerified: false,
+            pendingGroup: groupId || undefined
+        });
         // ✅ 管理者アカウントの自動設定（特定のメールアドレス）
         if (email === process.env.ADMIN_EMAIL) {
             user.isAdmin = true;
         }
         const registeredUser = await FinanceUser.register(user, password);
-
-        // グループ参加処理
-        if (groupId) {
-            const group = await Group.findById(groupId);
-
-            if (group) {
-                const normalizedEmail = String(email || '').trim().toLowerCase();
-                const invitePermission = (group.invitedUserServicePermissions || []).find(
-                  entry => String(entry.email || '').trim().toLowerCase() === normalizedEmail
-                );
-                // ユーザーをグループに追加
-                if (Array.isArray(user.groups) && !user.groups.includes(group._id)) {
-                    user.groups.push(group._id);
-                    await user.save();
-                }
-                if (!group.members.includes(registeredUser._id)) {
-                    group.members.push(registeredUser._id);
-                    await group.save();
-                }
-
-                // グループをユーザーに追加
-                if (!registeredUser.groups.includes(group._id)) {
-                    registeredUser.groups.push(group._id);
-                    if (invitePermission) {
-                      registeredUser.servicesByGroup.set(
-                        String(group._id),
-                        Object.fromEntries(GROUP_SERVICE_KEYS.map(key => [key, invitePermission.services?.[key] !== false]))
-                      );
-                    }
-                    await registeredUser.save();
-                }
-
-                // 🔽 ここでアクティブグループを設定！
-                req.session.activeGroupId = group._id;
-
-                // 招待リストから削除
-                const emailIndex = group.invitedUsers.findIndex(
-                  invited => String(invited || '').trim().toLowerCase() === normalizedEmail
-                );
-                if (emailIndex !== -1) {
-                    group.invitedUsers.splice(emailIndex, 1);
-                }
-                group.invitedUserServicePermissions = (group.invitedUserServicePermissions || []).filter(
-                  entry => String(entry.email || '').trim().toLowerCase() !== normalizedEmail
-                );
-                await group.save();
-            }
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+        try {
+            await sendRegistrationVerification(registeredUser, baseUrl);
+        } catch (mailError) {
+            // メールを受け取れない仮登録は残さず、同じ情報で再試行できるようにする。
+            await FinanceUser.deleteOne({ _id: registeredUser._id, emailVerified: false });
+            console.error('会員登録確認メールの送信に失敗:', mailError);
+            req.flash('error', '確認メールを送信できませんでした。時間をおいて再度お試しください。');
+            return res.redirect('/register');
         }
 
-        req.session.save(err => {
-            if (err) return next(err);
-
-            req.flash('success', `${username}さん、ようこそ！`);
-            res.redirect('/myTop/top');
-        });
+        req.flash('success', `${email} に確認メールを送信しました。メール内のボタンから会員登録を完了してください。`);
+        return res.redirect('/login');
 
     } catch (e) {
         if (e.code === 11000 && e.keyPattern?.email) {
@@ -147,6 +116,71 @@ router.post('/register', async (req, res, next) => {
             req.flash('error', e.message); // その他のエラー
         }
         return res.redirect('/register');
+    }
+});
+
+router.post('/resend-verification', async (req, res) => {
+    const email = normalizeEmail(req.body.email);
+    try {
+        const user = await FinanceUser.findOne({ email, emailVerified: false });
+        if (user) {
+            const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+            await sendRegistrationVerification(user, baseUrl);
+        }
+        // アカウントの有無を外部から判別できない共通メッセージにする。
+        req.flash('success', '未確認の登録がある場合は、確認メールを再送しました。');
+    } catch (error) {
+        console.error('会員登録確認メールの再送に失敗:', error);
+        req.flash('error', '確認メールを送信できませんでした。時間をおいて再度お試しください。');
+    }
+    return res.redirect('/login');
+});
+
+// 確認メール内の「会員登録を完了する」ボタンから登録を確定する。
+router.get('/verify-email/:token', async (req, res, next) => {
+    try {
+        const user = await FinanceUser.findOne({
+            emailVerificationToken: hashToken(req.params.token),
+            emailVerificationExpires: { $gt: new Date() },
+            emailVerified: false
+        });
+        if (!user) {
+            req.flash('error', '確認リンクが無効または期限切れです');
+            return res.redirect('/login');
+        }
+
+        if (user.pendingGroup) {
+            const group = await Group.findById(user.pendingGroup);
+            if (group) {
+                const invitePermission = (group.invitedUserServicePermissions || []).find(
+                    entry => normalizeEmail(entry.email) === user.email
+                );
+                if (!user.groups.some(id => id.equals(group._id))) user.groups.push(group._id);
+                if (invitePermission) {
+                    user.servicesByGroup.set(String(group._id), Object.fromEntries(
+                        GROUP_SERVICE_KEYS.map(key => [key, invitePermission.services?.[key] !== false])
+                    ));
+                }
+                if (!group.members.some(id => id.equals(user._id))) group.members.push(user._id);
+                group.invitedUsers = group.invitedUsers.filter(invited => normalizeEmail(invited) !== user.email);
+                group.invitedUserServicePermissions = (group.invitedUserServicePermissions || []).filter(
+                    entry => normalizeEmail(entry.email) !== user.email
+                );
+                await group.save();
+            }
+        }
+
+        user.emailVerified = true;
+        user.emailVerifiedAt = new Date();
+        user.emailVerificationToken = undefined;
+        user.emailVerificationExpires = undefined;
+        user.pendingGroup = undefined;
+        await user.save();
+
+        req.flash('success', '会員登録が完了しました。ログインしてください。');
+        return res.redirect('/login');
+    } catch (error) {
+        return next(error);
     }
 });
 
@@ -175,6 +209,11 @@ router.post('/login',
 
     if (!user) {
       req.flash('error', 'ユーザー名またはメールアドレスが無効です');
+      return res.redirect('/login');
+    }
+
+    if (user.emailVerified === false) {
+      req.flash('error', 'メールアドレスの確認が完了していません。確認メール内のボタンを押してください。');
       return res.redirect('/login');
     }
 
@@ -369,6 +408,11 @@ router.post('/reset/:token', async (req, res) => {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();
+
+        if (user.emailVerified === false) {
+            req.flash('success', 'パスワードを更新しました。確認メールから会員登録を完了してください。');
+            return res.redirect('/login');
+        }
 
         req.login(user, err => {
             if (err) {

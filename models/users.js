@@ -45,6 +45,26 @@ const userSchema = new Schema({
     resetPasswordExpires: {
         type: Date
     },
+    // 既存ユーザーは未設定のまま有効として扱い、新規登録だけメール確認を必須にする。
+    emailVerified: {
+        type: Boolean,
+        default: undefined
+    },
+    emailVerifiedAt: {
+        type: Date
+    },
+    emailVerificationToken: {
+        type: String,
+        index: true,
+        sparse: true
+    },
+    emailVerificationExpires: {
+        type: Date
+    },
+    pendingGroup: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Group'
+    },
     groups: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Group',

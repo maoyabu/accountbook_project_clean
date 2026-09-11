@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const FinanceUser = require('../../models/users');
 const crypto = require('crypto');
 const { sendMail } = require('../../Utils/mailer');
+const { normalizeEmail, sendRegistrationVerification } = require('../../Utils/registrationVerification');
 
 // ルーター配下共通の一時ログ
 router.use((req, res, next) => {
@@ -33,7 +34,8 @@ function issueToken(user) {
 // サインアップ
 router.post('/signup', async (req, res, next) => {
   try {
-    const { username, email, password } = req.body || {};
+    const { username, password } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'missing_fields', message: 'username, email, password は必須です' });
     }
@@ -45,18 +47,20 @@ router.post('/signup', async (req, res, next) => {
     }
 
     // passport-local-mongoose の register を使って作成
-    const user = new FinanceUser({ username, email });
-    await FinanceUser.register(user, password);
+    const user = new FinanceUser({ username: String(username).trim(), email, emailVerified: false });
+    const registeredUser = await FinanceUser.register(user, password);
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    try {
+      await sendRegistrationVerification(registeredUser, baseUrl);
+    } catch (mailError) {
+      await FinanceUser.deleteOne({ _id: registeredUser._id, emailVerified: false });
+      throw mailError;
+    }
 
-    // セッションログイン（JWT を使うならここは不要）
-    req.login(user, (err) => {
-      if (err) return next(err);
-
-      return res.json({
-        token: issueToken(user),
-        user: toUserJSON(user),
-        userId: String(user._id)
-      });
+    return res.status(202).json({
+      ok: true,
+      verificationRequired: true,
+      message: '確認メールを送信しました。メール内のボタンから会員登録を完了してください。'
     });
   } catch (err) {
     return next(err);
@@ -80,6 +84,12 @@ router.post('/login', async (req, res, next) => {
     if (err) return next(err);
     if (!user) {
       return res.status(401).json({ error: 'invalid_credentials', message: info?.message || 'ユーザー名またはパスワードが違います' });
+    }
+    if (user.emailVerified === false) {
+      return res.status(403).json({
+        error: 'email_verification_required',
+        message: 'メールアドレスの確認が完了していません'
+      });
     }
     if (user.unsubscribe_date || (user.services && user.services.finance === false)) {
       return res.status(403).json({ error: 'unsubscribed', message: '退会済みのためログインできません' });
@@ -171,6 +181,9 @@ router.post('/reset/:token', async (req, res, next) => {
     user.update_date = new Date();
     await user.save();
 
+    if (user.emailVerified === false) {
+      return res.status(403).json({ error: 'email_verification_required', message: 'メールアドレスの確認が完了していません' });
+    }
     req.login(user, (err) => {
       if (err) return next(err);
       return res.json({

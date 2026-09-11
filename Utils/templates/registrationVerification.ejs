@@ -1,0 +1,13 @@
+<%- include('_mailHeader') %>
+
+<h2>会員登録を完了してください</h2>
+<p><%= username %> さん、会員登録のお申し込みありがとうございます。</p>
+<p>以下のボタンからメールアドレスを確認し、会員登録を完了してください。</p>
+<p style="text-align: center; margin: 28px 0;">
+  <a href="<%= verifyUrl %>" style="display: inline-block; padding: 12px 24px; background-color: #3a7ca5; color: #fff; text-decoration: none; border-radius: 5px;">
+    会員登録を完了する
+  </a>
+</p>
+<p>このリンクの有効期限は24時間です。お心当たりがない場合は、このメールを破棄してください。</p>
+
+<%- include('_mailFooter') %>

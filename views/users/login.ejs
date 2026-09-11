@@ -62,7 +62,7 @@
 
       <div class="tab-pane fade <%= activeTab === 'register' ? 'show active' : '' %>" id="tab-register" role="tabpanel">
         <div class="auth-pane-title">新規会員登録</div>
-        <div class="auth-pane-desc">初めての方はこちらから登録してください。</div>
+        <div class="auth-pane-desc">登録後に届く確認メールのボタンを押すと、会員登録が完了します。</div>
         <form action="/register" method="POST">
           <% if (query?.group) { %>
             <input type="hidden" name="group" value="<%= query.group %>">
@@ -97,10 +97,18 @@
             <% } %>
           </div>
           <div class="waku-5">
-            <button class="button-3 auth-submit">登録する</button>
+            <button class="button-3 auth-submit">確認メールを送信する</button>
             <div class="spinner-border text-dark d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
               <span class="visually-hidden">送信中...</span>
             </div>
+          </div>
+        </form>
+        <hr>
+        <form action="/resend-verification" method="POST">
+          <label class="waku-3" for="resend-email">確認メールが届かない、または期限切れの場合</label>
+          <div class="d-flex gap-2">
+            <input class="waku-4 input-soft" type="email" id="resend-email" name="email" placeholder="登録したメールアドレス" required>
+            <button class="btn btn-outline-secondary text-nowrap" type="submit">再送する</button>
           </div>
         </form>
       </div>
