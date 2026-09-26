@@ -14,24 +14,23 @@ async function convertHeicToJpeg(originalPath) {
     const format = metadata.format;
     //console.log(`📄 画像フォーマット: ${format}`);
 
-    if (format !== 'heic' && format !== 'heif') {
-      //console.log(`🟡 変換不要: HEICではありません（フォーマット: ${format}）`);
-      return originalPath;
-    }
-
-    // HEIC → JPEG 変換
-    const outputBuffer = await heicConvert({
-      buffer: inputBuffer,
-      format: 'JPEG',
-      quality: 0.9
-    });
-    
     const ext = path.extname(originalPath).toLowerCase();
     const dir = path.dirname(originalPath);
     const base = path.basename(originalPath, ext);
-    const newPath = path.join(dir, `${base}_converted.jpeg`);
+    const newPath = path.join(dir, `${base}_ocr.jpeg`);
 
-    await fs.writeFile(newPath, outputBuffer);
+    if (format === 'heic' || format === 'heif') {
+      const outputBuffer = await heicConvert({ buffer: inputBuffer, format: 'JPEG', quality: 0.75 });
+      await sharp(outputBuffer)
+        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toFile(newPath);
+    } else {
+      await sharp(inputBuffer)
+        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toFile(newPath);
+    }
     //console.log('✅ HEIC → JPEG 変換成功:', newPath);
     // 元のHEICファイルを削除
     try {
