@@ -22,12 +22,12 @@ async function convertHeicToJpeg(originalPath) {
     if (format === 'heic' || format === 'heif') {
       const outputBuffer = await heicConvert({ buffer: inputBuffer, format: 'JPEG', quality: 0.75 });
       await sharp(outputBuffer)
-        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 82, mozjpeg: true })
         .toFile(newPath);
     } else {
       await sharp(inputBuffer)
-        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 82, mozjpeg: true })
         .toFile(newPath);
     }

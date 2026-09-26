@@ -22,7 +22,8 @@ async function correctOcrText(text) {
 
   try {
     const response = await client.chat.completions.create({
-      model: "gpt-4",
+      // 長いレシートでもHerokuの30秒制限に収まりやすい高速モデルを使用。
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
