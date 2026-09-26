@@ -163,6 +163,9 @@ async function analyzeReceiptNew() {
           console.warn("⚠️ renderTagsNew 関数が定義されていません");
         }
       }
+      if (typeof setOcrIntegrity === 'function') {
+        setOcrIntegrity(data);
+      }
 
       // alert('OCR結果をフォームに反映しました');
       let missingFields = [];

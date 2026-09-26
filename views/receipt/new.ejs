@@ -27,6 +27,7 @@
         <span class="visually-hidden">読み取り中...</span>
       </div>
       <div id="ocrResult" class="mt-3"></div>
+      <div id="ocrIntegrityAlert" class="alert alert-danger d-none" role="alert"></div>
     </div>
     <div class="mb-3">
     <hr>
@@ -99,7 +100,7 @@
     </div>
     <hr>
     <div class="text-center mt-4">
-      <button type="submit" class="btn btn-primary w-60" style="width: 60%;">保存</button>
+      <button type="submit" id="receiptSaveButton" class="btn btn-primary w-60" style="width: 60%;">保存</button>
     </div>
   <script>
     document.querySelector('form').addEventListener('submit', function(e) {
@@ -108,6 +109,11 @@
         e.preventDefault();
         alert('支払種別を選択してください。');
         paymentSelect.focus();
+        return;
+      }
+      if (this.dataset.ocrIntegrity === 'invalid') {
+        e.preventDefault();
+        alert('レシートの合計金額と明細合計が一致していません。明細を修正してから保存してください。');
       }
     });
   </script>
@@ -191,6 +197,22 @@ function renderTagsNew(tags) {
 
   // 既存 renderTagsNew の末尾に以下を追加
   updateCategorySubtotals(tags);
+}
+
+function setOcrIntegrity(data) {
+  const form = document.querySelector('form');
+  const alertBox = document.getElementById('ocrIntegrityAlert');
+  if (!form || !alertBox) return;
+  const total = Number(data.amount) || 0;
+  const itemTotal = Number(data.itemTotal) || 0;
+  const valid = Boolean(data.isConsistent);
+  form.dataset.ocrIntegrity = valid ? 'valid' : 'invalid';
+  if (valid) {
+    alertBox.classList.add('d-none');
+    return;
+  }
+  alertBox.textContent = `読み込み確認が必要です。レシート合計 ¥${total.toLocaleString()} と明細合計 ¥${itemTotal.toLocaleString()} が一致しません。欠落した明細を追加・修正してください。`;
+  alertBox.classList.remove('d-none');
 }
 </script>
 
