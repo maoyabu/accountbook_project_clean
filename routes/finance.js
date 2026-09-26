@@ -3624,7 +3624,8 @@ function filterReceiptItems(items, totalAmount) {
     itemTotal,
     total,
     difference: total > 0 ? total - itemTotal : null,
-    isConsistent: total > 0 && Math.abs(total - itemTotal) <= Math.max(2, total * 0.01)
+    // OCR誤読を見逃さない。税の丸め誤差のみ最大2円まで許容する。
+    isConsistent: total > 0 && Math.abs(total - itemTotal) <= 2
   };
 }
 
