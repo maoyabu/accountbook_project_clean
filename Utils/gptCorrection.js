@@ -98,7 +98,6 @@ JSONフォーマットは次のようにしてください：
         },
       ],
       temperature: 0.1,
-      response_format: { type: 'json_object' },
     });
 
     const raw = response.choices[0].message.content.trim();
