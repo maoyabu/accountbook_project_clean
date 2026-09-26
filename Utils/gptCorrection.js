@@ -32,6 +32,7 @@ OCR全文から、実際に購入した商品の明細だけを抽出してく�
 必要な情報は、店舗名（storeName）、合計金額（amount）、日付（date）、および購入明細のタグ（tags）です。
 店舗名、住所、電話番号、営業時間、レシート番号、会員番号、ポイント、広告、キャンペーン、小計、合計、支払額、お釣り、値引きはタグに含めないでください。
 商品名と価格が対応している行だけをタグに含め、判断できない行は除外してください。
+「外税計」「外税合計」「外税額」がある場合は、必ずnameとcategoryを「外税」として、その合計金額を1件だけtagsに入れてください。「外税8%」「外税10%」などの個別税額しかない場合は合算してください。「内税」「消費税」「内消費税」は外税に含めないでください。
 レシートの明細行は上から順番に1行ずつ保持してください。隣接する商品名を結合したり、商品名の末尾に次の行の商品名・数量・価格を追加したりしないでください。
 価格だけが右側に並ぶレシートでは、左側の商品名と同じ行の価格を対応付けてください。明細の件数が不自然に少ない場合はwarningsへ記載してください。
 除外した文字列はexcludedLines、判断に迷った点はwarningsに入れてください。
@@ -124,6 +125,14 @@ JSONフォーマットは次のようにしてください：
           category: categoryDictionary[t.category] || t.category // 辞書にあれば置換、なければGPTのまま
         })).filter(t => t.name && t.price > 0)
       : [];
+
+    // GPTが外税計を除外した場合でも、OCR本文の明示的な外税合計を復元する。
+    const externalTaxMatch = text.match(/外税(?:計|合計|額)[^\d]{0,20}[¥￥]?\s*([\d,]+)/);
+    const externalTax = externalTaxMatch ? Number(externalTaxMatch[1].replace(/,/g, '')) : 0;
+    if (externalTax > 0) {
+      parsed.tags = parsed.tags.filter(t => t.category !== '外税' && t.name !== '外税');
+      parsed.tags.push({ name: '外税', price: externalTax, confidence: 1, gptCategory: '外税', category: '外税' });
+    }
 
     parsed.excludedLines = Array.isArray(parsed.excludedLines) ? parsed.excludedLines.map(String) : [];
     parsed.warnings = Array.isArray(parsed.warnings) ? parsed.warnings.map(String) : [];
