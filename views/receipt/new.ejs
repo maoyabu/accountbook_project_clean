@@ -18,7 +18,7 @@
     </div>
     <div class="card-body">
 
-  <form action="/finance/receipt/create" method="POST">
+  <form action="/finance/receipt/create" method="POST" data-ocr-integrity="invalid">
     <div class="mb-3">
       <label for="receiptImage" class="form-label">レシート画像を指定して抽出する</label>
       <input type="file" class="form-control" id="receiptImage" name="receiptImage" accept="image/*">
@@ -65,7 +65,7 @@
     </div>
     <div class="mb-3">
         <label for="amount" class="form-label">合計金額</label>
-        <input type="number" class="form-control" id="amount" readonly>
+        <input type="number" class="form-control" id="amount" name="amount" readonly>
     </div>
     <hr>
     <div class="mb-4">
@@ -100,7 +100,7 @@
     </div>
     <hr>
     <div class="text-center mt-4">
-      <button type="submit" id="receiptSaveButton" class="btn btn-primary w-60" style="width: 60%;">保存</button>
+      <button type="submit" id="receiptSaveButton" class="btn btn-primary w-60" style="width: 60%;" disabled>保存</button>
     </div>
   <script>
     document.querySelector('form').addEventListener('submit', function(e) {
@@ -207,6 +207,8 @@ function setOcrIntegrity(data) {
   const itemTotal = Number(data.itemTotal) || 0;
   const valid = Boolean(data.isConsistent);
   form.dataset.ocrIntegrity = valid ? 'valid' : 'invalid';
+  const saveButton = document.getElementById('receiptSaveButton');
+  if (saveButton) saveButton.disabled = !valid;
   if (valid) {
     alertBox.classList.add('d-none');
     return;
@@ -214,6 +216,34 @@ function setOcrIntegrity(data) {
   alertBox.textContent = `読み込み確認が必要です。レシート合計 ¥${total.toLocaleString()} と明細合計 ¥${itemTotal.toLocaleString()} が一致しません。欠落した明細を追加・修正してください。`;
   alertBox.classList.remove('d-none');
 }
+
+function validateEditedReceiptTotals() {
+  const form = document.querySelector('form');
+  const amount = Number(document.getElementById('amount')?.value) || 0;
+  const prices = [...document.querySelectorAll('input[name*="[price]"]')];
+  if (!form || !amount || prices.length === 0) return;
+  const itemTotal = prices.reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+  const difference = amount - itemTotal;
+  const alertBox = document.getElementById('ocrIntegrityAlert');
+  const saveButton = document.getElementById('receiptSaveButton');
+  const valid = difference === 0;
+  form.dataset.ocrIntegrity = valid ? 'valid' : 'invalid';
+  if (saveButton) saveButton.disabled = !valid;
+  if (alertBox) {
+    if (valid) {
+      alertBox.classList.add('d-none');
+    } else {
+      alertBox.textContent = `合計金額と明細合計が一致していません。合計 ¥${amount.toLocaleString()} / 明細 ¥${itemTotal.toLocaleString()} / 差額 ¥${Math.abs(difference).toLocaleString()}`;
+      alertBox.classList.remove('d-none');
+    }
+  }
+}
+
+document.addEventListener('input', event => {
+  if (event.target.matches('input[name*="[price]"], #amount')) {
+    validateEditedReceiptTotals();
+  }
+});
 </script>
 
 </div></div></div>

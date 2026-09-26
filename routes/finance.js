@@ -3624,8 +3624,8 @@ function filterReceiptItems(items, totalAmount) {
     itemTotal,
     total,
     difference: total > 0 ? total - itemTotal : null,
-    // OCR誤読を見逃さない。税の丸め誤差のみ最大2円まで許容する。
-    isConsistent: total > 0 && Math.abs(total - itemTotal) <= 2
+    // 合計と明細合計は厳密に一致させる。
+    isConsistent: total > 0 && total === itemTotal
   };
 }
 
@@ -3784,6 +3784,7 @@ router.post('/receipt/create', isLoggedIn, async (req, res) => {
       cf = '支出',
       storeName,
       payment_type,
+      amount: receiptAmount,
       tags = [],
       memo
     } = req.body;
@@ -3805,6 +3806,13 @@ router.post('/receipt/create', isLoggedIn, async (req, res) => {
     // parsedTagsがオブジェクト1個なら配列化
     if (parsedTags && !Array.isArray(parsedTags)) {
       parsedTags = [parsedTags];
+    }
+
+    const expectedAmount = Number(receiptAmount);
+    const submittedItemTotal = (parsedTags || []).reduce((sum, tag) => sum + (Number(tag?.price) || 0), 0);
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0 || expectedAmount !== submittedItemTotal) {
+      req.flash('error', `保存できません。合計金額(${expectedAmount || 0}円)と明細合計(${submittedItemTotal}円)が一致していません。`);
+      return res.redirect('/finance/receipt/new');
     }
 
     // カテゴリごとにグループ化

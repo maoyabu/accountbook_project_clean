@@ -795,6 +795,18 @@ router.post('/', async (req, res, next) => {
     if (cfKey === '支出') {
       const normalizedTags = normalizeTags(tags);
       if (normalizedTags.length > 0) {
+        const tagTotal = normalizedTags.reduce((sum, tag) => sum + tag.price, 0);
+        if (tagTotal !== Number(amount)) {
+          return res.status(422).json({
+            error: 'receipt_total_mismatch',
+            message: '合計金額とレシート明細合計が一致していません。明細または外税を確認してください。',
+            totalAmount: Number(amount),
+            itemTotal: tagTotal,
+            difference: Number(amount) - tagTotal
+          });
+        }
+      }
+      if (normalizedTags.length > 0) {
         doc.tags = normalizedTags;
       }
     }
