@@ -26,8 +26,12 @@ async function correctOcrText(text) {
       messages: [
         {
           role: "system",
-          content: `あなたはレシートのOCR結果から以下の情報を抽出してJSON形式で返すアシスタントです。
+          content: `あなたは日本のレシート専用のデータ抽出アシスタントです。
+OCR全文から、実際に購入した商品の明細だけを抽出してください。
 必要な情報は、店舗名（storeName）、合計金額（amount）、日付（date）、および購入明細のタグ（tags）です。
+店舗名、住所、電話番号、営業時間、レシート番号、会員番号、ポイント、広告、キャンペーン、小計、合計、支払額、お釣り、値引きはタグに含めないでください。
+商品名と価格が対応している行だけをタグに含め、判断できない行は除外してください。
+除外した文字列はexcludedLines、判断に迷った点はwarningsに入れてください。
 JSONフォーマットは次のようにしてください：
 
 {
@@ -35,9 +39,11 @@ JSONフォーマットは次のようにしてください：
   amount: number,
   date: "YYYY/MM/DD",
   tags: [
-    { name: string, category: string, price: number },
+    { name: string, category: string, price: number, confidence: number },
     ...
-  ]
+  ],
+  excludedLines: string[],
+  warnings: string[]
 }
 
 次の18の分類の中から、カテゴリを必ず1つだけ選んでください（カテゴリ名は以下と厳密に一致させてください）:
@@ -82,14 +88,17 @@ JSONフォーマットは次のようにしてください：
   ]
 
 - dateは必ずYYYY/MM/DD形式で返してください。
-- tagsが見つからない場合は空の配列（[]）にしてください。`
+- tagsが見つからない場合は空の配列（[]）にしてください。
+- confidenceは0〜1で、商品名と価格の対応が明確なほど高くしてください。
+- JSON以外の説明やMarkdownは返さないでください。`
         },
         {
           role: "user",
           content: text,
         },
       ],
-      temperature: 0.2,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
     });
 
     const raw = response.choices[0].message.content.trim();
@@ -106,12 +115,16 @@ JSONフォーマットは次のようにしてください：
     // タグの正規化: categoryを辞書で置換（なければGPTのまま）、priceは数値化
     parsed.tags = Array.isArray(parsed.tags)
       ? parsed.tags.map(t => ({
-          name: t.name,
+          name: typeof t.name === 'string' ? t.name.trim() : '',
           price: Number(t.price) || 0,
+          confidence: Math.max(0, Math.min(1, Number(t.confidence ?? 0.5))),
           gptCategory: t.category,
           category: categoryDictionary[t.category] || t.category // 辞書にあれば置換、なければGPTのまま
-        }))
+        })).filter(t => t.name && t.price > 0)
       : [];
+
+    parsed.excludedLines = Array.isArray(parsed.excludedLines) ? parsed.excludedLines.map(String) : [];
+    parsed.warnings = Array.isArray(parsed.warnings) ? parsed.warnings.map(String) : [];
 
     // 確実に必要項目が存在するか確認
     if (!parsed.storeName || typeof parsed.amount === 'undefined' || !parsed.date || !parsed.tags) {

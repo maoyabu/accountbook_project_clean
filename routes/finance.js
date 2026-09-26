@@ -3609,6 +3609,25 @@ router.get('/receipt/new', isLoggedIn, upload.single('receiptImage'), async (req
     });
 });
 
+// OCR結果から、商品明細ではない行を最後に除外する安全弁。
+function filterReceiptItems(items, totalAmount) {
+  const blocked = /電話|TEL|住所|〒|営業時間|レシート|会員|ポイント|クーポン|キャンペーン|小計|合計|お預り|お釣り|値引き|消費税|税率/i;
+  const valid = Array.isArray(items) ? items.filter(item => {
+    const name = String(item?.name || '').trim();
+    const price = Number(item?.price);
+    return name && !blocked.test(name) && Number.isFinite(price) && price > 0;
+  }) : [];
+  const itemTotal = valid.reduce((sum, item) => sum + Number(item.price), 0);
+  const total = Number(totalAmount) || 0;
+  return {
+    items: valid,
+    itemTotal,
+    total,
+    difference: total > 0 ? total - itemTotal : null,
+    isConsistent: total > 0 && Math.abs(total - itemTotal) <= Math.max(2, total * 0.01)
+  };
+}
+
 // OCR処理ルート (Google Cloud Vision API)
 router.post('/ocrNew', upload.single('receiptImage'), async (req, res) => {
   if (!req.file || !req.file.path) {
@@ -3653,7 +3672,9 @@ router.post('/ocrNew', upload.single('receiptImage'), async (req, res) => {
       storeName: corrected?.storeName,
       amount: corrected?.amount,
       date: corrected?.date,
-      tags: corrected?.tags || []
+      tags: corrected?.tags || [],
+      excludedLines: corrected?.excludedLines || [],
+      warnings: corrected?.warnings || []
     };
     // Format date to YYYY-MM-DD if it contains slashes
     if (typeof gptCorrected.date === 'string' && gptCorrected.date.includes('/')) {
@@ -3668,11 +3689,13 @@ router.post('/ocrNew', upload.single('receiptImage'), async (req, res) => {
     }
     // --- normalizedTags: 新しい仕様 ---
     // 正常なタグデータをオブジェクトのまま保持する
-    const normalizedTags = (gptCorrected.tags || []).map(tag => ({
+    const checkedItems = filterReceiptItems(gptCorrected.tags, Number(gptCorrected.amount));
+    const normalizedTags = checkedItems.items.map(tag => ({
       name: tag.name,
       category: tag.category || '',
       gptCategory: tag.gptCategory || '',
-      price: Number(tag.price) || 0
+      price: Number(tag.price) || 0,
+      confidence: Number(tag.confidence) || 0
     }));
 
     // correctedが有効なオブジェクトかチェックし、OCRLog保存
@@ -3695,7 +3718,12 @@ router.post('/ocrNew', upload.single('receiptImage'), async (req, res) => {
           storeName: gptCorrected.storeName,
           amount: gptCorrected.amount,
           date: gptCorrected.date,
-          tags: normalizedTags
+          tags: normalizedTags,
+          excludedLines: gptCorrected.excludedLines,
+          warnings: gptCorrected.warnings,
+          itemTotal: checkedItems.itemTotal,
+          difference: checkedItems.difference,
+          isConsistent: checkedItems.isConsistent
         },
         createdAt: new Date()
       });
@@ -3725,7 +3753,15 @@ router.post('/ocrNew', upload.single('receiptImage'), async (req, res) => {
       storeName: gptCorrected.storeName,
       amount: gptCorrected.amount,
       date: gptCorrected.date,
-      tags: normalizedTags // 新たに追加した整形済みタグ文字列
+      tags: normalizedTags,
+      excludedLines: gptCorrected.excludedLines,
+      warnings: checkedItems.isConsistent ? gptCorrected.warnings : [
+        ...gptCorrected.warnings,
+        `明細合計(${checkedItems.itemTotal}円)と支払合計(${checkedItems.total}円)が一致しません。確認してください。`
+      ],
+      itemTotal: checkedItems.itemTotal,
+      difference: checkedItems.difference,
+      isConsistent: checkedItems.isConsistent
     });
 
   } catch (err) {
