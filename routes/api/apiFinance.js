@@ -547,8 +547,19 @@ router.get('/grouped', async (req, res, next) => {
     const month = Number(match[2]);
     const day = Number(match[3]);
 
+    // ログインユーザーが所属する全グループを対象にし、
+    // 各グループ内では入力者を限定せず、その日の全明細を返す。
+    const accessibleGroups = await Group.find({ members: userId })
+      .select('_id')
+      .lean();
+    const accessibleGroupIds = accessibleGroups.map(group => group._id);
+
+    if (accessibleGroupIds.length === 0) {
+      return res.json({ date: dateRaw, groups: [] });
+    }
+
     const items = await Finance.find({
-      user: userId,
+      group: { $in: accessibleGroupIds },
       $expr: {
         $let: {
           vars: {
