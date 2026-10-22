@@ -30,7 +30,6 @@
     "multer": "^1.4.5-lts.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^10.2.0",
-    "nodemon": "^3.1.9",
     "openai": "^5.23.2",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
@@ -42,9 +41,12 @@
   },
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.mjs"
+    "dev": "nodemon index.js"
   },
   "engines": {
     "node": "24.x"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
