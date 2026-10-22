@@ -234,6 +234,9 @@ router.get('/eventcal2', isLoggedIn, async (req, res) => {
         content: entry.content || '',
         summary: entry.summary || '',
         share: Boolean(entry.share),
+        photos: (entry.photos || [])
+          .map(p => typeof p === 'string' ? p : p.url)
+          .filter(Boolean),
         tags
       };
       diaryGroupsMap.get(groupId).entries.push(diaryEntry);
