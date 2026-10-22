@@ -37,7 +37,7 @@
     "passport-local-mongoose": "^8.0.0",
     "puppeteer": "^24.10.0",
     "qrcode": "^1.5.4",
-    "sharp": "^0.34.2",
+    "sharp": "^0.35.5",
     "tesseract.js": "^6.0.1",
     "xlsx": "^0.18.5"
   },
