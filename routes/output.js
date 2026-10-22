@@ -26,7 +26,6 @@ const {
   getFiscalMonthIndex
 } = require('../Utils/fiscalYear');
 
-const xlsx = require('xlsx');
 const ExcelJS = require('exceljs');
 const { isLoggedIn, logAction } = require('../middleware');
 
