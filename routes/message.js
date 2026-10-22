@@ -665,6 +665,8 @@ cron.schedule('0 8 * * *', async () => {
   } catch (error) {
     console.error('Message Alive cron error:', error);
   }
+}, {
+  timezone: 'Asia/Tokyo'
 });
 
 // Alive確認メール送信（毎朝10時）
@@ -727,6 +729,8 @@ cron.schedule('0 10 * * *', async () => {
   } catch (error) {
     console.error('Alive確認cronエラー:', error);
   }
+}, {
+  timezone: 'Asia/Tokyo'
 });
 
 module.exports = router;

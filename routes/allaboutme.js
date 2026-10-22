@@ -1200,11 +1200,15 @@ router.get('/diary-keywords', isLoggedIn, async (req, res) => {
 //リマインドメールの送信　毎朝8時
 cron.schedule('0 8 * * *', async () => {
   const users = await FinanceUser.find({});
-  const baseUrl = process.env.NODE_ENV === 'production' ? process.env.BASE_URL : 'http://localhost:3000';
+  const baseUrl = process.env.NODE_ENV === 'production'
+    ? process.env.BASE_URL
+    : 'http://localhost:3000';
+
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   yesterday.setHours(0, 0, 0, 0);
+
   const endOfYesterday = new Date(yesterday);
   endOfYesterday.setHours(23, 59, 59, 999);
   const ymd = yesterday.toISOString().split('T')[0];
@@ -1222,6 +1226,7 @@ cron.schedule('0 8 * * *', async () => {
     if (hasDiary) continue;
 
     const fullUrl = `${baseUrl}/allaboutme/eventcal?date=${ymd}`;
+
     try {
       await sendMail({
         to: user.email,
@@ -1237,25 +1242,42 @@ cron.schedule('0 8 * * *', async () => {
       console.error(`メール送信エラー（${user.email}）:`, err);
     }
   }
+}, {
+  timezone: 'Asia/Tokyo'
 });
 
-// キーワードマッピング（年度）を日次バッチで更新
+
+// キーワードマッピング（年度）を日次バッチで更新（毎日3:10・日本時間）
 cron.schedule('10 3 * * *', async () => {
   try {
     const groupIds = await Eventcal.distinct('group');
+
     for (const groupId of groupIds) {
       if (!groupId) continue;
+
       const fiscalStartMonth = await getGroupFiscalStartMonth(groupId);
-      const fiscalYear = getFiscalYearForDate(new Date(), fiscalStartMonth) ?? new Date().getFullYear();
+      const fiscalYear =
+        getFiscalYearForDate(new Date(), fiscalStartMonth) ??
+        new Date().getFullYear();
+
       const userIds = await Eventcal.distinct('user', { group: groupId });
+
       for (const userId of userIds) {
         if (!userId) continue;
-        await buildAndStoreKeywordMap(userId, groupId, fiscalYear, fiscalStartMonth);
+
+        await buildAndStoreKeywordMap(
+          userId,
+          groupId,
+          fiscalYear,
+          fiscalStartMonth
+        );
       }
     }
   } catch (err) {
     console.error('キーワードマッピング日次バッチ失敗:', err);
   }
+}, {
+  timezone: 'Asia/Tokyo'
 });
 
 // 指定日の日記を一覧取得（モーダル用）
