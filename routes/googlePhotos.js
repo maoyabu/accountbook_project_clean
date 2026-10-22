@@ -108,8 +108,15 @@ router.get('/select', async (req, res) => {
         albumId 
     });
   } catch (err) {
-    req.flash('error', '写真の取得に失敗しました');
-    res.redirect('/googlePhotos/select');
+    console.error('❌ Googleフォト取得エラー:', {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data
+    });
+
+    return res.status(500).send(
+      'Googleフォトの写真取得に失敗しました。ターミナルのログを確認してください。'
+    );
   }
 });
 
