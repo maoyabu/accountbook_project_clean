@@ -316,10 +316,13 @@
             <label for="diaryPhotos" class="form-label">写真を追加</label>
             <input type="file" class="form-control" name="photos" id="diaryPhotos" multiple accept="image/*">
           </div>
+          <% /* Googleフォト連携を一時停止中
           <div class="mb-3">
             <label class="form-label">Googleフォトから選択</label><br>
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+            <button type="button" class="btn btn-outline-primary btn-sm"
+                    onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
           </div>
+          */ %>
           <div id="googlePhotoPreview" class="d-flex flex-wrap mt-2"></div>
         </div>
         <div class="modal-footer d-flex gap-2">

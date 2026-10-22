@@ -80,10 +80,13 @@
     </div>
   <% } %>
 
+  <% /* Googleフォト連携を一時停止中
   <div class="mb-3">
     <label class="form-label">Googleフォトから選択</label><br>
-    <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+    <button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
   </div>
+  */ %>
   <div id="googlePhotoPreview" class="d-flex flex-wrap mb-3">
     <% if (Array.isArray(selectedGooglePhotos) && selectedGooglePhotos.length > 0) { %>
       <% selectedGooglePhotos.forEach((url, index) => { %>

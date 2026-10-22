@@ -201,10 +201,13 @@
             </div>
           <% } %>
           <!-- Google Photos 連携セクション（常にボタンでポップアップ起動） -->
+          <% /* Googleフォト連携を一時停止中
           <div class="mb-3">
             <label class="form-label">Googleフォトから選択</label><br>
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
+            <button type="button" class="btn btn-outline-primary btn-sm"
+                    onclick="openGooglePhotoPopup()">Googleフォトから選択</button>
           </div>
+          */ %>
           <div id="googlePhotoPreview" class="d-flex flex-wrap mt-2">
             <!-- JavaScript will inject new selected photos here -->
           </div>
