@@ -479,15 +479,15 @@
 }
 .finance-home-page .budget-item-metrics {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  align-items: baseline;
-  gap: 3px 16px;
+  gap: 3px;
   width: 100%;
   margin: 0;
   font-size: .7rem;
   line-height: 1.6;
   font-variant-numeric: tabular-nums;
 }
+.finance-home-page .budget-metric-row { display: flex; align-items: baseline; gap: 16px; }
+.finance-home-page .budget-metric-amount { white-space: nowrap; }
 .finance-home-page .budget-item-metrics dt { font-weight: 400; color: #58665b; }
 .finance-home-page .budget-item-card .budget-item-metrics dd { margin: 0; font-weight: 500; font-size: .7rem; color: #293b30; overflow-wrap: anywhere; }
 .finance-home-page .budget-item-card .budget-item-metrics .is-over { color: #985e3c; font-weight: 650; }
@@ -516,9 +516,12 @@
   .finance-home-page .budget-cards-normal { grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr)); gap: 14px 12px; }
   .finance-home-page .budget-item-card { padding-right: 4px; padding-left: 8px; }
   .finance-home-page .budget-item-card .budget-item-name { padding: 4px 8px; }
-  .finance-home-page .budget-item-metrics { gap: 2px 6px; }
-  .finance-home-page .budget-item-metrics dt:nth-of-type(2),
-  .finance-home-page .budget-item-metrics dd:last-child { grid-column: 1 / -1; }
+  .finance-home-page .budget-item-metrics { gap: 2px; }
+  .finance-home-page .budget-metric-row { gap: 4px; }
+  .finance-home-page .budget-metric-amount,
+  .finance-home-page .budget-item-card .budget-metric-amount dd { font-size: .62rem; letter-spacing: -.025em; }
+  .finance-home-page .budget-metric-amount dt,
+  .finance-home-page .budget-metric-amount dd { flex-shrink: 0; white-space: nowrap; }
   .finance-home-page .budget-summary-header { align-items: flex-start; gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .finance-home-page .budget-item-card { transition: none; } }
@@ -582,4 +585,13 @@
   .notice-asset-page .notice-inventory-table tbody td:nth-child(2) { grid-area: amount; text-align: left !important; }
   .notice-asset-page .notice-inventory-table tbody td:nth-child(3) { grid-area: action; text-align: right !important; }
   .notice-asset-page .notice-inventory-table .text-muted { font-size: .67rem; overflow-wrap: anywhere; }
+}
+
+.finance-home-page .budget-items-disclosure>summary{list-style:none;cursor:default}
+.finance-home-page .budget-items-disclosure>summary::-webkit-details-marker{display:none}
+@media(max-width:767px){
+  .finance-home-page .budget-items-disclosure>summary{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0;color:#4e6557}
+  .finance-home-page .budget-items-disclosure>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);flex-shrink:0}
+  .finance-home-page .budget-items-disclosure[open]>summary::before{transform:rotate(45deg)}
+  .finance-home-page .budget-items-disclosure>summary:focus-visible{outline:2px solid #426456;outline-offset:2px}
 }

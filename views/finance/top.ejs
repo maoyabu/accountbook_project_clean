@@ -60,7 +60,8 @@
                   </span>
                 </div>
               </div>
-              <div class="budget-summary-subtitle">支出項目別の予算到達率</div>
+              <details class="budget-items-disclosure" id="budgetItemsDisclosure">
+              <summary class="budget-summary-subtitle">支出項目別の予算到達率</summary>
               <% const overItems = (budgetSummary.items || []).filter(i => i.over); %>
               <% const normalItems = (budgetSummary.items || []).filter(i => !i.over); %>
 
@@ -81,6 +82,7 @@
                   <% }) %>
                 </div>
               <% } %>
+              </details>
             </div>
           <% } else { %>
             <div class="text-muted">予算が設定されていません。</div>
@@ -101,9 +103,9 @@
                   <circle cx="7" cy="16" r="1.2" fill="currentColor" />
                   <rect x="9.5" y="15.2" width="9" height="1.6" rx="0.8" fill="currentColor" />
                 </svg>
-                直近の入力
+                <span class="d-none d-md-inline">直近の入力</span><span class="d-md-none">リスト</span>
               </a>
-              <a class="btn btn-sm finance-btn-rounded finance-search-btn" href="/finance/search"><i class="fa-solid fa-magnifying-glass me-2"></i>検索</a>
+              <a class="btn btn-sm finance-btn-rounded finance-search-btn" href="/finance/search" aria-label="検索" title="検索"><i class="fa-solid fa-magnifying-glass me-md-2" aria-hidden="true"></i><span class="d-none d-md-inline">検索</span></a>
             </div>
           </div>
           <% if (recentFinances.length > 0) { %>
@@ -294,6 +296,20 @@
     </div>
   </div>
 </div>
+
+<script>
+(() => {
+  const disclosure = document.getElementById('budgetItemsDisclosure');
+  if (!disclosure) return;
+  const mobile = window.matchMedia('(max-width: 767px)');
+  const sync = () => { disclosure.open = !mobile.matches; };
+  sync();
+  mobile.addEventListener('change', sync);
+  disclosure.querySelector('summary').addEventListener('click', event => {
+    if (!mobile.matches) event.preventDefault();
+  });
+})();
+</script>
 
 <script>
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
