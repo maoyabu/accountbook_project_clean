@@ -50,7 +50,7 @@
     const selected = form.elements.cf.value;
     for (const [cf, id] of Object.entries({ 支出: 'expense_group', 収入: 'income_group', 控除: 'deduction_group', 貯蓄: 'saving_group' })) {
       const group = document.getElementById(id);
-      group.style.display = selected === cf ? '' : 'none';
+      group.style.display = selected === cf ? 'block' : 'none';
       group.querySelector('select').required = selected === cf;
     }
   };

@@ -1,4 +1,5 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
 <% page = 'entry' %>
 
 <div class="text-end mb-2">
@@ -8,9 +9,9 @@
     ガイド
   </a>
 </div>
-  <div class="container finance-form-container">
+  <div class="container finance-form-container finance-notice-board notice-form-page">
     <div class="card shadow-sm">
-      <div class="card-header text-white" style="background-color: #44616D;">
+      <div class="notice-heading">
         <h5 class="mb-0">収支の新規入力</h5>
       </div>
       <div class="card-body">
@@ -155,7 +156,7 @@
                 </div>
                 <div class="form-group">
                     <label for="amount">金額</label>
-                    <input type="number" name="finance[amount]" inputmode="numeric" style="ime-mode: inactive;" class="form-control short-input" id="amount" value="<%= formData?.corrected_amount || formData?.amount || '' %>" class="<%= errors?.amount ? 'error-field' : '' %>">
+                    <input type="number" inputmode="numeric" data-money-input name="finance[amount]" style="ime-mode: inactive;" class="form-control short-input" id="amount" value="<%= formData?.corrected_amount || formData?.amount || '' %>" class="<%= errors?.amount ? 'error-field' : '' %>">
                     <div class="error-message">
                         <%= errors?.amount ? errors.amount : '' %>
                     </div>
@@ -205,7 +206,7 @@
                           </select>
                         </div>
                         <div class="flex-fill">
-                          <input type="number" class="form-control" name="tagItems[0][price]" placeholder="金額" oninput="recalculateSubtotal()">
+                          <input type="number" inputmode="numeric" data-money-input class="form-control" name="tagItems[0][price]" placeholder="金額" oninput="recalculateSubtotal()">
                         </div>
                       </div>
                     </div>
@@ -570,7 +571,7 @@
         </select>
       </div>
       <div class="flex-fill">
-        <input type="number" class="form-control" name="tagItems[${tagItemCount}][price]" placeholder="金額" oninput="recalculateSubtotal()">
+        <input type="number" inputmode="numeric" data-money-input class="form-control" name="tagItems[${tagItemCount}][price]" placeholder="金額" oninput="recalculateSubtotal()">
       </div>
     `;
     area.appendChild(itemDiv);

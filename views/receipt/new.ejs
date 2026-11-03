@@ -1,4 +1,5 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
 
 <div class="text-end mb-2">
   <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1CF1BF91-DFE4-4740-A3DE-0B47D1111C50/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E3%83%AC%E3%82%B7%E3%83%BC%E3%83%88%E3%81%8B%E3%82%89%E8%AA%AD%E5%8F%96%E3%82%8B%EF%BC%88%E6%9C%89%E6%96%99%EF%BC%89"
@@ -7,19 +8,19 @@
     ガイド
   </a>
 </div>
-<div class="container">
+<div class="container finance-notice-board notice-form-page">
   <div id="customAlert" class="alert alert-primary alert-dismissible fade show d-none position-fixed top-50 start-50 translate-middle shadow" role="alert" style="z-index: 1050; min-width: 300px;">
     <span id="customAlertMessage"></span>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
   <div class="card shadow-sm">
-    <div class="card-header text-white" style="background-color: #44616D;">
+    <div class="notice-heading">
       <h5 class="mb-0">レシートからの新規支出登録</h5>
     </div>
     <div class="card-body">
 
   <form action="/finance/receipt/create" method="POST" data-ocr-integrity="invalid">
-    <div class="mb-3">
+    <div class="mb-3 notice-upload-panel">
       <label for="receiptImage" class="form-label">レシート画像を指定して抽出する</label>
       <input type="file" class="form-control" id="receiptImage" name="receiptImage" accept="image/*">
       <button type="button" class="btn btn-outline-primary mt-2" onclick="analyzeReceiptNew()">レシート画像から読み取る</button>
@@ -65,7 +66,7 @@
     </div>
     <div class="mb-3">
         <label for="amount" class="form-label">合計金額</label>
-        <input type="number" class="form-control" id="amount" name="amount" readonly>
+        <input type="number" inputmode="numeric" data-money-input class="form-control" id="amount" name="amount" readonly>
     </div>
     <hr>
     <div class="mb-4">
@@ -82,12 +83,12 @@
                 <label class="form-label">タグ（購入明細）</label>
                 <input type="text" class="form-control" name="tagGroups[<%= gIdx %>][tags][<%= tIdx %>][name]" value="<%= tag.name %>">
                 <input type="hidden" name="tagGroups[<%= gIdx %>][tags][<%= tIdx %>][category]" value="<%= tag.category %>">
-                <input type="number" class="form-control mt-1" name="tagGroups[<%= gIdx %>][tags][<%= tIdx %>][price]" value="<%= tag.price %>">
+                <input type="number" inputmode="numeric" data-money-input class="form-control mt-1" name="tagGroups[<%= gIdx %>][tags][<%= tIdx %>][price]" value="<%= tag.price %>">
               </div>
             <% }) %>
             <div class="mb-2">
               <label class="form-label">支出区分合計金額</label>
-              <input type="number" class="form-control" name="tagGroups[<%= gIdx %>][amount]" value="<%= group.amount %>" required>
+              <input type="number" inputmode="numeric" data-money-input class="form-control" name="tagGroups[<%= gIdx %>][amount]" value="<%= group.amount %>" required>
             </div>
           </div>
         <% }) %>
@@ -158,6 +159,8 @@ function renderTagsNew(tags) {
 
     const priceInput = document.createElement('input');
     priceInput.type = 'number';
+    priceInput.inputMode = 'numeric';
+    priceInput.setAttribute('data-money-input', '');
     priceInput.className = 'form-control text-end';
     priceInput.name = `tags[${idx}][price]`;
     priceInput.value = tag.price;

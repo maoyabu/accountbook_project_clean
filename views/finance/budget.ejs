@@ -1,4 +1,5 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
   <div class="text-end mb-2">
     <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1E4B2174-E5D2-44AD-A003-E17BAC4C2917/%E5%AE%B6%E8%A8%88%E7%B0%BF%E3%81%AE%E5%88%9D%E6%9C%9F%E8%A8%AD%E5%AE%9A"
       target="_blank" rel="noopener"
@@ -6,21 +7,22 @@
       ガイド
     </a>
   </div>
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <div class="card-header text-white mt-2 mb-0 flex-grow-1" style="background-color: #44616D;">
+<div class="finance-notice-board notice-budget-page notice-personal-budget">
+  <div class="notice-heading d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div class="fw-bold">
       <i class="fa-regular fa-money-bill-1"></i>
       <%= year %>年度 <%= targetUserName || '個人' %> の予算設定
     </div>
     <a href="/finance/budget?year=<%= encodeURIComponent(year) %>" class="btn btn-outline-secondary btn-sm ms-2 mt-2">戻る</a>
   </div>
-  <div class="p-3 border rounded bg-light mt-0">
+  <div class="notice-setting-panel">
     <form id="budgetForm" action="/finance/budget/save" method="POST">
       <input type="hidden" name="groupId" value="<%= groupId %>">
       <input type="hidden" name="year" value="<%= year %>">
       <input type="hidden" name="userId" value="<%= userId %>">
       <!-- 収入項目 -->
-      <h6 class="mt-1"><strong>収入項目</strong></h6>
-      <table class="table table-bordered">
+      <h6 class="notice-setting-heading" data-cf="収入"><strong>収入項目</strong></h6>
+      <div class="table-responsive"><table class="table notice-budget-table">
         <thead>
                     <tr><th>表示順</th><th>項目名</th><th>予算額</th><th>操作</th></tr>
         </thead>
@@ -29,16 +31,16 @@
             <tr>
               <td><input type="number" name="incomeItems[<%= idx %>][display_order]" value="<%= item.display_order %>" class="form-control" required></td>
               <td><input type="text" name="incomeItems[<%= idx %>][item]" value="<%= item.item %>" class="form-control" required></td>
-              <td><input type="number" name="incomeItems[<%= idx %>][budget]" value="<%= item.budget %>" class="form-control" required></td>
+              <td><input type="number" inputmode="numeric" data-money-input name="incomeItems[<%= idx %>][budget]" value="<%= item.budget %>" class="form-control" required></td>
               <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button></td>
             </tr>
           <% }) %>
         </tbody>
-      </table>
+      </table></div>
             <button type="button" class="btn btn-secondary btn-sm" onclick="addRowTo('incomeItems')">＋項目追加</button>
       <!-- 控除項目 -->
-      <h6 class="mt-4"><strong>控除項目</strong></h6>
-      <table class="table table-bordered">
+      <h6 class="notice-setting-heading" data-cf="控除"><strong>控除項目</strong></h6>
+      <div class="table-responsive"><table class="table notice-budget-table">
         <thead>
                     <tr><th>表示順</th><th>項目名</th><th>予算額</th><th>操作</th></tr>
         </thead>
@@ -47,16 +49,16 @@
             <tr>
               <td><input type="number" name="deduItems[<%= idx %>][display_order]" value="<%= item.display_order %>" class="form-control" required></td>
               <td><input type="text" name="deduItems[<%= idx %>][item]" value="<%= item.item %>" class="form-control" required></td>
-              <td><input type="number" name="deduItems[<%= idx %>][budget]" value="<%= item.budget %>" class="form-control" required></td>
+              <td><input type="number" inputmode="numeric" data-money-input name="deduItems[<%= idx %>][budget]" value="<%= item.budget %>" class="form-control" required></td>
               <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button></td>
             </tr>
           <% }) %>
         </tbody>
-      </table>
+      </table></div>
             <button type="button" class="btn btn-secondary btn-sm" onclick="addRowTo('deduItems')">＋項目追加</button>
       <!-- 貯蓄項目 -->
-      <h6 class="mt-4"><strong>貯蓄項目</strong></h6>
-      <table class="table table-bordered">
+      <h6 class="notice-setting-heading" data-cf="貯蓄"><strong>貯蓄項目</strong></h6>
+      <div class="table-responsive"><table class="table notice-budget-table">
         <thead>
                     <tr><th>表示順</th><th>項目名</th><th>予算額</th><th>操作</th></tr>
         </thead>
@@ -65,16 +67,16 @@
             <tr>
               <td><input type="number" name="savingItems[<%= idx %>][display_order]" value="<%= item.display_order %>" class="form-control" required></td>
               <td><input type="text" name="savingItems[<%= idx %>][item]" value="<%= item.item %>" class="form-control" required></td>
-              <td><input type="number" name="savingItems[<%= idx %>][budget]" value="<%= item.budget %>" class="form-control" required></td>
+              <td><input type="number" inputmode="numeric" data-money-input name="savingItems[<%= idx %>][budget]" value="<%= item.budget %>" class="form-control" required></td>
               <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button></td>
             </tr>
           <% }) %>
         </tbody>
-      </table>
+      </table></div>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addRowTo('savingItems')">＋項目追加</button>
       <!-- 支出項目 -->
-      <div class="mt-4"><strong>支出の項目と予算の設定</strong></div>
-      <table class="table table-bordered">
+      <h6 class="notice-setting-heading" data-cf="支出"><strong>支出の項目と予算の設定</strong></h6>
+      <div class="table-responsive"><table class="table notice-budget-table">
         <thead>
           <tr><th>表示順</th><th>項目</th><th>予算額</th><th>操作</th></tr>
         </thead>
@@ -88,7 +90,7 @@
                 <input type="text" name="items[<%= index %>][expense_item]" value="<%= item.expense_item %>" class="form-control" required>
               </td>
               <td>
-                <input type="number" name="items[<%= index %>][budget]" value="<%= item.budget %>" class="form-control" required>
+                <input type="number" inputmode="numeric" data-money-input name="items[<%= index %>][budget]" value="<%= item.budget %>" class="form-control" required>
               </td>
               <td>
                 <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
@@ -96,15 +98,16 @@
             </tr>
           <% }) %>
         </tbody>
-      </table>
+      </table></div>
       <button type="button" class="btn btn-secondary btn-sm" onclick="addRowTo('items')">＋項目追加</button>
     </form>
     <hr>
     <div class="text-center mt-3">
-      <button type="submit" form="budgetForm" class="btn btn-primary" style="width: 60%;">保存</button>
+      <button type="submit" form="budgetForm" class="btn notice-primary-button">保存</button>
     </div>
   </div>
 
+</div>
 <script>
 function addRowTo(sectionId) {
   const isExpense = sectionId === 'items';
@@ -140,7 +143,7 @@ function addRowTo(sectionId) {
       <input type="text" name="${sectionId}[${index}][${itemNameKey}]" class="form-control" required>
     </td>
     <td>
-      <input type="number" name="${sectionId}[${index}][budget]" value="0" class="form-control" required>
+      <input type="number" inputmode="numeric" data-money-input name="${sectionId}[${index}][budget]" value="0" class="form-control" required>
     </td>
     <td>
       <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>

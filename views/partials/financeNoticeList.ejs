@@ -1,0 +1,26 @@
+<ul class="finance-notice-list" aria-label="収支一覧">
+  <% finances.forEach(finance => {
+    const editable = (finance.user && String(finance.user._id) === String(currentUser._id)) ||
+      (finance.group?.createdBy && String(finance.group.createdBy._id || finance.group.createdBy) === String(currentUser._id));
+    const categoryField = { '収入': 'income_item', '支出': 'expense_item', '控除': 'dedu_item', '貯蓄': 'saving_item' }[finance.cf];
+    const category = categoryField ? finance[categoryField] : '';
+  %>
+    <li class="finance-notice-row" data-cf="<%= finance.cf %>" data-id="<%= finance._id %>"
+      <% if (editable) { %>data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="右クリック、長押し、またはEnterで操作メニュー" aria-haspopup="menu"<% } %>>
+      <div class="finance-notice-meta">
+        <time><%= finance.date ? new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') : '' %></time>
+        <% if (finance.payment_type && finance.payment_type !== 'Please Choice') { %><span><%= finance.payment_type %></span><% } %>
+        <% if (finance.user?.displayname || finance.user?.username) { %><span><%= finance.user.displayname || finance.user.username %></span><% } %>
+      </div>
+      <div class="finance-notice-content">
+        <% if (finance.cf && finance.cf !== 'Please Choice') { %><span class="notice-chip notice-chip-cf"><%= finance.cf %></span><% } %>
+        <% if (category && category !== 'Please Choice') { %><span class="notice-chip"><%= category %></span><% } %>
+        <strong class="finance-notice-title"><%= finance.content || '内容未入力' %></strong>
+        <% if (finance.sub_tag) { %><span class="notice-chip notice-chip-tag"><%= finance.sub_tag %></span><% } %>
+      </div>
+      <div class="finance-notice-amount">¥<%= Number(finance.amount || 0).toLocaleString('ja-JP') %></div>
+      <% if (editable) { %><span class="finance-notice-more" aria-hidden="true">⋮</span><% } %>
+    </li>
+  <% }) %>
+</ul>
+<% if (!finances.length) { %><p class="notice-empty">該当する入力はありません。</p><% } %>

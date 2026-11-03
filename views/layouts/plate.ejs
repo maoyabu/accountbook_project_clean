@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/css/main.css">
     <title>All About me</title>
 </head>
-<body class="d-flex flex-column vh-100">
+<body class="d-flex flex-column vh-100" data-service="<%= typeof activeService === 'string' ? activeService : 'finance' %>">
     <%- include('../partials/header_login_nav') %>
     <main class ="container">
         <%- include('../partials/flash') %>

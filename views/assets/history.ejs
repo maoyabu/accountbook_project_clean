@@ -1,25 +1,27 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<div class="finance-notice-board notice-asset-page">
 
-<div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+<div class="notice-heading d-flex flex-wrap gap-2 justify-content-between align-items-center mt-3 mb-2">
   <div>
     <div class="small text-muted">
       <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 資産の推移
     </div>
-    <h5 class="mb-0">資産の推移</h5>
+    <h5 class="mb-0">資産推移・棚卸履歴</h5>
   </div>
   <div class="d-flex gap-2">
-    <a href="/asset/inventory" class="btn btn-outline-secondary btn-sm">棚卸しを追加</a>
+    <a href="/asset/inventory" class="btn btn-outline-secondary btn-sm">棚卸を追加</a>
   </div>
 </div>
 
 <% if (!history || history.length === 0) { %>
-  <div class="alert alert-secondary">まだ棚卸し履歴がありません。</div>
+  <div class="alert alert-secondary">まだ棚卸履歴がありません。</div>
 <% } else { %>
   <div class="card shadow-sm mb-3">
     <div class="card-body">
       <% const hasChart = (JSON.parse(chartData || '{}').labels || []).length > 0; %>
       <% if (!hasChart) { %>
-        <div class="alert alert-secondary mb-0">グラフに表示するデータがありません。棚卸しを登録してください。</div>
+        <div class="alert alert-secondary mb-0">グラフに表示するデータがありません。棚卸を登録してください。</div>
       <% } else { %>
         <canvas id="assetHistoryChart" height="120"></canvas>
       <% } %>
@@ -28,10 +30,10 @@
 
   <% history.forEach(entry => { %>
     <div class="card shadow-sm mb-3">
-      <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #44616D;">
+      <div class="notice-heading d-flex flex-wrap gap-2 justify-content-between align-items-center">
         <div class="d-flex flex-column">
-          <span><%= entry.label %> 棚卸し</span>
-          <a href="/asset/inventory?month=<%= entry.label.replace('年','-').replace('月','') %>" class="text-white text-decoration-underline small">この月の棚卸しを確認・編集</a>
+          <span><%= entry.label %> 棚卸</span>
+          <a href="/asset/history/<%= entry.id %>" class="text-decoration-underline small">この棚卸の詳細を表示</a>
         </div>
         <small class="text-end">
           更新: <%= entry.updatedAt ? new Date(entry.updatedAt).toLocaleString('ja-JP') : '-' %><br>
@@ -69,37 +71,37 @@
           {
             label: '金融資産',
             data: chartData.series?.financial || [],
-            backgroundColor: 'rgba(31, 119, 180, 0.65)',
-            borderColor: '#1f77b4',
+            backgroundColor: 'rgba(83, 123, 102, 0.72)',
+            borderColor: '#537b66',
             stack: 'net'
           },
           {
             label: '実物資産',
             data: chartData.series?.physical || [],
-            backgroundColor: 'rgba(44, 160, 44, 0.5)',
-            borderColor: '#2ca02c',
+            backgroundColor: 'rgba(145, 169, 127, 0.65)',
+            borderColor: '#91a97f',
             stack: 'net'
           },
           {
             label: '無形資産',
             data: chartData.series?.intangible || [],
-            backgroundColor: 'rgba(255, 193, 7, 0.55)',
-            borderColor: '#ffc107',
+            backgroundColor: 'rgba(188, 167, 105, 0.65)',
+            borderColor: '#bca769',
             stack: 'net'
           },
           {
             label: '負債',
             data: chartData.series?.debt || [],
-            backgroundColor: 'rgba(220, 53, 69, 0.6)',
-            borderColor: '#dc3545',
+            backgroundColor: 'rgba(171, 117, 99, 0.65)',
+            borderColor: '#ab7563',
             stack: 'net'
           },
           {
             type: 'line',
             label: '合計',
             data: chartData.series?.total || [],
-            borderColor: '#343a40',
-            backgroundColor: '#343a40',
+            borderColor: '#304b3a',
+            backgroundColor: '#304b3a',
             tension: 0.2,
             pointRadius: 3,
             fill: false,
@@ -136,3 +138,5 @@
     });
   }
 </script>
+
+</div>

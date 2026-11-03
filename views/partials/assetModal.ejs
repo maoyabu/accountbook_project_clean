@@ -1,0 +1,121 @@
+<!-- Asset Modal -->
+<div class="modal fade" id="assetModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content finance-notice-board notice-asset-modal">
+      <div class="modal-header notice-asset-modal-heading">
+        <h5 class="modal-title" id="assetModalLabel">資産を登録</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="assetForm" class="no-js-submit" action="/asset/create" method="POST">
+        <div class="modal-body">
+          <input type="hidden" id="assetIdField">
+          <div id="assetFormError" class="alert alert-danger d-none" role="alert"></div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="asset_cf">資産区分<span style="color: red;">（*必須）</span></label>
+              <select name="asset_cf" id="asset_cf" class="form-control" required>
+                <% asset_cfs.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="current_asset_group" style="display:none;">
+              <label>金融資産内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_current" class="form-control">
+                <% current_assets.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="fixed_asset_group" style="display:none;">
+              <label>実物資産内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_fixed" class="form-control">
+                <% fixed_assets.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="intangible_asset_group" style="display:none;">
+              <label>無形資産内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_intangible" class="form-control">
+                <% intangible_assets.forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-5 category-group" id="debt_group" style="display:none;">
+              <label>負債内容<span style="color: red;">（*必須）</span></label>
+              <select name="asset_item" id="asset_item_debt" class="form-control">
+                <% ['Please Choice','住宅ローン','自動車ローン','その他ローン','その他負債'].forEach(item => { %>
+                  <option value="<%= item %>"><%= item %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="code">コード（株式の場合：証券コード、為替の場合＄なら$）</label>
+              <input type="text" name="code" id="code" class="form-control">
+            </div>
+            <div class="col-md-5">
+              <label for="content">資産内容<span style="color: red;">（*必須）</span></label>
+              <textarea name="content" id="content" class="form-control" required></textarea>
+            </div>
+            <div class="col-md-3">
+              <label for="amount">数量<span style="color: red;">（*必須）</span></label>
+              <input type="number" inputmode="numeric" data-money-input name="amount" id="amount" class="form-control" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="monetary_unit">単位<span style="color: red;">（*必須）</span></label>
+              <select name="monetary_unit" id="monetary_unit" class="form-control" required>
+                <% monetary_units.forEach(unit => { %>
+                  <option value="<%= unit %>"><%= unit %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-8 d-flex align-items-end">
+              <small class="form-text text-muted">※ 負債の場合はマイナスの金額（例：-3000000）で入力してください</small>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-12 text-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="unlockSecureNoteBtn">
+                🔐 機密情報を表示・編集する
+              </button>
+            </div>
+          </div>
+          <div class="row mb-3" id="secureNoteAuthSection" style="display: none;">
+            <div class="col-md-6">
+              <input type="password" id="secureNotePassword" name="password" class="form-control" placeholder="パスワードを入力">
+            </div>
+            <div class="col-md-6">
+              <button type="button" class="btn btn-primary" id="verifySecureNoteBtn">認証</button>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label for="secure_note">機密情報（口座情報など）</label>
+              <textarea name="secure_note" id="secure_note" class="form-control" rows="3" placeholder="※編集時はパスワード認証が必要です" disabled></textarea>
+              <small class="form-text text-muted">※ 登録後の表示・編集はパスワード再認証が必要です</small>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+          <button type="submit" class="btn btn-primary">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="assetRowMenu" class="dropdown-menu shadow" role="menu" aria-label="資産の操作" style="position: fixed; z-index: 1060;">
+  <button id="assetRowEdit" class="dropdown-item" type="button" role="menuitem">編集</button>
+  <form id="assetRowDelete" method="POST" class="no-js-submit m-0">
+    <button class="dropdown-item text-danger" type="submit" role="menuitem">削除</button>
+  </form>
+</div>
+<script src="/js/assetManagement.js"></script>

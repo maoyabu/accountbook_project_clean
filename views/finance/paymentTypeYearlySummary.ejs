@@ -1,4 +1,6 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<div class="finance-notice-board notice-summary-page">
 
 <%
   const formatAmount = (value) => (Number(value) || 0).toLocaleString();
@@ -6,14 +8,14 @@
 %>
 
 <div class="card mt-3 mb-3 rounded">
-  <div class="card-body p-3 text-white" style="background-color: #44616D;">
+  <div class="card-body notice-summary-toolbar">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div>
         <h5 class="mb-1"><i class="fa-solid fa-table-columns me-2"></i>年次支払種別集計</h5>
         <div class="small opacity-75"><%= year %>年度 / <%= fiscalPeriodLabel %> / 開始月 <%= fiscalStartMonth %>月</div>
       </div>
       <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
-        <label for="paymentSummaryYear" class="form-label mb-0 text-white">年度</label>
+        <label for="paymentSummaryYear" class="form-label mb-0">年度</label>
         <select id="paymentSummaryYear" name="year" class="form-select form-select-sm" onchange="this.form.submit()">
           <% (availableYears || []).forEach((value) => { %>
             <option value="<%= value %>" <%= year === value ? 'selected' : '' %>><%= value %>年度</option>
@@ -144,3 +146,5 @@
     }
   }
 </style>
+
+</div>

@@ -1,70 +1,62 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<div class="finance-notice-board notice-asset-page">
 
 <div class="mt-3 mb-2">
   <div class="small text-muted">
-    <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 棚卸し
+    <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 棚卸
   </div>
 </div>
 
 <div class="card shadow-sm">
-  <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #44616D;">
+  <div class="notice-heading d-flex flex-wrap gap-2 justify-content-between align-items-center">
     <h5 class="mb-0"><%= inventoryTitle %></h5>
     <div class="d-flex gap-2">
-      <a href="/asset/history" class="btn btn-warning btn-sm">資産の推移</a>
+      <a href="/asset/history" class="btn btn-warning btn-sm">棚卸履歴</a>
     </div>
   </div>
   <div class="card-body">
     <div class="alert alert-primary">
-      棚卸し年月を手動で指定できます。未来の年月は登録できません。
+      棚卸年月を手動で指定できます。未来の年月は登録できません。
     </div>
     <% if (targetInventory) { %>
       <div class="alert alert-success">
-        この棚卸しは <%= new Date(targetInventory.updatedAt || targetInventory.createdAt).toLocaleString('ja-JP') %> に
+        この棚卸は <%= new Date(targetInventory.updatedAt || targetInventory.createdAt).toLocaleString('ja-JP') %> に
         <%= targetInventory.updatedBy?.displayname || targetInventory.updatedBy?.username || '不明なユーザー' %> が保存済みです。上書きして更新できます。
       </div>
     <% } else if (previousInventory) { %>
       <div class="alert alert-info">
         前回（<%= previousInventory.inventoryMonth.getFullYear() %>年<%= String(previousInventory.inventoryMonth.getMonth() + 1).padStart(2, '0') %>月）
-        の棚卸し金額を初期表示しています。今回の棚卸し金額に更新してください。
+        の棚卸金額を初期表示しています。今回の棚卸金額に更新してください。
       </div>
     <% } else { %>
       <div class="alert alert-secondary">
-        初めての棚卸しです。現在の資産金額を入力してください。
+        初めての棚卸です。現在の資産金額を入力してください。
       </div>
     <% } %>
 
     <% if (inventoryRows.length === 0) { %>
-      <p class="text-muted">登録されている資産がありません。まず資産を登録してください。</p>
+      <p class="text-muted">登録されている資産がありません。<a href="/asset/display?open=create#assetList">資産を新規登録</a>してください。</p>
     <% } else { %>
       <form action="/asset/inventory" method="POST" id="inventoryForm">
         <div class="mb-3">
-          <label for="inventoryMonth" class="form-label">棚卸し年月</label>
+          <label for="inventoryMonth" class="form-label">棚卸年月</label>
           <div class="d-flex flex-wrap align-items-center gap-2">
             <input type="month" id="inventoryMonth" name="inventoryMonth" class="form-control w-auto" value="<%= targetMonthValue %>" max="<%= latestAllowedMonth ? `${latestAllowedMonth.getFullYear()}-${String(latestAllowedMonth.getMonth() + 1).padStart(2, '0')}` : '' %>">
             <button type="button" class="btn btn-outline-secondary btn-sm" id="inventoryReloadBtn">読み込み</button>
           </div>
-          <div class="form-text text-muted small">年月を変更したら「読み込み」で前回の棚卸しを反映できます。</div>
+          <div class="form-text text-muted small">年月を変更したら「読み込み」で前回の棚卸を反映できます。</div>
         </div>
         <div class="table-responsive">
-          <table class="table table-bordered table-sm align-middle">
+          <table class="table table-sm align-middle notice-inventory-table">
             <thead class="table-light">
-              <tr>
-                <th style="width: 120px;">区分</th>
-                <th style="width: 150px;">項目</th>
-                <th>内容</th>
-                <th style="width: 120px;">コード</th>
-                <th style="width: 180px;" class="text-end">棚卸し入力</th>
-                <th style="width: 160px;">操作 / 更新情報</th>
-              </tr>
+              <tr><th>内容</th><th class="text-end">棚卸入力</th><th>操作・更新情報</th></tr>
             </thead>
             <tbody>
               <% inventoryRows.forEach((row, idx) => { %>
                 <% const inputId = `inv-${idx}`; %>
                 <tr>
-                  <td><%= row.asset.asset_cf %></td>
-                  <td><%= row.asset.asset_item %></td>
-                  <td><%= row.asset.content %></td>
-                  <td><%= row.asset.code || '-' %></td>
+                  <td><span class="notice-chip"><%= row.asset.asset_cf %></span><span class="notice-chip"><%= row.asset.asset_item %></span><strong><%= row.asset.content %></strong><% if (row.asset.code) { %><div class="notice-asset-caption"><%= row.asset.code %></div><% } %></td>
                   <td class="text-end fw-bold" data-inventory-display="<%= inputId %>">
                     <% if (row.isStockQuantity) { %>
                       <span class="badge bg-light text-dark border me-1">株数</span>
@@ -82,7 +74,7 @@
                     <button
                       type="button"
                       class="btn btn-primary btn-sm inventory-edit-btn"
-                      data-asset='<%- JSON.stringify({
+                      data-asset='<%= JSON.stringify({
                         inputId,
                         assetId: row.asset._id,
                         label: `${row.asset.asset_cf} / ${row.asset.asset_item}`,
@@ -93,8 +85,8 @@
                         isFxQuantity: row.isFxQuantity,
                         updatedBy: row.itemUpdatedBy,
                         updatedAt: row.itemUpdatedAt
-                      }).replace(/'/g, '&#39;') %>'>
-                      棚卸し
+                      }) %>'>
+                      棚卸
                     </button>
                     <input type="hidden" name="items[<%= idx %>][asset]" value="<%= row.asset._id %>">
                     <% if (row.isStockQuantity || row.isFxQuantity) { %>
@@ -115,10 +107,10 @@
           </table>
         </div>
         <p class="text-muted small mb-3">
-          株式と為替は数量（株数・外貨額）を入力し、棚卸し月のレート／株価で自動換算します。その他の資産は金額（円）を入力してください。
+          株式と為替は数量（株数・外貨額）を入力し、棚卸月のレート／株価で自動換算します。その他の資産は金額（円）を入力してください。
         </p>
         <div class="text-end">
-          <button type="submit" class="btn btn-primary">棚卸しを保存</button>
+          <button type="submit" class="btn btn-primary">棚卸を保存</button>
         </div>
       </form>
     <% } %>
@@ -128,15 +120,15 @@
 <!-- Inventory modal -->
 <div class="modal fade" id="inventoryModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content">
+    <div class="modal-content notice-asset-modal">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="inventoryModalLabel">棚卸しを編集</h5>
+        <h5 class="modal-title" id="inventoryModalLabel">棚卸を編集</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="mb-2 text-muted small" id="inventoryModalDesc"></div>
-        <label for="inventoryAmountInput" class="form-label" id="inventoryModalLabelInput">棚卸し金額（円）</label>
-        <input type="number" class="form-control" id="inventoryAmountInput" />
+        <label for="inventoryAmountInput" class="form-label" id="inventoryModalLabelInput">棚卸金額（円）</label>
+        <input type="number" inputmode="numeric" data-money-input class="form-control" id="inventoryAmountInput" />
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
@@ -165,13 +157,13 @@
         modalLabel.textContent = payload.label;
         modalDesc.textContent = payload.content || '';
         if (payload.isStockQuantity) {
-          modalLabelInput.textContent = '棚卸し株数（数量）';
+          modalLabelInput.textContent = '棚卸株数（数量）';
           amountInput.value = payload.amount || 0;
         } else if (payload.isFxQuantity) {
-          modalLabelInput.textContent = '棚卸し数量（外貨額）';
+          modalLabelInput.textContent = '棚卸数量（外貨額）';
           amountInput.value = payload.amount || 0;
         } else {
-          modalLabelInput.textContent = '棚卸し金額（円）';
+          modalLabelInput.textContent = '棚卸金額（円）';
           amountInput.value = payload.amountYen || 0;
         }
         amountInput.focus();
@@ -222,3 +214,5 @@
     }
   });
 </script>
+
+</div>

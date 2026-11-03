@@ -1,4 +1,5 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
 <div class="text-end">
   <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/33EAF36C-74B4-4157-BADD-9B777DF0BD2E/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E6%9C%80%E8%BF%91%E3%81%AE%E5%85%A5%E5%8A%9B-%E6%A4%9C%E7%B4%A2-EXCEL%E6%9B%B8%E5%87%BA%E3%81%97"
      target="_blank" rel="noopener"
@@ -6,8 +7,8 @@
     ガイド
   </a>
 </div>
-<div class="list-frame">
-  <div class="list-header">
+<div class="list-frame finance-notice-board">
+  <div class="notice-heading">
     <h5 class="mb-0">直近の入力 - <%= Math.min(count, displayLimit) %> 件 / <%= count %>件</h5>
   </div>
   <div class="finance-list-filters mb-2">
@@ -21,7 +22,7 @@
     </div>
     <details>
       <summary class="finance-list-filter-toggle">絞り込み</summary>
-  <div class="filter-bar bg-light p-3 rounded mb-2" style="background-color: #e8f2fb !important;">
+  <div class="filter-bar notice-filter-panel">
     <form id="financeListFilterForm" method="GET" action="/finance/list" class="d-flex flex-wrap align-items-end gap-3 mb-0">
       <input type="hidden" name="scope" value="<%= selectedFilters?.scope || 'user' %>">
       <div class="d-flex flex-column">
@@ -88,156 +89,11 @@
   </div>
     </details>
   </div>
-<style>
-  .finance-list-filters { position: relative; background: #f8f9fa; }
-  .finance-list-filter-toggle {
-    width: max-content;
-    padding: 7px 8px;
-    line-height: 24px;
-    cursor: pointer;
-  }
-  .finance-list-count { position: absolute; top: 4px; left: 112px; height: 30px; }
-  .finance-list-count label { white-space: nowrap; font-size: 0.875rem; font-weight: 600; }
-  .finance-list-count select { padding-top: 3px; padding-bottom: 3px; }
-  /* ヘッダと一覧を同じ左右幅にそろえる */
-  .list-frame { margin: 0; }
-  .list-header {
-    background-color: #44616D; color: #fff;
-    padding: 10px;
-    border-top-left-radius: 4px; border-top-right-radius: 4px;
-    margin-top: 8px; margin-bottom: 0;
-  }
-  .list-body { padding: 0; }
-  .list-frame .table-responsive { margin: 0; }
-  .filter-select { min-width: 120px; }
-  :root { --action-gap: 4px; --edge-gap: 8px; }
-  .list-frame .table thead th {
-    background-color: #44616D;
-    color: #fff;
-  }
-  /* 横並びの操作ボタン */
-  .actions-cell { white-space: nowrap; padding-right: var(--edge-gap); overflow: visible; text-overflow: clip; }
-  .actions-inline { display: inline-flex; gap: var(--action-gap); align-items: center; flex-wrap: nowrap; }
-  .actions-inline form { display: inline; margin: 0; }
-  .actions-inline .btn { padding: 0.15rem 0.4rem; line-height: 1; }
 
-  /* 列幅と省略 */
-  .table-fixed { table-layout: fixed; width: 100%; }
-  .table-fixed th, .table-fixed td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* 操作セルは省略記号を出さずに内側でカット */
-  .table-fixed td.actions-cell { overflow: hidden !important; text-overflow: clip !important; }
-  /* 日付 */
-  .table-fixed th.col-date, .table-fixed td.col-date { width: calc(10ch + 12px); max-width: calc(10ch + 12px); }
-  /* 大区分 */
-  .table-fixed th.col-cf, .table-fixed td.col-cf { width: calc(8ch + 8px); max-width: calc(8ch + 8px); text-align: center; }
-  /* 小区分（明細） */
-  .table-fixed th.col-class, .table-fixed td.col-class { width: calc(8ch + 8px); max-width: calc(8ch + 8px); }
-  /* 金額 */
-  .table-fixed th.col-amount, .table-fixed td.col-amount { width: 100px; text-align: right; }
-  /* 種別 */
-  .table-fixed th.col-type, .table-fixed td.col-type { width: 110px; }
-  .table-fixed th.col-tag, .table-fixed td.col-tag { width: 90px; }
-  /* 使用者（漢字2文字=4ch + 余白） */
-  .table-fixed th.col-user, .table-fixed td.col-user {
-    width: calc(4ch + 8px);
-    max-width: calc(4ch + 8px);
-    padding: 0 4px;
-    text-align: center;
-    vertical-align: middle;
-  }
-  /* 操作列 */
-  .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 110px; }
-
-  .finance-list-tag {
-    display: inline-block;
-    max-width: 100%;
-    padding: 0.15rem 0.4rem;
-    border-radius: 0.3rem;
-    background: #e8f0f3;
-    color: #334d59;
-    font-size: 0.8rem;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    vertical-align: middle;
-  }
-  .finance-list-mobile-tag { display: none; }
-  .table-fixed td.col-tag { white-space: normal; }
-
-  /* <=992px: 種別・使用者を非表示 */
-  @media (max-width: 992px) {
-    .finance-list-mobile-tag { display: block; margin-top: 0.25rem; }
-    .table-fixed td.col-content { white-space: normal; overflow-wrap: anywhere; }
-    .table-fixed th.col-type, .table-fixed td.col-type,
-    .table-fixed th.col-tag, .table-fixed td.col-tag,
-    .table-fixed th.col-user, .table-fixed td.col-user { display: none !important; }
-    .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
-  }
-  /* <=768px: 大区分・小区分も非表示 → 日付/内容/金額/操作のみ */
-  @media (max-width: 768px) {
-    .table-fixed th.col-cf, .table-fixed td.col-cf,
-    .table-fixed th.col-class, .table-fixed td.col-class { display: none !important; }
-    .table-fixed th.col-date, .table-fixed td.col-date { width: 7.8rem; max-width: 7.8rem; }
-    .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.8rem; max-width: 6.8rem; }
-    .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.8rem; max-width: 6.8rem; }
-    .table-fixed th.col-content, .table-fixed td.col-content { width: auto; max-width: none; }
-  }
-
-  /* <=570px: 最低限の左右マージンを確保（約4px）し、内容を優先的に縮める */
-  @media (max-width: 570px) {
-    .table-fixed th.col-date, .table-fixed td.col-date { width: 7.6rem; max-width: 7.6rem; }
-    .table-fixed th.col-amount, .table-fixed td.col-amount { width: 6.6rem; max-width: 6.6rem; }
-    .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 6.6rem; max-width: 6.6rem; }
-    .table-fixed th.col-content, .table-fixed td.col-content { width: auto; }
-  }
-</style>
 
 <div class="list-body">
-  <div class="table-responsive">
-  <table class="table table-fixed w-100 m-0" style="border: 2px solid #3a7ca5; border-collapse: collapse;">
-    <thead>
-      <tr>
-        <th class="col-date">日付</th>
-        <th class="col-content">内容</th>
-        <th class="col-amount">金額</th>
-        <th class="hide-on-mobile col-type">種別</th>
-        <th class="col-user">使用</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% for (let finance of finances) { %>
-        <tr data-id="<%= finance.id %>" <% if ((finance.user && finance.user._id.toString() === currentUser._id.toString()) || (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())) { %> data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="右クリック、長押し、またはEnterで操作メニュー" aria-haspopup="menu" <% } %>>
-          <td class="col-date"><%= new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') %></td>
-          <td class="col-content finance-combined-content">
-              <% if (finance.cf && finance.cf !== 'Please Choice') { %>
-                <span class="badge bg-secondary me-1"><%= finance.cf %></span>
-              <% } %>
-              <% const categoryField = { '収入': 'income_item', '支出': 'expense_item', '控除': 'dedu_item', '貯蓄': 'saving_item' }[finance.cf]; %>
-              <% const category = categoryField ? finance[categoryField] : ''; %>
-              <% if (category && category !== 'Please Choice') { %>
-                <span class="badge bg-light text-dark me-1"><%= category %></span>
-              <% } %>
-              <%= finance.content %>
-              <% if (finance.sub_tag) { %>
-                <span class="badge bg-light text-dark ms-1"><%= finance.sub_tag %></span>
-              <% } %>
-
-          </td>
-          <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
-          <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
-          <td class="limited-text2 col-user"><%= finance.user?.displayname || '不明' %></td>
-        </tr>
-      <% } %>
-    </tbody>
-  </table>
-  </div>
+  <%- include('../partials/financeNoticeList') %>
 </div>
 </div>
 
 <%- include('../partials/financeEditModal') %>
-
-<style>[data-finance-edit-url] { cursor: pointer; -webkit-touch-callout: none; } .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 3.5rem; max-width: 3.5rem; }</style>
-
-<style>
-  .table-fixed td.finance-combined-content { white-space: normal; overflow-wrap: anywhere; }
-  .finance-combined-content .badge { white-space: normal; overflow-wrap: anywhere; }
-</style>

@@ -1,4 +1,6 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<div class="finance-notice-board notice-summary-page">
 <%
   const monthlyReflectionMap = typeof monthlyReflections !== 'undefined' ? monthlyReflections : {};
   const monthlyReflectionAction = typeof reflectionAction !== 'undefined' ? reflectionAction : '';
@@ -7,12 +9,12 @@
 
 
   <div class="card mb-3 mt-4">
-    <div class="card-body text-white p-2 rounded" style="background-color: #44616D;">
-      <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="card-body notice-summary-body">
+      <div class="notice-summary-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <h5 class="card-title mb-0"><%= titlePrefix %> 月間サマリー</h5>
-        <div class="d-flex align-items-center flex-nowrap gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
           <form method="GET" action="<%= formAction %>" class="d-flex mb-0">
-            <div class="d-flex align-items-center flex-nowrap gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-2">
               <input type="month" name="ym" value="<%= year %>-<%= String(month).padStart(2, '0') %>" class="form-control form-control-sm me-2" style="height: 2.2rem; max-width: 120px;" onchange="this.form.submit()">
               <div class="form-check form-switch mb-0 text-nowrap">
                 <input type="hidden" name="tagSummary" value="0">
@@ -386,7 +388,7 @@
 <% } %>
 
   <div class="card mt-4">
-    <div class="card-body text-white p-2 rounded" style="background-color: #44616D;">
+    <div class="card-body notice-summary-body">
       <h5 class="card-title">支出内訳（<%= month %>月 & 累計）</h5>
       <table class="table table-bordered mt-3 dashboard-monthly">
         <thead class="table-primary text-center">
@@ -634,3 +636,5 @@
       </table>
     </div>
   </div>
+
+</div>

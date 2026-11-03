@@ -114,13 +114,13 @@
         <div class="menu-pills">
           <% if (svc.finance) { %><form action="/service/select" method="POST">
             <input type="hidden" name="service" value="finance">
-            <button type="submit" class="menu-pill <%= activeSvc === 'finance' ? 'is-active is-finance' : '' %>">
+            <button type="submit" class="menu-pill is-finance <%= activeSvc === 'finance' ? 'is-active' : '' %>">
               <span class="menu-pill-main"><i class="fa-solid fa-wallet"></i><span>Finance</span></span>
             </button>
           </form><% } %>
           <% if (svc.allaboutme) { %><form action="/service/select" method="POST">
             <input type="hidden" name="service" value="myself">
-            <button type="submit" class="menu-pill <%= activeSvc === 'myself' ? 'is-active is-myself' : '' %>">
+            <button type="submit" class="menu-pill is-myself <%= activeSvc === 'myself' ? 'is-active' : '' %>">
               <span class="menu-pill-main"><i class="fa-solid fa-user"></i><span>Myself</span></span>
             </button>
           </form><% } %>

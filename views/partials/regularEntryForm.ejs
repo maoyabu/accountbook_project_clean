@@ -54,7 +54,7 @@
           </div>
           <div class="col-md-2">
             <label for="amount">金額</label>
-            <input type="number" name="amount" class="form-control" value="<%= entryToEdit ? entryToEdit.amount : '' %>" required>
+            <input type="number" inputmode="numeric" data-money-input name="amount" class="form-control" value="<%= entryToEdit ? entryToEdit.amount : '' %>" required>
           </div>
           <div class="col-md-3">
             <label for="payment_type">支払種別</label>

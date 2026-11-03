@@ -1,6 +1,8 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="finance-notice-board notice-budget-page notice-group-budget">
+<div class="notice-heading d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h5 class="mb-0"><i class="fa-regular fa-money-bill-1"></i> <%= groupName %> <%= selectedYear %>年度 グループ予算確認</h5>
   <a href="/finance/budget?year=<%= encodeURIComponent(selectedYear) %>" class="btn btn-outline-secondary btn-sm">戻る</a>
 </div>
@@ -12,8 +14,8 @@
 <% } %>
 
 <% sections.forEach((section) => { %>
-  <div class="card mb-4">
-    <div class="card-header"><strong><%= section.title %></strong></div>
+  <div class="notice-setting-panel">
+    <div class="notice-setting-heading"><strong><%= section.title %></strong></div>
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-bordered table-sm mb-0">
@@ -50,3 +52,5 @@
     </div>
   </div>
 <% }) %>
+
+</div>

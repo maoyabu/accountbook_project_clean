@@ -16,7 +16,7 @@
                   <input type="text" name="items[<%= index %>][expense_item]" value="<%= item.expense_item %>" class="form-control" required>
                 </td>
                 <td>
-                  <input type="number" name="items[<%= index %>][budget]" value="<%= item.budget %>" class="form-control" required>
+                  <input type="number" inputmode="numeric" data-money-input name="items[<%= index %>][budget]" value="<%= item.budget %>" class="form-control" required>
                 </td>
                 <td>
                   <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">削除</button>

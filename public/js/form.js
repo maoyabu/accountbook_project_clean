@@ -69,7 +69,7 @@ function addRow() {
     const row = document.createElement('tr');
     row.innerHTML = `
     <td><input type="text" name="items[${index}][expense_item]" class="form-control" required></td>
-    <td><input type="number" name="items[${index}][budget]" value="0" class="form-control" required></td>
+    <td><input type="number" inputmode="numeric" data-money-input name="items[${index}][budget]" value="0" class="form-control" required></td>
     <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">削除</button></td>
     `;
     tbody.appendChild(row);

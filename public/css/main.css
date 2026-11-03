@@ -4141,3 +4141,104 @@ padding-left: 10px;
     grid-template-columns: 1fr;
   }
 }
+
+/* Currency inputs keep number validation without spinner controls. */
+input[type="number"][data-money-input] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+input[type="number"][data-money-input]::-webkit-inner-spin-button,
+input[type="number"][data-money-input]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+/* Service identity: Finance in muted green, Myself in blue. */
+.theme-finance, .is-finance, body[data-service="finance"] {
+    --service-accent: #426456;
+    --service-ink: #304b3a;
+    --service-soft: #e9f1e7;
+    --service-border: #b9cdbb;
+}
+.theme-myself, .is-myself, body[data-service="myself"] {
+    --service-accent: #416b98;
+    --service-ink: #2f537a;
+    --service-soft: #eaf1fa;
+    --service-border: #b9cce3;
+}
+#top-nav.theme-finance .top-nav-bar,
+#top-nav.theme-myself .top-nav-bar { background: var(--service-soft); color: var(--service-ink); }
+#top-nav.theme-finance .top-nav-brand,
+#top-nav.theme-finance .top-nav-service-label,
+#top-nav.theme-finance .top-nav-field-label,
+#top-nav.theme-finance .top-nav-icon,
+#top-nav.theme-finance .menu-toggle i,
+#top-nav.theme-myself .top-nav-brand,
+#top-nav.theme-myself .top-nav-service-label,
+#top-nav.theme-myself .top-nav-field-label,
+#top-nav.theme-myself .top-nav-icon,
+#top-nav.theme-myself .menu-toggle i { color: var(--service-ink); }
+#top-nav.theme-finance .top-nav-icon,
+#top-nav.theme-finance .menu-toggle,
+#top-nav.theme-myself .top-nav-icon,
+#top-nav.theme-myself .menu-toggle { border-color: var(--service-border); background: #fff; }
+#top-nav.theme-finance .top-nav-group-name,
+#top-nav.theme-myself .top-nav-group-name { background: var(--service-soft); color: var(--service-ink); border-color: var(--service-border); }
+.menu-pill.is-finance, .menu-pill.is-myself,
+.menu-pill.is-active.is-finance, .menu-pill.is-active.is-myself,
+.service-option.is-finance, .service-option.is-myself,
+.service-option.is-active.is-finance, .service-option.is-active.is-myself {
+    background: var(--service-soft);
+    color: var(--service-ink);
+    border-color: var(--service-border);
+}
+.menu-pill.is-active.is-finance, .menu-pill.is-active.is-myself,
+.service-option.is-active.is-finance, .service-option.is-active.is-myself { border-color: var(--service-accent); }
+.menu-item.is-active.is-finance, .menu-item.is-active.is-myself { background: var(--service-soft); color: var(--service-ink); border-right-color: var(--service-accent); }
+#top-nav.theme-finance .menu-item i, #top-nav.theme-myself .menu-item i { color: var(--service-accent); }
+#top-nav.theme-finance .menu-pill.related-blue { background: #e9f1e7; border-color: #b9cdbb; color: #304b3a; }
+#top-nav.theme-myself .menu-pill.related-green { background: #eaf1fa; border-color: #b9cce3; color: #2f537a; }
+.footer.theme-finance, .footer.theme-myself { background: var(--service-soft); }
+.footer.theme-finance .text-white, .footer.theme-finance .text-white a,
+.footer.theme-myself .text-white, .footer.theme-myself .text-white a { color: var(--service-ink) !important; }
+/* Finance's floating header menu follows the same green palette. */
+.finance-quick-fab { border-color: #bfd0bf; box-shadow: 0 12px 28px rgba(48, 75, 58, .16); }
+.finance-quick-fab-top { background: #426456; }
+.finance-quick-fab-item:hover { background: #e9f1e7; color: #304b3a; }
+.finance-quick-fab-item:active { background: #dce8d8; }
+.finance-quick-fab-item i { color: #426456; }
+body[data-service="finance"] .finance-quick-toggle input:checked ~ .finance-quick-toggle-track { background: #426456; }
+/* Restrict Myself content colours to its pages; user category colours remain intact. */
+body[data-service="myself"] main .myself-section-heading,
+body[data-service="myself"] main .card-header:not([style]) { background: #416b98; color: #fff; }
+body[data-service="myself"] main .btn-primary,
+body[data-service="myself"] main .btn-success,
+body[data-service="myself"] main .myself-action-btn,
+body[data-service="myself"] main .c-button,
+body[data-service="myself"] main .d-button { background: #416b98; border-color: #416b98; color: #fff; }
+body[data-service="myself"] main .btn-primary:hover,
+body[data-service="myself"] main .btn-success:hover,
+body[data-service="myself"] main .myself-action-btn:hover,
+body[data-service="myself"] main .c-button:hover,
+body[data-service="myself"] main .d-button:hover { background: #31577e; border-color: #31577e; color: #fff; }
+body[data-service="myself"] main .btn-outline-primary,
+body[data-service="myself"] main .btn-outline-success { background: #fff; border-color: #b9cce3; color: #2f537a; }
+body[data-service="myself"] main .btn-outline-primary:hover,
+body[data-service="myself"] main .btn-outline-success:hover { background: #eaf1fa; border-color: #416b98; color: #2f537a; }
+body[data-service="myself"] main .btn-secondary { background: #6a7e94; border-color: #6a7e94; color: #fff; }
+body[data-service="myself"] main .btn-info,
+body[data-service="myself"] main .btn-warning { background: #e2ecf8; border-color: #b9cce3; color: #2f537a; }
+body[data-service="myself"] main .btn-outline-light:hover { background: #eaf1fa; border-color: #d7e4f4; color: #2f537a; }
+body[data-service="myself"] main .btn.bg-success,
+body[data-service="myself"] main a.badge.bg-success { background-color: #416b98 !important; }
+body[data-service="myself"] .myself-nav-select { border-color: #b9cce3; background: #eaf1fa; color: #2f537a; }
+body[data-service="myself"] .myself-nav-select:focus { border-color: #416b98; box-shadow: 0 0 0 .2rem rgba(65, 107, 152, .18); }
+body[data-service="myself"] main .mylist-tag { border-color: #b9cce3; background: #eaf1fa; color: #2f537a; }
+body[data-service="myself"] main .form-check-input:checked { background-color: #416b98; border-color: #416b98; }
+body[data-service="myself"] main .btn:focus-visible { outline: 2px solid #416b98; outline-offset: 2px; }
+.finance-quick-fab-add { color: #426456; }
+.finance-quick-fab-add:hover { background: #e9f1e7; color: #304b3a; }
+.menu-pill.is-finance i, .menu-pill.is-myself i { color: var(--service-accent); }
+body[data-service="myself"] main .btn-warning.text-white,
+body[data-service="myself"] main .btn-info.text-white { color: #2f537a !important; }

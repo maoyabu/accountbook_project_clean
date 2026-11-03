@@ -1,0 +1,7 @@
+<a class="budget-item-card <%= item.over ? 'is-over' : 'is-normal' %> is-clickable" href="/finance/list?scope=group&cf=支出&category=<%= encodeURIComponent(item.name) %>&date_from=<%= budgetMonthRange?.start %>&date_to=<%= budgetMonthRange?.end %>">
+  <span class="budget-item-name"><%= item.name %></span>
+  <dl class="budget-item-metrics">
+    <dt>予算到達率</dt><dd class="budget-item-rate <%= item.over ? 'is-over' : '' %>"><%= item.rate %>%</dd>
+    <dt>実績 / 予算</dt><dd class="budget-item-amount"><%= Number(item.actual || 0).toLocaleString() %> / <%= Number(item.budget || 0).toLocaleString() %></dd>
+  </dl>
+</a>

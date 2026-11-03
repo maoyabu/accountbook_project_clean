@@ -1,10 +1,13 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<div class="finance-notice-board notice-summary-page">
+<div class="notice-heading"><h5 class="mb-1"><%= titlePrefix %> 年間サマリー</h5><div class="small text-muted"><%= year %>年度・<%= selectedMonth %>月まで</div></div>
 <!-- Year Selector Card -->
   <div class="card mb-3 mt-4 rounded">
-    <div class="card-body text-white p-2 d-flex justify-content-between align-items-center" style="background-color: #44616D;">
+    <div class="card-body notice-summary-toolbar d-flex flex-wrap gap-3 justify-content-between align-items-center">
       
       <!-- 年セレクタ部分 -->
-      <form method="GET" action="<%= formAction %>" class="d-flex align-items-center gap-2 mb-0">
+      <form method="GET" action="<%= formAction %>" class="d-flex flex-wrap align-items-center gap-2 mb-0">
         <select id="year-select" name="year" onchange="this.form.submit()" class="form-select form-select-sm w-auto">
           <% (availableYears || []).forEach(y => { %>
             <option value="<%= y %>" <%= year === y ? 'selected' : '' %>><%= y %></option>
@@ -27,7 +30,7 @@
             <label class="form-check-label" for="categorySummarySwitch">上位カテゴリー別</label>
           </div>
         <% } %>
-        <span>年度 <%= titlePrefix %>の年間サマリー（<%= selectedMonth %>月まで）</span>
+
       </form>
 
       <!-- Excel出力ボタン -->
@@ -43,7 +46,7 @@
 
   <!-- Table Card -->
   <div class="card mb-3 rounded">
-    <div class="card-body p-2" style="background-color: #44616D;">
+    <div class="card-body notice-summary-body">
       <div class="dashboard-yearly-wrap">
         <table class="table table-bordered table-sm text-end dashboard-yearly" style="table-layout: auto;">
           <!-- <table class="table table-bordered table-sm text-end align-middle" style="width: 80%; margin: auto; table-layout: auto;"> -->
@@ -233,3 +236,5 @@
       </div>
     </div>
   </div>
+
+</div>

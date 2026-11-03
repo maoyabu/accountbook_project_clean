@@ -16,7 +16,7 @@
     <title>All About me</title>
     <link rel="icon" href="/images/App_icon.png" type="image/png">
 </head>
-<body class="d-flex flex-column vh-100">
+<body class="d-flex flex-column vh-100" data-service="<%= typeof activeService === 'string' ? activeService : 'finance' %>">
     <%- include('../partials/header_login_nav') %>
     <main class ="<%= typeof mainClass !== 'undefined' ? mainClass : 'container' %>">
         <%- include('../partials/flash') %>

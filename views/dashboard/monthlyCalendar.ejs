@@ -1,4 +1,6 @@
 <% layout('layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<div class="finance-notice-board notice-calendar-page">
 <% const walletManaged = walletManagementEnabled === true; %>
 <%
   const escapeCalendarHtml = (value) => String(value || '')
@@ -19,7 +21,7 @@
 %>
 
 <div class="card mb-3 rounded">
-  <div class="card-body text-white p-2 d-flex justify-content-between align-items-center gap-2 dashboard-calendar-toolbar" style="background-color: #44616D;">
+  <div class="card-body p-2 d-flex flex-wrap justify-content-between align-items-center gap-2 dashboard-calendar-toolbar notice-calendar-toolbar">
     <form method="POST" action="<%= carryCashAction %>" class="d-flex align-items-center gap-2 mb-0 dashboard-calendar-control-form">
       <input
         type="month"
@@ -33,7 +35,7 @@
         <label for="carryCashInput" class="dashboard-carry-label">繰越現金</label>
         <input
           id="carryCashInput"
-          type="number"
+          type="number" inputmode="numeric" data-money-input
           name="carryCash"
           value="<%= Number(carryCash || 0) %>"
           class="form-control form-control-sm dashboard-carry-input"
@@ -53,8 +55,8 @@
 </div>
 
 <div class="card mb-3 rounded">
-  <div class="card-body p-2" style="background-color: #44616D;">
-    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+  <div class="card-body p-2 notice-calendar-body">
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-2 notice-calendar-month-heading">
       <div class="text-white fw-bold"><%= year %>年 <%= month %>月</div>
     </div>
     <div class="dashboard-calendar-wrap">
@@ -214,7 +216,7 @@
           <div class="mb-1">
             <label for="calendarMemoCashTopup" class="form-label mb-1">現金追加</label>
             <input
-              type="number"
+              type="number" inputmode="numeric" data-money-input
               id="calendarMemoCashTopup"
               class="form-control form-control-sm"
               min="0"
@@ -347,3 +349,5 @@
     });
   });
 </script>
+
+</div>

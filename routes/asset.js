@@ -42,42 +42,28 @@ const getMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
 // 資産登録画面の表示
 
 // 資産一覧表示
-router.get('/', ensureAuthenticated, async (req, res) => {
-    try {
-      const groupId = req.session.activeGroupId;
-      const currentQuarterMonth = getQuarterStart(new Date());
-      const latestInventory = await AssetInventory.findOne({ group: groupId }).sort({ inventoryMonth: -1 });
-
-      // 棚卸し時期なら棚卸し画面へ誘導する
-      if (!req.query.skipInventory) {
-        const needsInventory = !latestInventory || latestInventory.inventoryMonth < currentQuarterMonth;
-        if (needsInventory) {
-          return res.redirect(`/asset/inventory?month=${formatYearMonth(currentQuarterMonth)}`);
-        }
-      }
-
-      const assets = await Asset.find({ group: groupId })
-        .sort({ entry_date: -1 })
-        .populate('createdBy', 'username displayname')
-        .populate('updatedBy', 'username displayname');
-      res.render('assets/edit', {
-        assets,
-        editAsset: null,
-        asset_cfs,
-        current_assets,
-        fixed_assets,
-        intangible_assets,
-        monetary_units,
-        latestInventory
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).send('エラーが発生しました。');
-    }
+router.get('/', ensureAuthenticated, (req, res) => {
+  const query = new URLSearchParams();
+  if (req.query.assetId && mongoose.Types.ObjectId.isValid(req.query.assetId)) query.set('assetId', req.query.assetId);
+  if (req.query.open === 'create') query.set('open', 'create');
+  res.redirect('/asset/display' + (query.size ? '?' + query.toString() : ''));
 });
 
+function validateAssetInput(req, res, next) {
+  if (!req.session.activeGroupId) return res.status(403).json({ ok: false, message: 'グループを選択してください' });
+  const items = { 金融資産: current_assets, 実物資産: fixed_assets, 無形資産: intangible_assets, 負債: debt };
+  const { asset_cf, asset_item, amount, content, monetary_unit } = req.body;
+  if (!Object.prototype.hasOwnProperty.call(items, asset_cf) || !items[asset_cf].includes(asset_item) || asset_item === 'Please Choice' ||
+      !String(content || '').trim() || !monetary_units.includes(monetary_unit) || monetary_unit === 'Please Choice' ||
+      amount == null || String(amount).trim() === '' || !Number.isFinite(Number(amount))) {
+    return res.status(400).json({ ok: false, message: '区分・項目・内容・数量／金額・単位を確認してください' });
+  }
+  if (req.params.id && !mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ ok: false, message: '無効な資産IDです' });
+  next();
+}
+
 // 資産登録
-router.post('/create', ensureAuthenticated, async (req, res) => {
+router.post('/create', ensureAuthenticated, validateAssetInput, async (req, res) => {
     const activeGroupId = req.session.activeGroupId;
     if (!activeGroupId) {
         req.flash('error', 'アクティブなグループが選択されていません');
@@ -105,9 +91,11 @@ router.post('/create', ensureAuthenticated, async (req, res) => {
   
       await newAsset.save();
       await logAction({ req, action: '登録', target: '資産管理' });
-      res.redirect('/asset?skipInventory=true');
+      if (req.get('Accept') === 'application/json') return res.json({ ok: true });
+      res.redirect('/asset/display#assetList');
     } catch (err) {
       console.error(err);
+      if (req.get('Accept') === 'application/json') return res.status(500).json({ ok: false, message: '登録中にエラーが発生しました' });
       res.status(500).send('登録中にエラーが発生しました。');
     }
 });  
@@ -115,9 +103,10 @@ router.post('/create', ensureAuthenticated, async (req, res) => {
 // 資産削除
 router.delete('/:id', ensureAuthenticated, async (req, res) => {
     try {
+      if (!req.session.activeGroupId || !mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).send('無効な資産です');
       await Asset.deleteOne({ _id: req.params.id, group: req.session.activeGroupId });
       await logAction({ req, action: '削除', target: '資産管理' });
-      res.redirect('/asset?skipInventory=true');
+      res.redirect('/asset/display#assetList');
     } catch (err) {
       console.error(err);
       res.status(500).send('削除中にエラーが発生しました。');
@@ -127,12 +116,14 @@ router.delete('/:id', ensureAuthenticated, async (req, res) => {
 //資産の編集画面の表示
 router.get('/edit/:id', ensureAuthenticated, async (req, res) => {
   try {
+    if (!req.session.activeGroupId) return res.redirect('/group_list');
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).send('無効な資産IDです');
     const asset = await Asset.findOne({ _id: req.params.id, group: req.session.activeGroupId });
     if (!asset) {
       req.flash('error', '資産が見つかりません');
       return res.redirect('/asset');
     }
-    return res.redirect(`/asset?skipInventory=true&assetId=${asset._id}`);
+    return res.redirect(`/asset/display?assetId=${asset._id}#assetList`);
   } catch (err) {
     console.error(err);
     res.status(500).send('編集画面の表示中にエラーが発生しました。');
@@ -140,7 +131,7 @@ router.get('/edit/:id', ensureAuthenticated, async (req, res) => {
 });
 
 //資産の更新処理
-router.post('/update/:id', ensureAuthenticated, async (req, res) => {
+router.post('/update/:id', ensureAuthenticated, validateAssetInput, async (req, res) => {
   try {
     const { asset_cf, asset_item, code, content, amount, monetary_unit, secure_note } = req.body;
 
@@ -153,7 +144,7 @@ router.post('/update/:id', ensureAuthenticated, async (req, res) => {
         content,
         amount,
         monetary_unit,
-        secure_note, // 平文のまま渡し、モデル側で暗号化
+        ...(secure_note !== undefined ? { secure_note } : {}), // 未編集の機密情報は維持する
         update_date: new Date(),
         updatedBy: req.user._id
       }
@@ -161,13 +152,16 @@ router.post('/update/:id', ensureAuthenticated, async (req, res) => {
 
     if (!result) {
       console.error('更新対象の資産が見つかりませんでした。');
+      if (req.get('Accept') === 'application/json') return res.status(404).json({ ok: false, message: '資産が見つかりません' });
       return res.status(404).send('資産が見つかりません');
     }
 
     await logAction({ req, action: '更新', target: '資産管理' });
-    res.redirect('/asset?skipInventory=true');
+    if (req.get('Accept') === 'application/json') return res.json({ ok: true });
+    res.redirect('/asset/display#assetList');
   } catch (err) {
     console.error('更新エラー内容:', err);
+    if (req.get('Accept') === 'application/json') return res.status(500).json({ ok: false, message: '更新中にエラーが発生しました' });
     res.status(500).send('更新中にエラーが発生しました。');
   }
 });
@@ -426,7 +420,7 @@ router.get('/inventory', ensureAuthenticated, async (req, res) => {
       });
     }
 
-    const inventoryTitle = `${targetMonth.getFullYear()}年${String(targetMonth.getMonth() + 1).padStart(2, '0')}月の棚卸し`;
+    const inventoryTitle = `${targetMonth.getFullYear()}年${String(targetMonth.getMonth() + 1).padStart(2, '0')}月の棚卸`;
 
     const currentUserDisplay = req.user?.displayname || req.user?.username || '';
 
@@ -528,6 +522,7 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
     }
 
     const existing = await AssetInventory.findOne({ group: groupId, inventoryMonth: targetMonth });
+    let savedInventory = existing;
 
     if (existing) {
       existing.items = snapshotItems;
@@ -536,7 +531,7 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
       existing.updatedBy = req.user._id;
       await existing.save();
     } else {
-      await AssetInventory.create({
+      savedInventory = await AssetInventory.create({
         group: groupId,
         inventoryMonth: targetMonth,
         items: snapshotItems,
@@ -549,7 +544,7 @@ router.post('/inventory', ensureAuthenticated, async (req, res) => {
 
     await logAction({ req, action: '棚卸し保存', target: '資産管理' });
     req.flash('success', '棚卸しを保存しました。');
-    res.redirect('/asset/history');
+    res.redirect(`/asset/history/${savedInventory._id}`);
   } catch (err) {
     console.error(err);
     res.status(500).send('棚卸しの保存中にエラーが発生しました。');
@@ -617,6 +612,20 @@ router.get('/history/graph', ensureAuthenticated, async (req, res) => {
   }
 });
 //myTopに資産概要の表示
+router.get('/history/:id', ensureAuthenticated, async (req, res) => {
+  try {
+    if (!req.session.activeGroupId) return res.redirect('/group_list');
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).send('無効な棚卸IDです');
+    const inventory = await AssetInventory.findOne({ _id: req.params.id, group: req.session.activeGroupId })
+      .populate('updatedBy', 'username displayname').populate('items.updatedBy', 'username displayname');
+    if (!inventory) return res.status(404).send('棚卸履歴が見つかりません');
+    res.render('assets/historyDetail', { inventory, monthValue: formatYearMonth(inventory.inventoryMonth) });
+  } catch (err) {
+    console.error('棚卸詳細の取得エラー:', err);
+    res.status(500).send('棚卸詳細を表示できませんでした');
+  }
+});
+
 router.get('/display', ensureAuthenticated, async (req, res) => {
     try {
         const groupId = req.session.activeGroupId;
@@ -624,87 +633,32 @@ router.get('/display', ensureAuthenticated, async (req, res) => {
           req.flash('error', 'アクティブなグループが選択されていません');
           return res.redirect('/group_list');
         }
-        const assets = await Asset.find({ group: groupId }).sort({ entry_date: -1 });
+        const assets = await Asset.find({ group: groupId }).sort({ entry_date: -1 })
+          .populate('createdBy', 'username displayname').populate('updatedBy', 'username displayname');
         const inventories = await AssetInventory.find({ group: groupId }).sort({ inventoryMonth: 1 });
         const latestInventory = inventories[inventories.length - 1] || null;
-        let exchangeRate = 1;
-        let stockPrices = {};
-
+        const rateCache = {};
+        const stockPrices = {};
         let totalYen = 0;
-        let totalByCf = { '金融資産': 0, '実物資産': 0, '無形資産': 0, '負債': 0 };
-        let assetDisplayList = [];
-        let showRateInfo = true;
-
-        if (latestInventory && latestInventory.items?.length) {
-          const inventoryTotals =
-            latestInventory.totalByCf instanceof Map
-              ? Object.fromEntries(latestInventory.totalByCf)
-              : latestInventory.totalByCf || {};
-
-          totalYen = latestInventory.totalYen || 0;
-          totalByCf = {
-            ...totalByCf,
-            ...inventoryTotals
-          };
-
-          assetDisplayList = [...latestInventory.items]
-            .sort((a, b) => {
-              if (a.asset_cf === b.asset_cf) {
-                return (a.asset_item || '').localeCompare(b.asset_item || '');
-              }
-              return (a.asset_cf || '').localeCompare(b.asset_cf || '');
-            })
-            .map((item) => ({
-              asset_cf: item.asset_cf,
-              asset_item: item.asset_item,
-              code: item.code,
-              content: item.content,
-              amount: item.amountYen || 0
-            }));
-
-          showRateInfo = false;
-        } else {
-          for (const asset of assets) {
-            let yenValue;
-
-            if (asset.asset_item === '為替') {
-              exchangeRate = await getExchangeRate(asset.code);
-              yenValue = Math.round(asset.amount * exchangeRate);
-            } else if (asset.asset_item === '株式' && asset.monetary_unit === '数量') {
-              const code = asset.code;
-              if (!stockPrices[code]) {
-                stockPrices[code] = await getStockPriceFromNIkkei(code);
-              }
-              yenValue = Math.round(asset.amount * stockPrices[code]);
-            } else {
-              yenValue = Math.round(asset.amount);
-            }
-
-            totalYen += yenValue;
-            if (totalByCf[asset.asset_cf] !== undefined) {
-              totalByCf[asset.asset_cf] += yenValue;
-            }
-
-            assetDisplayList.push({
-              asset_cf: asset.asset_cf,
-              asset_item: asset.asset_item,
-              code: asset.code,
-              content: asset.content,
-              amount: yenValue
-            });
-          }
+        const totalByCf = { 金融資産: 0, 実物資産: 0, 無形資産: 0, 負債: 0 };
+        const assetDisplayList = [];
+        for (const asset of assets) {
+          const amountYen = await calculateAssetYen(asset, rateCache, stockPrices);
+          totalYen += amountYen;
+          if (Object.prototype.hasOwnProperty.call(totalByCf, asset.asset_cf)) totalByCf[asset.asset_cf] += amountYen;
+          assetDisplayList.push({ ...asset.toObject(), amountYen });
         }
-
         res.render('assets/display', {
             assets: assetDisplayList,
             totalYen,
             totalByCf,
-            exchangeRate,
+            exchangeRates: rateCache,
             stockPrices,
+            asset_cfs, current_assets, fixed_assets, intangible_assets, monetary_units,
             chartData: buildInventoryChartData(inventories),
             latestInventory,
             inventoryCallout: getInventoryCallout(new Date()),
-            showRateInfo
+            showRateInfo: Object.keys(rateCache).length > 0 || Object.keys(stockPrices).length > 0
           });
   
         } catch (err) {
