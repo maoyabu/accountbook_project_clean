@@ -120,7 +120,7 @@
           <% if (recentFinances.length > 0) { %>
             <ul class="list-group small recent-finance-list">
               <% recentFinances.forEach(finance => { %>
-                <li class="list-group-item recent-finance-row d-flex align-items-center" data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="長押しまたはEnterで編集">
+                <li class="list-group-item recent-finance-row d-flex align-items-center" data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="右クリック、長押し、またはEnterで操作メニュー" aria-haspopup="menu">
                   <div class="recent-finance-main">
                     <strong><%= finance.date ? new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') : '' %></strong>
                     <span class="ms-2"><%= finance.content || '内容未入力' %></span>
@@ -128,13 +128,6 @@
                   <div class="recent-finance-amount">
                     <span class="text-muted me-2"><%= finance.cf || '' %></span>
                     <strong>¥<%= Number(finance.amount || 0).toLocaleString() %></strong>
-                  </div>
-                  <div class="recent-finance-actions d-flex gap-2 align-items-center">
-                    <form action="/finance/<%= finance._id %>?_method=DELETE" method="POST" onsubmit="return confirm('削除しますか？')">
-                      <button class="btn btn-outline-danger btn-sm" type="submit" data-bs-toggle="tooltip" data-bs-placement="top" title="削除">
-                        <i class="fa-solid fa-trash"></i>
-                      </button>
-                    </form>
                   </div>
                 </li>
               <% }) %>

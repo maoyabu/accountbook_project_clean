@@ -10,10 +10,19 @@
   <div class="list-header">
     <h5 class="mb-0">直近の入力 - <%= Math.min(count, displayLimit) %> 件 / <%= count %>件</h5>
   </div>
-  <details class="mb-2">
-    <summary class="p-2 bg-light rounded">絞り込み</summary>
+  <div class="finance-list-filters mb-2">
+    <div class="finance-list-count d-flex align-items-center gap-2">
+      <label for="limitSelect" class="form-label mb-0">表示件数</label>
+      <select name="limit" id="limitSelect" form="financeListFilterForm" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+        <option value="20" <%= displayLimit === 20 ? 'selected' : '' %>>20件</option>
+        <option value="50" <%= displayLimit === 50 ? 'selected' : '' %>>50件</option>
+        <option value="100" <%= displayLimit === 100 ? 'selected' : '' %>>100件</option>
+      </select>
+    </div>
+    <details>
+      <summary class="finance-list-filter-toggle">絞り込み</summary>
   <div class="filter-bar bg-light p-3 rounded mb-2" style="background-color: #e8f2fb !important;">
-    <form method="GET" action="/finance/list" class="d-flex flex-wrap align-items-end gap-3 mb-0">
+    <form id="financeListFilterForm" method="GET" action="/finance/list" class="d-flex flex-wrap align-items-end gap-3 mb-0">
       <input type="hidden" name="scope" value="<%= selectedFilters?.scope || 'user' %>">
       <div class="d-flex flex-column">
         <label for="sortOrder" class="form-label mb-1">並び順</label>
@@ -22,14 +31,7 @@
           <option value="update_date" <%= sortOrder === 'update_date' ? 'selected' : '' %>>更新日順</option>
         </select>
       </div>
-      <div class="d-flex flex-column">
-        <label for="limitSelect" class="form-label mb-1">表示件数</label>
-        <select name="limit" id="limitSelect" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-          <option value="20" <%= displayLimit === 20 ? 'selected' : '' %>>20件</option>
-          <option value="50" <%= displayLimit === 50 ? 'selected' : '' %>>50件</option>
-          <option value="100" <%= displayLimit === 100 ? 'selected' : '' %>>100件</option>
-        </select>
-      </div>
+
       <div class="d-flex flex-column">
         <label for="cfFilter" class="form-label mb-1">区分</label>
         <select name="cf" id="cfFilter" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
@@ -84,8 +86,19 @@
       </div>
     </form>
   </div>
-  </details>
+    </details>
+  </div>
 <style>
+  .finance-list-filters { position: relative; background: #f8f9fa; }
+  .finance-list-filter-toggle {
+    width: max-content;
+    padding: 7px 8px;
+    line-height: 24px;
+    cursor: pointer;
+  }
+  .finance-list-count { position: absolute; top: 4px; left: 112px; height: 30px; }
+  .finance-list-count label { white-space: nowrap; font-size: 0.875rem; font-weight: 600; }
+  .finance-list-count select { padding-top: 3px; padding-bottom: 3px; }
   /* ヘッダと一覧を同じ左右幅にそろえる */
   .list-frame { margin: 0; }
   .list-header {
@@ -188,12 +201,11 @@
         <th class="col-amount">金額</th>
         <th class="hide-on-mobile col-type">種別</th>
         <th class="col-user">使用</th>
-        <th class="col-actions"><i class="fas fa-tools" title="操作"></i></th>
       </tr>
     </thead>
     <tbody>
       <% for (let finance of finances) { %>
-        <tr data-id="<%= finance.id %>" <% if ((finance.user && finance.user._id.toString() === currentUser._id.toString()) || (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())) { %> data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="長押しまたはEnterで編集" <% } %>>
+        <tr data-id="<%= finance.id %>" <% if ((finance.user && finance.user._id.toString() === currentUser._id.toString()) || (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())) { %> data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="右クリック、長押し、またはEnterで操作メニュー" aria-haspopup="menu" <% } %>>
           <td class="col-date"><%= new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') %></td>
           <td class="col-content finance-combined-content">
               <% if (finance.cf && finance.cf !== 'Please Choice') { %>
@@ -213,18 +225,6 @@
           <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
           <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
           <td class="limited-text2 col-user"><%= finance.user?.displayname || '不明' %></td>
-          <td class="actions-cell">
-            <div class="actions-inline">
-              <% if (
-                (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
-                (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
-              ) { %>
-                <form action="/finance/<%= finance._id %>?_method=DELETE" method="POST" onsubmit="return confirm('本当に削除しますか？')">
-                  <button type="submit" class="btn btn-danger btn-sm" title="削除"><i class="fas fa-trash-alt"></i></button>
-                </form>
-              <% } %>
-            </div>
-          </td>
         </tr>
       <% } %>
     </tbody>

@@ -271,12 +271,11 @@
           <th class="col-amount">金額</th>
           <th class="hide-on-mobile col-type">種別</th>
           <th class="col-user">使用</th>
-          <th class="col-actions"><i class="fas fa-tools" title="操作"></i></th>
         </tr>
       </thead>
       <tbody>
         <% for (let finance of finances) { %>
-          <tr data-id="<%= finance.id %>" <% if ((finance.user && finance.user._id.toString() === currentUser._id.toString()) || (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())) { %> data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="長押しまたはEnterで編集" <% } %>>
+          <tr data-id="<%= finance.id %>" <% if ((finance.user && finance.user._id.toString() === currentUser._id.toString()) || (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())) { %> data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="右クリック、長押し、またはEnterで操作メニュー" aria-haspopup="menu" <% } %>>
             <td class="col-date"><%= new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') %></td>
             <td class="col-content finance-combined-content">
               <% if (finance.cf && finance.cf !== 'Please Choice') { %>
@@ -294,18 +293,6 @@
             <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
             <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
             <td class="limited-text2 col-user"><%= finance.user?.displayname || '' %></td>
-            <td class="actions-cell">
-              <div class="actions-inline">
-                <% if (
-                  (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
-                  (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
-                ) { %>
-                  <form action="/finance/<%= finance._id %>?_method=DELETE" method="POST" onsubmit="return confirm('本当に削除しますか？')">
-                    <button type="submit" class="btn btn-danger btn-sm" title="削除"><i class="fas fa-trash-alt"></i></button>
-                  </form>
-                <% } %>
-              </div>
-            </td>
           </tr>
         <% } %>
       </tbody>

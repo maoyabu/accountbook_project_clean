@@ -11,4 +11,11 @@
     </div>
   </div>
 </div>
+<div id="financeRowMenu" class="dropdown-menu shadow" role="menu" aria-label="明細の操作" style="position: fixed; z-index: 1060;">
+  <button type="button" class="dropdown-item" role="menuitem" id="financeRowEdit">編集</button>
+  <form id="financeRowDeleteForm" method="POST" class="m-0 no-js-submit">
+    <button type="submit" class="dropdown-item text-danger" role="menuitem">削除</button>
+  </form>
+</div>
+<style>[data-finance-edit-url] { -webkit-touch-callout: none; }</style>
 <script src="/js/financeEditModal.js"></script>
