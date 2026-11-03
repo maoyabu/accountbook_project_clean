@@ -3778,7 +3778,7 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
           payment_type: selectedPaymentType,
           date: { $gte: monthStart, $lt: monthEnd }
         })
-          .select('date cf income_item expense_item dedu_item saving_item content amount')
+          .select('date cf income_item expense_item dedu_item saving_item content sub_tag amount')
           .sort({ date: 1, entry_date: 1, _id: 1 })
           .lean(),
         FinancePaymentTypeCheck.findOne({
@@ -3800,6 +3800,7 @@ router.get('/payment-check', isLoggedIn, async (req, res) => {
           cf: String(finance.cf || ''),
           category: getFinanceCategoryLabel(finance),
           content: String(finance.content || ''),
+          subTag: String(finance.sub_tag || ''),
           amount: Number(finance.amount) || 0,
           editUrl: `/finance/${finance._id.toString()}/edit?returnTo=${encodeURIComponent(currentPath)}`
         };

@@ -10,6 +10,8 @@
   <div class="list-header">
     <h5 class="mb-0">直近の入力 - <%= Math.min(count, displayLimit) %> 件 / <%= count %>件</h5>
   </div>
+  <details class="mb-2">
+    <summary class="p-2 bg-light rounded">絞り込み</summary>
   <div class="filter-bar bg-light p-3 rounded mb-2" style="background-color: #e8f2fb !important;">
     <form method="GET" action="/finance/list" class="d-flex flex-wrap align-items-end gap-3 mb-0">
       <input type="hidden" name="scope" value="<%= selectedFilters?.scope || 'user' %>">
@@ -82,6 +84,7 @@
       </div>
     </form>
   </div>
+  </details>
 <style>
   /* ヘッダと一覧を同じ左右幅にそろえる */
   .list-frame { margin: 0; }
@@ -132,8 +135,25 @@
   /* 操作列 */
   .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 110px; }
 
+  .finance-list-tag {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+    background: #e8f0f3;
+    color: #334d59;
+    font-size: 0.8rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
+  }
+  .finance-list-mobile-tag { display: none; }
+  .table-fixed td.col-tag { white-space: normal; }
+
   /* <=992px: 種別・使用者を非表示 */
   @media (max-width: 992px) {
+    .finance-list-mobile-tag { display: block; margin-top: 0.25rem; }
+    .table-fixed td.col-content { white-space: normal; overflow-wrap: anywhere; }
     .table-fixed th.col-type, .table-fixed td.col-type,
     .table-fixed th.col-tag, .table-fixed td.col-tag,
     .table-fixed th.col-user, .table-fixed td.col-user { display: none !important; }
@@ -164,10 +184,7 @@
     <thead>
       <tr>
         <th class="col-date">日付</th>
-        <th class="col-cf">区分</th>
-        <th class="hide-on-mobile col-class">区分</th>
         <th class="col-content">内容</th>
-        <th class="hide-on-mobile col-tag">タグ</th>
         <th class="col-amount">金額</th>
         <th class="hide-on-mobile col-type">種別</th>
         <th class="col-user">使用</th>
@@ -176,33 +193,28 @@
     </thead>
     <tbody>
       <% for (let finance of finances) { %>
-        <tr data-id="<%= finance.id %>">
+        <tr data-id="<%= finance.id %>" <% if ((finance.user && finance.user._id.toString() === currentUser._id.toString()) || (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())) { %> data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="長押しまたはEnterで編集" <% } %>>
           <td class="col-date"><%= new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') %></td>
-          <td class="col-cf text-center"><%= finance.cf %></td>
-          <td class="hide-on-mobile col-class">
-            <%= finance.income_item === 'Please Choice' ? '' : finance.income_item %>
-            <%= finance.expense_item === 'Please Choice' ? '' : finance.expense_item %>
-            <%= finance.dedu_item === 'Please Choice' ? '' : finance.dedu_item %>
-            <%= finance.saving_item === 'Please Choice' ? '' : finance.saving_item %>
+          <td class="col-content finance-combined-content">
+              <% if (finance.cf && finance.cf !== 'Please Choice') { %>
+                <span class="badge bg-secondary me-1"><%= finance.cf %></span>
+              <% } %>
+              <% const categoryField = { '収入': 'income_item', '支出': 'expense_item', '控除': 'dedu_item', '貯蓄': 'saving_item' }[finance.cf]; %>
+              <% const category = categoryField ? finance[categoryField] : ''; %>
+              <% if (category && category !== 'Please Choice') { %>
+                <span class="badge bg-light text-dark me-1"><%= category %></span>
+              <% } %>
+              <%= finance.content %>
+              <% if (finance.sub_tag) { %>
+                <span class="badge bg-light text-dark ms-1"><%= finance.sub_tag %></span>
+              <% } %>
+
           </td>
-          <td class="limited-text4 col-content"><%= finance.content %></td>
-          <td class="hide-on-mobile col-tag"><%= finance.sub_tag || '' %></td>
           <td class="text-right col-amount">¥<%= Number(finance.amount || 0).toLocaleString() %></td>
           <td class="hide-on-mobile col-type"><%= finance.payment_type %></td>
           <td class="limited-text2 col-user"><%= finance.user?.displayname || '不明' %></td>
           <td class="actions-cell">
             <div class="actions-inline">
-              <% if (
-                (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
-                (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
-              ) { %>
-                <form action="/finance/<%= finance._id %>/edit" method="GET">
-                  <button type="submit" class="btn btn-primary btn-sm" title="編集"><i class="fas fa-edit"></i></button>
-                </form>
-              <% } %>
-              <form action="/finance/<%= finance._id %>/duplicate" method="POST">
-                <button type="submit" class="btn btn-info btn-sm text-white" title="複製"><i class="fas fa-copy"></i></button>
-              </form>
               <% if (
                 (finance.user && finance.user._id.toString() === currentUser._id.toString()) ||
                 (finance.group && finance.group.createdBy && finance.group.createdBy._id.toString() === currentUser._id.toString())
@@ -220,3 +232,12 @@
   </div>
 </div>
 </div>
+
+<%- include('../partials/financeEditModal') %>
+
+<style>[data-finance-edit-url] { cursor: pointer; -webkit-touch-callout: none; } .table-fixed th.col-actions, .table-fixed td.actions-cell { width: 3.5rem; max-width: 3.5rem; }</style>
+
+<style>
+  .table-fixed td.finance-combined-content { white-space: normal; overflow-wrap: anywhere; }
+  .finance-combined-content .badge { white-space: normal; overflow-wrap: anywhere; }
+</style>

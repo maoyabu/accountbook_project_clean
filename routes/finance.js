@@ -1453,6 +1453,7 @@ router.get('/list', isLoggedIn, async (req, res) => {
 
 //◎詳細・編集(edit)画面の表示
 router.get('/:id/edit', isLoggedIn, catchAsync(async (req, res) => {
+    res.locals.financeEditModal = req.query.modal === '1';
     const { id } = req.params;
     const queryReturnTo = sanitizeReturnPath(req.query.returnTo, '');
     if (queryReturnTo) {
@@ -1550,6 +1551,8 @@ function getJSTDate() {
 
 //家計簿編集画面の更新
 router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
+    res.locals.financeEditModal = req.body.financeEditModal === '1';
+    res.locals.financeCopyMode = res.locals.financeEditModal && req.body.financeCopyMode === '1';
     const { id } = req.params;  // これでURLパラメータのidを取得
     const returnTo = sanitizeReturnPath(req.body.returnTo, '');
     if (returnTo) {
@@ -1663,8 +1666,16 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
     const month = dateObj.getMonth() + 1;
     const day = dateObj.getDate();
 
+    // 複製モードでは元の明細を変更せず、保存時に新しい明細を作成する。
+    let saveDoc = financeDoc;
+    if (res.locals.financeCopyMode) {
+        const clone = financeDoc.toObject();
+        delete clone._id;
+        delete clone.__v;
+        saveDoc = new Finance({ ...clone, entry_date: getJSTDate() });
+    }
     // 更新
-    Object.assign(financeDoc, {
+    Object.assign(saveDoc, {
         ...financeInput,
         saving_item: financeInput.cf === '貯蓄' && financeInput.saving_item !== 'Please Choice' ? financeInput.saving_item : '',
         income_item: financeInput.income_item === 'Please Choice' || !financeInput.income_item ? '' : financeInput.income_item,
@@ -1682,9 +1693,9 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         tags
     });
 
-    await financeDoc.save();
+    await saveDoc.save();
     // Fetch the updated document to ensure latest tags and fields
-    const updatedFinance = await Finance.findById(id);
+    const updatedFinance = saveDoc;
 
     //続けて入力するときは収支控除貯蓄の区分をは引きつがない
     if (nextAction === 'duplicate') {
@@ -1750,8 +1761,11 @@ router.put('/:id', isLoggedIn, catchAsync(async (req, res) => {
         });
     }
 
-    req.flash('success', '更新に成功しました');
-    await logAction({ req, action: '更新', target: '家計簿' });
+    req.flash('success', res.locals.financeCopyMode ? '複製を保存しました' : '更新に成功しました');
+    await logAction({ req, action: res.locals.financeCopyMode ? '複製' : '更新', target: '家計簿' });
+    if (res.locals.financeEditModal) {
+        return res.render('finance/editComplete');
+    }
     res.redirect(returnTo || getListRedirect(req)); // 更新後に一覧ページへリダイレクト
 }));
 

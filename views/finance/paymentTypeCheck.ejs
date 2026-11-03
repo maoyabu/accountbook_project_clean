@@ -63,8 +63,6 @@
                 <tr>
                   <th style="width: 52px;">確認</th>
                   <th>日付</th>
-                  <th>収支区分</th>
-                  <th>区分</th>
                   <th>内容</th>
                   <th class="text-end">金額</th>
                 </tr>
@@ -80,9 +78,18 @@
                       >
                     </td>
                     <td><%= row.date %></td>
-                    <td><%= row.cf %></td>
-                    <td><%= row.category || '-' %></td>
-                    <td><%= row.content || '-' %></td>
+                    <td>
+                      <% if (row.cf) { %>
+                        <span class="badge bg-secondary me-1"><%= row.cf %></span>
+                      <% } %>
+                      <% if (row.category) { %>
+                        <span class="badge bg-light text-dark me-1" style="white-space: normal; overflow-wrap: anywhere;"><%= row.category %></span>
+                      <% } %>
+                      <%= row.content || '-' %>
+                      <% if (row.subTag) { %>
+                        <span class="badge bg-light text-dark ms-1" style="white-space: normal; overflow-wrap: anywhere;"><%= row.subTag %></span>
+                      <% } %>
+                    </td>
                     <td class="text-end"><%= row.amount.toLocaleString() %></td>
                   </tr>
                 <% }) %>
@@ -107,8 +114,6 @@
                 <tr>
                   <th style="width: 52px;">確認</th>
                   <th>日付</th>
-                  <th>収支区分</th>
-                  <th>区分</th>
                   <th>内容</th>
                   <th class="text-end">金額</th>
                 </tr>
@@ -125,9 +130,18 @@
                       >
                     </td>
                     <td><%= row.date %></td>
-                    <td><%= row.cf %></td>
-                    <td><%= row.category || '-' %></td>
-                    <td><%= row.content || '-' %></td>
+                    <td>
+                      <% if (row.cf) { %>
+                        <span class="badge bg-secondary me-1"><%= row.cf %></span>
+                      <% } %>
+                      <% if (row.category) { %>
+                        <span class="badge bg-light text-dark me-1" style="white-space: normal; overflow-wrap: anywhere;"><%= row.category %></span>
+                      <% } %>
+                      <%= row.content || '-' %>
+                      <% if (row.subTag) { %>
+                        <span class="badge bg-light text-dark ms-1" style="white-space: normal; overflow-wrap: anywhere;"><%= row.subTag %></span>
+                      <% } %>
+                    </td>
                     <td class="text-end"><%= row.amount.toLocaleString() %></td>
                   </tr>
                 <% }) %>
@@ -195,7 +209,7 @@
           if (event.target.closest('input, button, a, label, select, textarea')) return;
           const editUrl = row.dataset.editUrl;
           if (!editUrl) return;
-          window.location.href = editUrl;
+          window.openFinanceEditModal(editUrl);
         });
       });
 
@@ -241,3 +255,5 @@
     });
   </script>
 <% } %>
+
+<%- include('../partials/financeEditModal') %>

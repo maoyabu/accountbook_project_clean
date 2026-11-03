@@ -120,7 +120,7 @@
           <% if (recentFinances.length > 0) { %>
             <ul class="list-group small recent-finance-list">
               <% recentFinances.forEach(finance => { %>
-                <li class="list-group-item recent-finance-row d-flex align-items-center">
+                <li class="list-group-item recent-finance-row d-flex align-items-center" data-finance-edit-url="/finance/<%= finance._id %>/edit" tabindex="0" aria-label="長押しまたはEnterで編集">
                   <div class="recent-finance-main">
                     <strong><%= finance.date ? new Date(finance.date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }).replaceAll('/', '-') : '' %></strong>
                     <span class="ms-2"><%= finance.content || '内容未入力' %></span>
@@ -130,14 +130,6 @@
                     <strong>¥<%= Number(finance.amount || 0).toLocaleString() %></strong>
                   </div>
                   <div class="recent-finance-actions d-flex gap-2 align-items-center">
-                    <a class="btn btn-outline-secondary btn-sm" href="/finance/<%= finance._id %>/edit" data-bs-toggle="tooltip" data-bs-placement="top" title="編集">
-                      <i class="fa-solid fa-pen-to-square"></i>
-                    </a>
-                    <form action="/finance/<%= finance._id %>/duplicate" method="POST">
-                      <button class="btn btn-outline-secondary btn-sm" type="submit" data-bs-toggle="tooltip" data-bs-placement="top" title="複製">
-                        <i class="fa-regular fa-copy"></i>
-                      </button>
-                    </form>
                     <form action="/finance/<%= finance._id %>?_method=DELETE" method="POST" onsubmit="return confirm('削除しますか？')">
                       <button class="btn btn-outline-danger btn-sm" type="submit" data-bs-toggle="tooltip" data-bs-placement="top" title="削除">
                         <i class="fa-solid fa-trash"></i>
@@ -352,3 +344,5 @@
     });
   }
 </script>
+
+<%- include('../partials/financeEditModal') %>

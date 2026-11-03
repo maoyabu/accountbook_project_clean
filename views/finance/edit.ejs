@@ -1,5 +1,7 @@
-<% layout('layouts/boilerplate') %>
+<% const isModalEdit = typeof financeEditModal !== 'undefined' && financeEditModal; %>
+<% layout(isModalEdit ? 'layouts/financeEditModal' : 'layouts/boilerplate') %>
 <% page = 'edit' %>
+<% const copyMode = typeof financeCopyMode !== 'undefined' && financeCopyMode; %>
 <% const returnToValue = (typeof returnTo === 'string') ? returnTo : ''; %>
 <% const selectedGroupId = String(finance?.group?._id || finance?.group || ''); %>
 <% const selectedUserId = String(finance?.user?._id || finance?.user || ''); %>
@@ -7,7 +9,7 @@
   <div class="container finance-form-container mt-4">
     <div class="card shadow-sm">
       <div class="card-header text-white" style="background-color: #44616D;">
-        <h5 class="mb-0">収支の編集</h5>
+        <h5 class="mb-0" id="financeEditHeading"><%= copyMode ? '収支の複製' : '収支の編集' %></h5>
       </div>
       <div class="card-body">
         <% if (typeof duplicateMessage !== 'undefined' && duplicateMessage) { %>
@@ -19,6 +21,8 @@
           </div>
         <% } %>
         <form action="/finance/<%= finance._id %>?_method=PUT" method="POST">
+          <input type="hidden" name="financeEditModal" value="<%= isModalEdit ? '1' : '0' %>">
+          <input type="hidden" name="financeCopyMode" id="financeCopyMode" value="<%= copyMode ? '1' : '0' %>">
           <input type="hidden" name="confirmDuplicate" id="confirmDuplicate" value="0">
           <input type="hidden" name="nextAction" id="nextActionInput" value="update">
           <input type="hidden" name="returnTo" value="<%= returnToValue %>">
@@ -221,14 +225,20 @@
           <% } %>
           <hr>
           <div class="form-group">
-              <button class="c-button mx-auto mb-0">更新</button>
+              <button type="submit" id="financeSaveButton" class="c-button mx-auto mb-0"><%= copyMode ? '複製を保存' : '更新' %></button>
               <div class="spinner-border text-primary d-none ms-2" role="status" style="width: 1.5rem; height: 1.5rem;">
                 <span class="visually-hidden">送信中...</span>
               </div>
           </div>
           <div class="text-center">
-            <small class="form-text text-muted">このデータを更新して、Topページに戻る</small>
+            <small class="form-text text-muted"><%= isModalEdit ? 'このデータを更新して、元の画面に戻る' : 'このデータを更新して、Topページに戻る' %></small>
           </div>
+          <% if (isModalEdit) { %>
+          <div class="text-center mt-3">
+            <button type="button" id="financeCopyButton" class="btn btn-outline-primary" <%= copyMode ? 'disabled' : '' %>>複製して編集</button>
+            <p id="financeCopyHint" class="small text-muted mt-2"><%= copyMode ? '複製した内容を編集中です。複製を保存すると新しい明細を登録します。' : '表示中の内容を引き継いで、新しい明細として編集します。' %></p>
+          </div>
+          <% } else { %>
           <hr>
           <div class="form-group">
               <button type="submit" class="d-button mb-0" onclick="document.getElementById('nextActionInput').value='duplicate'">続けて入力</button>
@@ -239,6 +249,7 @@
           <div class="text-center">
             <small class="form-text text-muted">このデータを保存して、同じ内容を複製して変更点だけを編集する</small>
           </div>
+          <% } %>
         </form>
       </div>
     </div>
@@ -248,6 +259,13 @@
   <button type="button" class="btn-close" aria-label="Close" onclick="hideValidationModal()"></button>
 </div>
 <script>
+  document.getElementById('financeCopyButton')?.addEventListener('click', () => {
+    document.getElementById('financeCopyMode').value = '1';
+    document.getElementById('financeEditHeading').textContent = '収支の複製';
+    document.getElementById('financeSaveButton').textContent = '複製を保存';
+    document.getElementById('financeCopyButton').disabled = true;
+    document.getElementById('financeCopyHint').textContent = '複製した内容を編集中です。複製を保存すると新しい明細を登録します。';
+  });
   let categories = <%- JSON.stringify(ex_cfs) %>;
   let commonTags = <%- JSON.stringify(typeof common_tags !== 'undefined' ? common_tags : []) %>;
   let tagItemCount = <%= finance.tags?.length || 1 %>;
