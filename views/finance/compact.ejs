@@ -1,0 +1,52 @@
+<% layout(embedded ? 'layouts/financeEditModal' : 'layouts/boilerplate') %>
+<link rel="stylesheet" href="/css/finance-notice-board.css">
+<link rel="stylesheet" href="/css/finance-compact.css">
+<div class="finance-compact finance-notice-board" id="financeCompact">
+  <header class="compact-heading notice-heading">
+    <h1 id="compactTitle"><%= compactData.mode === 'edit' ? '収支の編集' : compactData.conversation ? '新規登録（会話）' : '新規登録' %></h1>
+  </header>
+  <div id="compactError" class="alert alert-danger d-none" role="alert"></div>
+  <div id="compactIdentity" class="compact-identity"></div>
+  <div id="compactProgress" class="compact-progress" aria-live="polite"></div>
+  <div id="compactRows" class="compact-rows" aria-label="入力内容"></div>
+  <section id="compactStepPanel" class="compact-step-panel" aria-labelledby="compactStepTitle">
+    <h2 id="compactStepTitle"></h2>
+    <div id="compactStepHint" class="compact-hint"></div>
+    <% if (compactData.conversation) { %>
+    <div class="compact-voice-controls"><button type="button" id="compactMic" class="btn btn-outline-secondary"><i class="fa-solid fa-microphone"></i> 話す</button><span id="compactVoiceStatus" class="compact-hint" role="status"></span></div>
+    <% } %>
+    <form id="compactStepForm" class="no-js-submit">
+      <div id="compactStepField"></div>
+      <div id="compactStepError" class="compact-field-error" role="alert"></div>
+      <div class="compact-step-actions">
+        <button type="button" id="compactBack" class="btn btn-outline-secondary">戻る</button>
+        <button type="button" id="compactSkip" class="btn btn-outline-secondary d-none">SKIP</button>
+        <button type="submit" class="btn btn-primary" id="compactNext">次へ</button>
+      </div>
+    </form>
+  </section>
+  <section id="compactListPanel" class="d-none" aria-label="入力項目一覧">
+    <form id="compactListForm" class="no-js-submit">
+      <div id="compactListFields"></div>
+      <div class="compact-step-actions"><button type="submit" id="compactListNext" class="btn btn-primary">確認へ</button></div>
+    </form>
+  </section>
+  <div id="compactConfirm" class="d-none">
+    <p class="compact-hint">修正する項目をタップしてください。</p>
+    <button type="button" id="compactListBack" class="compact-copy d-none">入力一覧に戻る</button>
+    <div class="compact-save-actions">
+      <button type="button" id="compactSave" class="btn btn-primary">保存</button>
+      <button type="button" id="compactContinue" class="btn btn-outline-primary">続けて入力</button>
+    </div>
+    <% if (compactData.mode === 'edit') { %><button type="button" id="compactCopy" class="compact-copy">複製して編集</button><% } %>
+  </div>
+</div>
+<div class="modal fade" id="compactFieldModal" tabindex="-1" aria-labelledby="compactModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h2 class="modal-title fs-6" id="compactModalTitle"></h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button></div>
+    <form id="compactModalForm" class="no-js-submit"><div class="modal-body"><div id="compactModalField"></div><div id="compactModalError" class="compact-field-error" role="alert"></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button><button type="submit" id="compactModalApply" class="btn btn-primary">反映する</button></div></form>
+  </div></div>
+</div>
+<script type="application/json" id="compactData"><%- JSON.stringify({ ...compactData, embedded }).replace(/</g, '\\u003c') %></script>
+<% if (compactData.conversation) { %><script src="/js/financeConversation.js"></script><% } %>
+<script src="/js/financeCompact.js"></script>

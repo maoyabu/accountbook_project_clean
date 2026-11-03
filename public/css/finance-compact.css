@@ -1,0 +1,50 @@
+.finance-compact{max-width:620px;margin:16px auto 32px;color:#293b30}
+.finance-compact .compact-heading{background:transparent;color:#304b3a;position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #d9e3dd;padding:12px 0 12px 16px}
+.finance-compact .compact-heading h1{color:#304b3a;background:transparent;text-align:left;font-size:1.05rem;font-weight:700;margin:0;line-height:1.5}
+.compact-identity{padding:10px 0 6px;display:grid;gap:4px;font-size:.82rem;color:#5d7163}
+.compact-identity button{border:0;background:none;text-align:left;padding:3px 0;color:#365d43;font-size:.82rem}
+.compact-identity button::after{content:'変更';font-size:.65rem;color:#819085;margin-left:10px}
+.compact-progress{font-size:.72rem;color:#718075;margin:4px 0 8px}
+.compact-row{display:grid;grid-template-columns:88px minmax(0,1fr) 12px;gap:8px;align-items:center;min-height:40px;width:100%;padding:9px 0;border:0;border-bottom:1px solid #e2e9e1;background:#fff;text-align:left;color:#293b30;font-size:.86rem}
+.compact-row .compact-row-label{font-size:.76rem;color:#718075}
+.compact-row .compact-row-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.compact-row .compact-row-edit{color:#87978b}
+.compact-row:hover,.compact-row:focus-visible{background:#f5f9f1}
+.compact-row:focus-visible{outline:2px solid #426456;outline-offset:2px}
+.compact-row.is-invalid .compact-row-value{color:#a34335}
+.compact-step-panel{margin-top:16px;padding:18px 16px;border:1px solid #d9e3dd;border-radius:7px;background:#fafcf8}
+.compact-step-panel h2{font-size:1rem;font-weight:650;margin:0 0 8px}
+.compact-hint{font-size:.76rem;color:#718075;line-height:1.7;margin:6px 0 10px}
+.compact-step-panel .form-control,.compact-step-panel .form-select,#compactFieldModal .form-control,#compactFieldModal .form-select{font-size:16px;min-height:44px;border-color:#cbdacb;background:#fff;text-align:left;border-radius:5px}
+.compact-step-panel input[data-money-input],#compactFieldModal input[data-money-input]{text-align:right}
+.compact-step-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.compact-choices{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.compact-choices button{border:1px solid #cbdacb;border-radius:5px;background:#edf4e8;color:#42604a;font-size:.8rem;padding:7px 10px}
+.compact-save-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.finance-compact .btn,#compactFieldModal .btn{font-size:.85rem;padding:10px 16px;border-radius:5px}
+.finance-compact .btn-primary,#compactFieldModal .btn-primary{background:#426456;border-color:#426456;color:#fff}
+.finance-compact .btn-outline-primary,.finance-compact .btn-outline-secondary,#compactFieldModal .btn-outline-secondary{background:#fff;color:#42604a;border-color:#bfd0bf}
+.compact-field-error{font-size:.78rem;color:#a34335;margin-top:8px}
+.compact-copy{display:block;margin:12px auto;border:0;background:none;color:#617d68;font-size:.76rem;text-decoration:underline}
+#compactFieldModal .modal-header{background:#f2f6ee;color:#304b3a;border-color:#d9e3dd}
+#compactFieldModal .modal-footer{border-color:#d9e3dd;background:#fafcf8}
+@media(max-width:575px){.finance-compact{margin-top:4px}.compact-row{min-height:38px;padding:8px 0}.finance-compact .compact-heading{background:transparent;color:#304b3a;position:relative;padding:10px 0}.compact-row .compact-row-label{font-size:.72rem}.compact-save-actions .btn{padding:10px 8px}.compact-step-panel{padding:16px 12px}}
+
+.compact-choices button{min-height:44px;padding:9px 15px;border-radius:22px;line-height:1.4;overflow-wrap:anywhere;max-width:100%;text-align:left}
+.compact-choices button:hover{background:#e0ebdc;border-color:#8da58e}
+.compact-choices button.is-selected{background:#426456;border-color:#426456;color:#fff;font-weight:600}
+.compact-choices button:focus-visible{outline:2px solid #426456;outline-offset:3px}
+
+.finance-compact .compact-heading::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:2px;background:#36816a}
+.finance-compact .compact-step-panel h2{color:#304b3a;background:transparent}
+.finance-compact .btn-primary:hover,#compactFieldModal .btn-primary:hover{background:#345244;border-color:#345244;color:#fff}
+.finance-compact .btn-outline-primary:hover,.finance-compact .btn-outline-secondary:hover,#compactFieldModal .btn-outline-secondary:hover{background:#edf4e9;border-color:#71997f;color:#304b3a}
+
+.compact-list-field{padding:15px 0;border-bottom:1px solid #e2e9e1}
+.compact-list-field>label{display:block;font-size:.8rem;font-weight:600;color:#4e6557;margin-bottom:8px}
+.compact-list-field .form-control{font-size:16px;min-height:44px;border-color:#cbdacb}
+.compact-list-field input[data-money-input]{text-align:right}
+
+.compact-voice-controls{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.compact-voice-controls .compact-hint{margin:0;flex:1}
+.compact-voice-controls .is-listening{background:#a34335;color:#fff;border-color:#a34335}

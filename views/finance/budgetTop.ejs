@@ -160,6 +160,22 @@
     <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
   </form>
 </div>
+<h5 class="notice-setting-heading"><i class="fa-solid fa-pen-to-square"></i> 新規登録の入力方式</h5>
+<div class="notice-setting-panel">
+  <form action="/finance/budget/entry-mode" method="POST">
+    <p class="text-muted small">「新規登録」と「＋」で開く画面を設定します。この設定はご自身に適用されます。</p>
+    <% const entryMode = typeof financeEntryMode !== 'undefined' && financeEntryMode === 'list' ? 'list' : 'step'; %>
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="radio" name="financeEntryMode" id="entryModeStep" value="step" <%= entryMode === 'step' ? 'checked' : '' %>>
+      <label class="form-check-label" for="entryModeStep">ステップ方式：一項目ずつ順番に入力</label>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="radio" name="financeEntryMode" id="entryModeList" value="list" <%= entryMode === 'list' ? 'checked' : '' %>>
+      <label class="form-check-label" for="entryModeList">一覧方式：すべての項目を一画面で入力</label>
+    </div>
+    <button type="submit" class="btn btn-outline-primary btn-sm">保存</button>
+  </form>
+</div>
 <h5 class="notice-setting-heading"><i class="fa-solid fa-tags"></i> タグ登録</h5>
 <div class="notice-setting-panel">
     <form action="/finance/budget/tag-settings" method="POST" class="mb-2">

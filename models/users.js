@@ -142,6 +142,11 @@ const userSchema = new Schema({
         }],
         default: undefined
     },
+    financeEntryMode: {
+        type: String,
+        enum: ['step', 'list'],
+        default: 'step'
+    },
     financeTagRegistrationEnabled: {
         type: Boolean,
         default: false
