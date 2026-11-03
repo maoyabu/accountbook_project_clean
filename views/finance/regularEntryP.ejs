@@ -10,14 +10,14 @@
     <div class="card shadow-sm mt-2">
         <div class="card-header text-white mb-1 d-flex justify-content-between align-items-center" style="background-color: #44616D;">
             <h5 class="mb-0">【登録済】まとめて入力項目</h5>
-            <a href="/matomete/regular-entry/manage" class="btn btn-warning btn-sm">編集</a>
+            <button type="button" id="regularEntryAdd" class="btn btn-warning btn-sm">項目追加</button>
         </div>
         <% if (!regularEntries || regularEntries.length === 0) { %>
           <div class="alert alert-secondary m-3 mb-2">
-            有効なまとめて入力項目がありません。編集画面で項目を追加するか、削除済み項目を復活してください。
+            有効なまとめて入力項目がありません。項目追加ボタンから項目を追加するか、削除済み項目を復活してください。
           </div>
         <% } else { %>
-          <form action="/matomete/regular-entry/update" method="POST">
+          <form action="/matomete/regular-entry/update" method="POST" id="regularEntryExecuteForm" class="no-js-submit">
               <table class="table table-bordered">
               <thead class="table-primary">
                   <tr>
@@ -31,7 +31,7 @@
               </thead>
               <tbody>
                   <% regularEntries.forEach((entry, idx) => { %>
-                  <tr>
+                  <tr data-regular-id="<%= entry._id %>" tabindex="0" aria-haspopup="menu" aria-label="右クリックまたは長押しで編集・削除">
                       <td><%= entry.cf %></td>
                       <td>
                       <%= entry.cf === '収入' ? entry.income_item :
@@ -40,7 +40,7 @@
                       </td>
                       <td><%= entry.content %></td>
                       <td>
-                          <input type="number" name="items[<%= idx %>][amount]" value="<%= entry.amount %>" class="form-control form-control-sm text-end" required>
+                          <input type="number" name="items[<%= idx %>][amount]" value="<%= entry.amount %>" class="form-control form-control-sm text-end regular-entry-amount" data-entry-id="<%= entry._id %>" required>
                           <input type="hidden" name="items[<%= idx %>][id]" value="<%= entry._id %>">
                       </td>
                       <td><%= entry.payment_type %></td>
@@ -52,6 +52,8 @@
                   <% }) %>
               </tbody>
               </table>
+              <p class="small text-muted px-3">金額の変更は自動保存され、次回にも反映されます。</p>
+              <p id="regularAmountStatus" class="small px-3" role="status" aria-live="polite"></p>
               <!-- 年月の選択（カレンダー形式） -->
               <div class="mb-3">
                   <div class="form-group mb-4 d-flex justify-content-center">
@@ -82,3 +84,25 @@
     });
   }
 </script>
+
+<%- include('../partials/regularEntryBackups') %>
+<div class="modal fade" id="regularEntryModal" tabindex="-1" aria-labelledby="regularEntryModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 id="regularEntryModalTitle" class="modal-title">項目追加</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body"><%- include('../partials/regularEntryForm', { entryToEdit: null }) %></div>
+    </div>
+  </div>
+</div>
+<div id="regularEntryMenu" class="dropdown-menu shadow" role="menu" style="position: fixed; z-index: 1060;">
+  <button type="button" id="regularEntryEdit" class="dropdown-item" role="menuitem">編集</button>
+  <form id="regularEntryDelete" method="POST" class="no-js-submit m-0">
+    <button class="dropdown-item text-danger" type="submit" role="menuitem">削除</button>
+  </form>
+</div>
+<style>[data-regular-id] { -webkit-touch-callout: none; cursor: pointer; }</style>
+<script type="application/json" id="regularEntryData"><%- JSON.stringify({ entries: regularEntries, editId: entryToEdit ? String(entryToEdit._id) : null }).replace(/</g, '\\u003c') %></script>
+<script src="/js/regularEntries.js"></script>

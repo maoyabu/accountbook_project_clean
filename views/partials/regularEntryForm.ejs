@@ -1,0 +1,75 @@
+      <form action="<%= entryToEdit ? '/matomete/regular-entry/update/' + entryToEdit._id : '/matomete/regular-entry/create' %>" method="POST" id="regularEntryForm">
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label for="cf">収支区分</label>
+            <select name="cf" id="cf" class="form-control" required>
+              <% la_cfs.forEach(item => { %>
+                <option value="<%= item === 'Please Choice' ? '' : item %>" <%= entryToEdit && entryToEdit.cf === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="expense_group" style="display:none;">
+            <label for="expense_cf">支出項目</label>
+            <select name="expense_item" id="expense_cf" class="form-control">
+              <% ex_cfs.forEach(item => { %>
+                <option value="<%= item === 'Please Choice' ? '' : item %>" <%= entryToEdit && entryToEdit.expense_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="income_group" style="display:none;">
+            <label for="income_cf">収入項目</label>
+            <select name="income_item" id="income_cf" class="form-control">
+              <% in_items.forEach(item => { %>
+                <option value="<%= item === 'Please Choice' ? '' : item %>" <%= entryToEdit && entryToEdit.income_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="deduction_group" style="display:none;">
+            <label for="dedu_cf">控除項目</label>
+            <select name="dedu_item" id="dedu_cf" class="form-control">
+              <% dedu_cfs.forEach(item => { %>
+                <option value="<%= item === 'Please Choice' ? '' : item %>" <%= entryToEdit && entryToEdit.dedu_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-md-5 category-group" id="saving_group" style="display:none;">
+            <label for="saving_cf">貯蓄項目</label>
+            <select name="saving_item" id="saving_cf" class="form-control">
+              <% saving_cfs.forEach(item => { %>
+                <option value="<%= item === 'Please Choice' ? '' : item %>" <%= entryToEdit && entryToEdit.saving_item === item ? 'selected' : '' %>><%= item %></option>
+              <% }) %>
+            </select>
+          </div>
+
+        </div>
+        <div class="col-md-3">
+          <label for="day">引き落とし日（土日祝は考慮せず）</label>
+          <input type="number" name="day" min="1" max="31" class="form-control" value="<%= entryToEdit ? entryToEdit.day : '' %>" required>
+        </div>
+  
+        <div class="row mb-3">
+          <div class="col-md-5">
+            <label for="content">内容</label>
+            <input type="text" name="content" class="form-control" value="<%= entryToEdit ? entryToEdit.content : '' %>" required>
+          </div>
+          <div class="col-md-2">
+            <label for="amount">金額</label>
+            <input type="number" name="amount" class="form-control" value="<%= entryToEdit ? entryToEdit.amount : '' %>" required>
+          </div>
+          <div class="col-md-3">
+            <label for="payment_type">支払種別</label>
+            <select name="payment_type" class="form-control" required>
+              <% if (pay_cfs && pay_cfs.length > 0) { %>
+                <% pay_cfs.forEach(pay => { %>
+                  <option value="<%= pay %>" <%= entryToEdit && entryToEdit.payment_type === pay ? 'selected' : '' %>><%= pay %></option>
+                <% }) %>
+              <% } else { %>
+                <option disabled>支払種別が未設定です</option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="text-center">
+          <button type="submit" class="btn btn-primary btn-sm" style="width: 60%;"><%= entryToEdit ? '編集内容を保存' : 'まとめて入力項目に追加' %></button>
+        </div>
+      </form>
