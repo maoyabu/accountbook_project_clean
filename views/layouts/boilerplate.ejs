@@ -35,35 +35,26 @@
     <% if (fabActiveSvc === 'finance' && fabSvc.finance && fabHasGroup) { %>
       <div class="finance-quick-fab <%= fabQuickEnabled ? '' : 'is-disabled' %>" id="finance-quick-fab" aria-label="家計簿のよく使う項目" data-finance-quick-enabled="<%= fabQuickEnabled ? 'true' : 'false' %>">
         <div class="finance-quick-fab-top">
-          <div class="finance-quick-fab-title">
-            <span class="finance-quick-fab-dots" aria-hidden="true">
-              <span></span><span></span><span></span>
-              <span></span><span></span><span></span>
-              <span></span><span></span><span></span>
-            </span>
-            <span>よく使うメニュー</span>
-          </div>
-          <a href="/finance/entry-conversation" class="finance-quick-fab-control finance-quick-fab-voice" aria-label="音声で新規登録" title="音声で新規登録">
-            <i class="fa-solid fa-microphone"></i>
-          </a>
+          <span class="finance-quick-fab-grip" role="img" aria-label="ドラッグしてメニューを移動" title="ドラッグして移動">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </span>
           <a href="/finance/entry" class="finance-quick-fab-control finance-quick-fab-add" aria-label="新規登録" title="新規登録">
             <i class="fa-solid fa-plus"></i>
+          </a>
+          <a href="/finance/entry-conversation" class="finance-quick-fab-control finance-quick-fab-voice" aria-label="音声で新規登録" title="音声で新規登録">
+            <i class="fa-solid fa-microphone"></i>
           </a>
           <a href="/finance/budget#financeQuickMenuSettings" class="finance-quick-fab-control" aria-label="よく使う項目を設定" title="設定">
             <i class="fa-solid fa-gear"></i>
           </a>
-          <button
-            type="button"
-            class="finance-quick-fab-control finance-quick-fab-collapse"
-            data-finance-quick-collapse
-            aria-label="よく使う項目の表示切替"
+          <button type="button" class="finance-quick-fab-control finance-quick-fab-collapse"
+            data-finance-quick-collapse aria-label="よく使う項目の表示切替"
             aria-expanded="<%= fabQuickEnabled ? 'true' : 'false' %>"
-            title="表示切替"
-          >
+            aria-controls="finance-quick-fab-content" title="表示切替">
             <i class="fa-solid fa-chevron-down"></i>
           </button>
         </div>
-        <div class="finance-quick-fab-content">
+        <div class="finance-quick-fab-content" id="finance-quick-fab-content">
           <div class="finance-quick-fab-items">
             <a
               href="/finance/entry"
