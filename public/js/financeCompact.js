@@ -6,7 +6,7 @@
   const $ = id => document.getElementById(id);
   let index = 0, reviewing = config.mode === 'edit' || config.reviewing === true, busy = false, copy = false, editingField;
   let modal, voice;
-  const listMode = config.mode === 'new' && config.entryMode === 'list';
+  const listMode = config.mode === 'new' && config.entryMode === 'list' && !config.continuing;
   const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
   function errorFor(field, candidate = values) {
     if (field === 'date' && !validDate(candidate.date)) return '有効な年月日を入力してください';
@@ -134,7 +134,13 @@
     if (!reviewing && !listMode) {
       const field = steps[index]; $('compactStepTitle').textContent = labels[field];
       $('compactStepHint').textContent = config.continuing && ['date', 'cf', 'category'].includes(field) ? '直前の入力内容です。確認・変更して「次へ」。' : '';
-      createField(field, $('compactStepField')); $('compactStepError').textContent = '';
+      const input = createField(field, $('compactStepField'));
+      input.onChoice = async value => {
+        if (reviewing || steps[index] !== field) return;
+        try { await completeStep(value); }
+        catch (err) { $('compactStepError').textContent = err.message; }
+      };
+      $('compactStepError').textContent = '';
       $('compactBack').disabled = index === 0; $('compactSkip').classList.toggle('d-none', field !== 'sub_tag');
       $('compactNext').textContent = index === steps.length - 1 ? '確認へ' : '次へ';
       voice?.prompt(`${labels[field]}を${['cf', 'category', 'payment_type'].includes(field) ? '選んで' : '入力して'}ください。`, ['content', 'amount'].includes(field));

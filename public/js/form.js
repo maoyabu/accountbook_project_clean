@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.querySelectorAll('form:not(.no-js-submit)').forEach(form => {
     form.addEventListener('submit', event => {
+      if (event.defaultPrevented) return;
       //console.log("フォーム送信イベント ✅");
 
       const button = event.submitter;
@@ -80,6 +81,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.querySelectorAll('form:not(.no-js-submit)').forEach(form => {
     form.addEventListener('submit', event => {
+      if (event.defaultPrevented) return;
       //console.log("フォーム送信イベント ✅");
 
       const button = event.submitter;

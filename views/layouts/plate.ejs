@@ -10,6 +10,7 @@
 
       
     <link rel="stylesheet" href="/css/main.css">
+    <% if (typeof activeService !== 'string' || activeService === 'finance') { %><script src="/js/financeBusy.js"></script><% } %>
     <title>All About me</title>
 </head>
 <body class="d-flex flex-column vh-100" data-service="<%= typeof activeService === 'string' ? activeService : 'finance' %>">

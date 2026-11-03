@@ -61,7 +61,7 @@ module.exports = function createCompactRouter(deps) {
     }
     const options = await context(req, groupId, values.userId, values.date);
     if (!(options.categories[values.cf] || []).includes(values.category)) values.category = '';
-    res.render('finance/compact', { compactData: { mode: 'new', conversation, entryMode: !conversation && req.user.financeEntryMode === 'list' ? 'list' : 'step', values, options, continuing, tagEnabled: req.user.financeTagRegistrationEnabled === true, returnTo: sanitizeReturnPath(req.query.returnTo, '/finance/list') }, embedded: req.query.modal === '1' });
+    res.render('finance/compact', { compactData: { mode: 'new', conversation, entryMode: !conversation && req.user.financeEntryMode === 'list' ? 'list' : 'step', values, options, continuing, reviewing: continuing, tagEnabled: req.user.financeTagRegistrationEnabled === true, returnTo: sanitizeReturnPath(req.query.returnTo, '/finance/list') }, embedded: req.query.modal === '1' });
   }
   router.get('/entry', isLoggedIn, wrap((req, res) => renderNew(req, res)));
   router.get('/entry-conversation', isLoggedIn, wrap((req, res) => renderNew(req, res, true)));

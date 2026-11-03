@@ -17,15 +17,15 @@ class Element {
 }
 const initial = {groupId:'g',userId:'u',date:'2026-11-03',cf:'',category:'',sub_tag:'',content:'',amount:'',payment_type:''};
 const options = {userId:'u',groups:[{id:'g',name:'家族'}],users:[{id:'u',name:'本人'}],categories:{支出:['食費'],収入:['給与'],控除:['税'],貯蓄:['預金']},payments:['現金'],commonTags:[]};
-function setup(mode='new', entryMode='step', conversation=false) {
+function setup(mode='new', entryMode='step', conversation=false, overrides={}) {
   const ids = {}; const $ = name => ids[name] ||= new Element(); const calls = [];
   const values = mode === 'edit' ? {...initial,cf:'支出',category:'食費',content:'昼食',amount:500,payment_type:'現金'} : initial;
-  $('compactData').textContent = JSON.stringify({mode,entryMode,conversation,id:'record',values,options,tagEnabled:true,returnTo:'/finance/list'});
+  $('compactData').textContent = JSON.stringify({mode,entryMode,conversation,id:'record',values,options,tagEnabled:true,returnTo:'/finance/list',...overrides});
   const window = {addEventListener(){},location:{origin:'http://localhost'},confirm:()=>true}; window.parent = window;
   const runtime = {
     document:{getElementById:$,createElement:tag=>new Element(tag)}, Option:function(text,value){this.textContent=text;this.value=value;}, URL, URLSearchParams,
     bootstrap:{Modal:{getOrCreateInstance:()=>({show(){},hide(){}})}}, window,
-    fetch:async(url,params)=>{calls.push({url,params});return {ok:true,json:async()=>params?.method === 'POST' ? {ok:true,continueUrl:'/finance/entry-step?from=saved'} : {ok:true,options}};}
+    fetch:async(url,params)=>{calls.push({url,params});return {ok:true,json:async()=>params?.method === 'POST' ? {ok:true,continueUrl:'/finance/entry-step?from=saved'} : {ok:true,options:overrides.options || options}};}
   };
   if (conversation) vm.runInNewContext(fs.readFileSync('public/js/financeConversation.js','utf8'),runtime);
   vm.runInNewContext(fs.readFileSync('public/js/financeCompact.js','utf8'),runtime);
@@ -35,7 +35,7 @@ test('seven steps collapse to text rows, allow field modal correction and save-a
   const {$,calls,window}=setup();
   const input=async value=>{
     const host=$('compactStepField'); const field=host.querySelector();
-    if(field.type === 'hidden') await host.children[1].children.find(button=>button.textContent===value).fire();
+    if(field.type === 'hidden') return host.children[1].children.find(button=>button.textContent===value).fire();
     else field.value=value;
     await $('compactStepForm').fire('submit');
   };
@@ -104,4 +104,47 @@ test('conversation uses shared completed rows and confirmation and continues wit
   assert.equal($('compactRows').children.length,7); assert.equal($('compactConfirm').classList.contains('d-none'),false);
   await $('compactContinue').fire(); assert.equal(calls.filter(call=>call.params?.method==='POST').length,1);
   assert.equal(window.location.href,'http://localhost/finance/entry-conversation?from=saved');
+});
+
+for (const [entryMode, conversation] of [['step',false],['list',false],['step',true]]) {
+  test(`continuation uses modal-only confirmation (${entryMode}, voice=${conversation})`,async()=>{
+    const {$,calls}=setup('new',entryMode,conversation,{continuing:true,reviewing:true,values:{...initial,cf:'支出',category:'食費'}});
+    assert.equal($('compactRows').children.length,7);
+    for (const panel of ['compactStepPanel','compactListPanel','compactListBack']) assert.equal($(panel).classList.contains('d-none'),true);
+    assert.equal($('compactConfirm').classList.contains('d-none'),false);
+    await $('compactSave').fire();assert.equal(calls.length,0);
+    assert.match($('compactError').textContent,/内容/);
+    for(const [index,value] of [[4,'夕食'],[5,'980'],[6,'現金']]){
+      await $('compactRows').children[index].fire();
+      const host=$('compactModalField');
+      if(host.querySelector().type==='hidden') await host.children[1].children.find(button=>button.textContent===value).fire();
+      else host.querySelector().value=value;
+      await $('compactModalForm').fire('submit');
+    }
+    await $('compactSave').fire();
+    assert.equal(calls.at(-1).url,'/finance/entry-step');
+    const saved=JSON.parse(calls.at(-1).params.body).values;
+    assert.equal(saved.content,'夕食');assert.equal(saved.amount,'980');assert.equal(saved.date,'2026-11-03');
+  });
+}
+
+test('selecting choices advances once through category and tags and payment opens review without saving',async()=>{
+  const {$,calls}=setup('new','step',false,{options:{...options,commonTags:[{category:'食費',tags:[{name:'食品'}]}]}});
+  await $('compactStepForm').fire('submit'); // Date is prefilled.
+  const choose=async(label,groupIndex=1)=>{await $('compactStepField').children[groupIndex].children.find(button=>button.textContent===label).fire();};
+  assert.equal($('compactStepTitle').textContent,'収支区分');
+  const oldCf=$('compactStepField').children[1].children[0];await oldCf.fire();
+  assert.equal($('compactStepTitle').textContent,'詳細区分');await oldCf.fire();assert.equal($('compactStepTitle').textContent,'詳細区分');
+  await choose('食費');assert.equal($('compactStepTitle').textContent,'タグ');
+  await choose('食品',2);assert.equal($('compactStepTitle').textContent,'内容');
+  $('compactStepField').querySelector().value='朝食';await $('compactStepForm').fire('submit');
+  $('compactStepField').querySelector().value='500';await $('compactStepForm').fire('submit');
+  await choose('現金');assert.equal($('compactConfirm').classList.contains('d-none'),false);
+  assert.equal(calls.some(call=>call.params?.method==='POST'),false);
+  assert.equal($('compactRows').children[3].children[1].textContent,'食品');
+});
+test('conversation date choice advances automatically to income/expense selection',async()=>{
+  const {$}=setup('new','step',true);
+  await $('compactStepField').children[1].children[0].fire();
+  assert.equal($('compactStepTitle').textContent,'収支区分');assert.equal($('compactRows').children.length,1);
 });

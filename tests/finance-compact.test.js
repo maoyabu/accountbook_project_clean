@@ -40,7 +40,7 @@ test('new registration forces logged in identity and saves exactly one complete 
 });
 test('continue carries only date and categories, without creating a placeholder',async()=>{
   const f=fixture(); const res=await f.call('get','/entry',{query:{from:record}});
-  const data=res.data.compactData; assert.equal(data.continuing,true); assert.equal(data.values.category,'食費');
+  const data=res.data.compactData; assert.equal(data.continuing,true); assert.equal(data.reviewing,true); assert.equal(data.values.category,'食費');
   for(const key of ['sub_tag','content','amount','payment_type']) assert.equal(data.values[key],'');
   assert.equal(f.saved.length,0);
 });
@@ -86,7 +86,7 @@ test('input preference saves only for the logged in user and rejects unknown mod
 test('conversation forces step flow and inherits only date and categories on continuation',async()=>{
   const f=fixture(); const res=await f.call('get','/entry-conversation',{user:{_id:user,financeEntryMode:'list'},query:{from:record}});
   assert.equal(res.view,'finance/compact'); const config=res.data.compactData;
-  assert.equal(config.conversation,true); assert.equal(config.entryMode,'step'); assert.equal(config.values.category,'食費');
+  assert.equal(config.reviewing,true); assert.equal(config.conversation,true); assert.equal(config.entryMode,'step'); assert.equal(config.values.category,'食費');
   for(const field of ['sub_tag','content','amount','payment_type']) assert.equal(config.values[field],'');
   assert.equal(f.saved.length,0);
 });

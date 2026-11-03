@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const forms = document.querySelectorAll('form[data-loading]');
   
     forms.forEach(form => {
-      form.addEventListener('submit', () => {
+      form.addEventListener('submit', event => {
+        if (event.defaultPrevented) return;
         const btn = form.querySelector('button[type="submit"]');
         const spinner = form.querySelector('.spinner-border');
   

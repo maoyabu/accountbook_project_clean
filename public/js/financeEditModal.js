@@ -7,10 +7,13 @@
     if (url.origin !== window.location.origin) return;
     url.searchParams.set('modal', '1');
     url.searchParams.set('returnTo', window.location.pathname + window.location.search);
-    frame.src = url.href;
     modal = bootstrap.Modal.getOrCreateInstance(element);
     modal.show();
+    const finish = window.FinanceBusy?.begin('編集画面を読み込み中です', 'finance-frame-load');
+    frame.addEventListener('load', () => finish?.(), { once: true });
+    frame.src = url.href;
   };
+  frame.addEventListener('load', () => window.FinanceBusy?.clearOwner(frame.id + ':navigation'));
   document.querySelectorAll('form[data-finance-edit]').forEach(form => {
     form.addEventListener('submit', event => {
       event.preventDefault();

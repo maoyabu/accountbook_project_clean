@@ -13,6 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales/ja.global.min.js"></script>
       
     <link rel="stylesheet" href="/css/main.css">
+    <% if (typeof activeService !== 'string' || activeService === 'finance') { %><script src="/js/financeBusy.js"></script><% } %>
     <title>All About me</title>
     <link rel="icon" href="/images/App_icon.png" type="image/png">
 </head>
