@@ -27,6 +27,7 @@ const {
 } = require('../Utils/fiscalYear');
 
 const ExcelJS = require('exceljs');
+const { sortYearlyExpenseItems } = require('../Utils/yearlyExpenseOrder');
 const { isLoggedIn, logAction } = require('../middleware');
 
 const resolveDashboardTagSummary = (req, key) => {
@@ -2567,9 +2568,6 @@ router.get('/dashboard/yearly-m', async (req, res) => {
         ex_cfs.push(b.expense_item);
       }
     }
-    // 並び順: 予算設定の display_order を優先
-    const orderMap_m = Object.fromEntries(budgets.map(b => [b.expense_item, (b.display_order ?? 9999)]));
-    ex_cfs.sort((a, b) => (orderMap_m[a] ?? 9999) - (orderMap_m[b] ?? 9999));
 
     // === 累計予算計算: 現在月までの累計予算を計算 ===
     const cumulativeBudgetMap = {};
@@ -2612,6 +2610,7 @@ router.get('/dashboard/yearly-m', async (req, res) => {
     }
 
     const categoryGroups = await fetchExpenseCategoryGroups(groupId, year);
+    ex_cfs.splice(0, ex_cfs.length, ...sortYearlyExpenseItems(ex_cfs, budgets, categoryGroups));
     const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
     res.render('dashboard/yearly', {
       year,
@@ -2729,8 +2728,6 @@ router.get('/dashboard/yearly-g', async (req, res) => {
         ex_cfs.push(b.expense_item);
       }
     }
-    const orderMap_g = Object.fromEntries(budgets.map(b => [b.expense_item, (b.display_order ?? 9999)]));
-    ex_cfs.sort((a, b) => (orderMap_g[a] ?? 9999) - (orderMap_g[b] ?? 9999));
 
     // === 累計予算計算: 現在月までの累計予算を計算 ===
     const cumulativeBudgetMap = {};
@@ -2786,6 +2783,7 @@ router.get('/dashboard/yearly-g', async (req, res) => {
     }
 
     const categoryGroups = await fetchExpenseCategoryGroups(groupId, year);
+    ex_cfs.splice(0, ex_cfs.length, ...sortYearlyExpenseItems(ex_cfs, budgets, categoryGroups));
     const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
     res.render('dashboard/yearly', {
       year,
@@ -2904,8 +2902,6 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
         ex_cfs.push(b.expense_item);
       }
     }
-    const orderMap_x = Object.fromEntries(budgets.map(b => [b.expense_item, (b.display_order ?? 9999)]));
-    ex_cfs.sort((a, b) => (orderMap_x[a] ?? 9999) - (orderMap_x[b] ?? 9999));
 
     const cfMap = {
       '収入項目': '収入',
@@ -2933,7 +2929,9 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
 
     const data = [];
 
-    const categoryGroups = showCategorySummary ? await fetchExpenseCategoryGroups(groupId, year) : [];
+    const allCategoryGroups = await fetchExpenseCategoryGroups(groupId, year);
+    ex_cfs.splice(0, ex_cfs.length, ...sortYearlyExpenseItems(ex_cfs, budgets, allCategoryGroups));
+    const categoryGroups = showCategorySummary ? allCategoryGroups : [];
     const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
 
     // ヘッダー
@@ -3304,8 +3302,6 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
         ex_cfs.push(b.expense_item);
       }
     }
-    const orderMap_x = Object.fromEntries(budgets.map(b => [b.expense_item, (b.display_order ?? 9999)]));
-    ex_cfs.sort((a, b) => (orderMap_x[a] ?? 9999) - (orderMap_x[b] ?? 9999));
 
     const cfMap = {
       '収入項目': '収入',
@@ -3333,7 +3329,9 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
 
     const data = [];
 
-    const categoryGroups = showCategorySummary ? await fetchExpenseCategoryGroups(groupId, year) : [];
+    const allCategoryGroups = await fetchExpenseCategoryGroups(groupId, year);
+    ex_cfs.splice(0, ex_cfs.length, ...sortYearlyExpenseItems(ex_cfs, budgets, allCategoryGroups));
+    const categoryGroups = showCategorySummary ? allCategoryGroups : [];
     const expenseCategorySummaries = buildYearlyExpenseCategorySummaries(categoryGroups, monthlyExpensesDetail, budgetMap);
 
     // ヘッダー
