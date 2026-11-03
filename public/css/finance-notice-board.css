@@ -595,3 +595,8 @@
   .finance-home-page .budget-items-disclosure[open]>summary::before{transform:rotate(45deg)}
   .finance-home-page .budget-items-disclosure>summary:focus-visible{outline:2px solid #426456;outline-offset:2px}
 }
+
+.notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end,
+.notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end>td{border-bottom:1px dotted #87958b}
+.notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end+tr,
+.notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end+tr>td{border-top:0}

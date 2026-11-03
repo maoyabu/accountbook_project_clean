@@ -27,7 +27,7 @@ const {
 } = require('../Utils/fiscalYear');
 
 const ExcelJS = require('exceljs');
-const { sortYearlyExpenseItems } = require('../Utils/yearlyExpenseOrder');
+const { sortYearlyExpenseItems, applyYearlyExpenseItemBorders } = require('../Utils/yearlyExpenseOrder');
 const { isLoggedIn, logAction } = require('../middleware');
 
 const resolveDashboardTagSummary = (req, key) => {
@@ -2989,6 +2989,7 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     }
 
     // 支出内訳
+    const expenseItemEndRows = [];
     ex_cfs.forEach(item => {
       const row = [item, budgetMap[item] || 0];
       let total = 0;
@@ -3024,6 +3025,7 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
           data.push(tagRow);
         });
       }
+      if (allCategoryGroups.some(category => (category.item_names || []).includes(item))) expenseItemEndRows.push(data.length);
     });
 
     const os = require('os');
@@ -3193,6 +3195,7 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     applyThickBorder(1, summaryEndRow);
     applyThickBorder(categoryStartRow, categoryEndRow);
     applyThickBorder(detailStartRow, detailEndRow);
+    applyYearlyExpenseItemBorders(sheet, expenseItemEndRows);
 
     sheet.pageSetup = {
       orientation: 'landscape',
@@ -3389,6 +3392,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     }
 
     // 支出内訳
+    const expenseItemEndRows = [];
     ex_cfs.forEach(item => {
       const row = [item, budgetMap[item] || 0];
       let total = 0;
@@ -3424,6 +3428,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
           data.push(tagRow);
         });
       }
+      if (allCategoryGroups.some(category => (category.item_names || []).includes(item))) expenseItemEndRows.push(data.length);
     });
 
     const os = require('os');
@@ -3594,6 +3599,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     applyThickBorder(1, summaryEndRow);
     applyThickBorder(categoryStartRow, categoryEndRow);
     applyThickBorder(detailStartRow, detailEndRow);
+    applyYearlyExpenseItemBorders(sheet, expenseItemEndRows);
 
     sheet.pageSetup = {
       orientation: 'landscape',

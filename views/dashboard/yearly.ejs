@@ -157,9 +157,19 @@
               const parentCategoryColor = parentCategoryIndex >= 0
                 ? categoryColors[parentCategoryIndex % categoryColors.length]
                 : '';
+              const tagSet = new Set();
+              Array.from({ length: fiscalMonths.length }, (_, i) => i + 1).forEach((monthNo) => {
+                const tagMap = (monthlyExpenseTagDetail?.[monthNo]?.[item]) || {};
+                Object.keys(tagMap).forEach(tag => tagSet.add(tag));
+              });
+              const hasNamedTag = Array.from(tagSet).some(tag => tag !== '他');
+              const tagList = showTagSummary && hasNamedTag ? Array.from(tagSet).sort((a, b) => {
+                if (a === '他') return 1;
+                if (b === '他') return -1;
+                return a.localeCompare(b, 'ja');
+              }) : [];
             %>
-              <!-- <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>"> -->
-                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %> <%= parentCategoryIndex >= 0 && tagList.length === 0 ? 'yearly-expense-item-end' : '' %>">
                 <% if (showCategorySummary) { %><td class="sticky-col text-start" style="<%= parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
                 <td class="<%= showCategorySummary ? '' : 'sticky-col' %> text-start" style="<%= showCategorySummary && parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= item %></td>
                 <% if (showTagSummary) { %><td></td><% } %>
@@ -189,23 +199,11 @@
                 </td>
               </tr>
               <% if (showTagSummary) { %>
-                <%
-                  const tagSet = new Set();
-                  Array.from({ length: fiscalMonths.length }, (_, i) => i + 1).forEach((monthNo) => {
-                    const tagMap = (monthlyExpenseTagDetail?.[monthNo]?.[item]) || {};
-                    Object.keys(tagMap).forEach(tag => tagSet.add(tag));
-                  });
-                  const hasNamedTag = Array.from(tagSet).some(tag => tag !== '他');
-                  const tagList = hasNamedTag ? Array.from(tagSet).sort((a, b) => {
-                    if (a === '他') return 1;
-                    if (b === '他') return -1;
-                    return a.localeCompare(b, 'ja');
-                  }) : [];
-                %>
-                <% tagList.forEach((tag) => {
+
+                <% tagList.forEach((tag, tagIndex) => {
                   const tagQuery = tag === '他' ? '__none__' : tag;
                 %>
-                  <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+                  <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %> <%= parentCategoryIndex >= 0 && tagIndex === tagList.length - 1 ? 'yearly-expense-item-end' : '' %>">
                     <% if (showCategorySummary) { %><td class="sticky-col"></td><% } %>
                     <td class="<%= showCategorySummary ? '' : 'sticky-col' %>"></td>
                     <td class="text-start ps-3"><%= tag %></td>

@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ExcelJS = require('exceljs');
-const { sortYearlyExpenseItems } = require('../Utils/yearlyExpenseOrder');
+const ejs = require('ejs');
+const cheerio = require('cheerio');
+const { sortYearlyExpenseItems, applyYearlyExpenseItemBorders } = require('../Utils/yearlyExpenseOrder');
 const source = fs.readFileSync(require.resolve('../routes/output'), 'utf8');
 const groups = [
   { name: '生活', display_order: 0, item_names: ['食品', '日用品'] },
@@ -33,7 +35,7 @@ async function run(route, categorySummary, tagSummary) {
   vm.runInNewContext(summaryHelper + routesSource, {
     router: {get:(path,...handlers)=> { routes[path]=handlers.at(-1); }},
     require, process:{env:{NODE_ENV:'production'}}, ExcelJS:{Workbook},
-    fs:{unlink(){}}, console, isLoggedIn(){}, sortYearlyExpenseItems,
+    fs:{unlink(){}}, console, isLoggedIn(){}, sortYearlyExpenseItems, applyYearlyExpenseItemBorders,
     mongoose: {Types:{ObjectId:class {constructor(id){this.id=id;}}}},
     Finance:{aggregate:async()=>budgets.map(b=>({_id:{month:9,cf:'支出',expense_item:b.expense_item,sub_tag:'テスト'},total:10}))},
     FinanceExBudget:{find:async()=>budgets},
@@ -54,5 +56,22 @@ for (const scope of ['m','g']) for (const categorySummary of [false,true]) for (
     const rows=[];excel.sheet.eachRow(row=>{if(expected.includes(row.getCell(1).value))rows.push(row);});
     assert.deepEqual(rows.map(row=>row.getCell(1).value),expected);
     for(const row of rows) { assert.equal(row.getCell(2).value,budgets.find(b=>b.expense_item===row.getCell(1).value).budget);assert.equal(row.getCell(3).value,10); }
+    const html = ejs.render(fs.readFileSync(require.resolve('../views/dashboard/yearly.ejs'),'utf8'), {layout(){}, ...screen.locals});
+    const $ = cheerio.load(html);
+    for (const row of rows) {
+      const item = row.getCell(1).value;
+      const assigned = groups.some(group=>group.item_names.includes(item));
+      const endRow = excel.sheet.getRow(row.number + (tagSummary ? 1 : 0));
+      if (assigned) {
+        for (let column=1;column<=excel.sheet.columnCount;column++) assert.equal(endRow.getCell(column).border.bottom.style,'dotted');
+        if(tagSummary) assert.notEqual(row.getCell(3).border?.bottom?.style,'dotted');
+      } else assert.notEqual(endRow.getCell(3).border?.bottom?.style,'dotted');
+      const screenRow = $('tbody tr').filter((_,tr)=>$(tr).children('td').toArray().some(td=>$(td).text().trim()===item)).last();
+      assert.equal(screenRow.length,1);
+      assert.equal(screenRow.hasClass('yearly-expense-item-end'),assigned&&!tagSummary);
+      if(tagSummary) assert.equal(screenRow.next().hasClass('yearly-expense-item-end'),assigned);
+    }
+    assert.equal(rows[0].getCell(1).border.left.style,'thick');
+
   });
 }

@@ -14,4 +14,11 @@ function sortYearlyExpenseItems(items, budgets, categoryGroups) {
     || a.localeCompare(b, 'ja')
   );
 }
-module.exports = { sortYearlyExpenseItems };
+function applyYearlyExpenseItemBorders(sheet, rowNumbers) {
+  for (const row of rowNumbers) for (let column = 1; column <= sheet.columnCount; column++) {
+    const cell = sheet.getCell(row, column);
+    if (cell.border?.bottom?.style === 'thick') continue;
+    cell.border = { ...cell.border, bottom: { style: 'dotted', color: { argb: 'FF87958B' } } };
+  }
+}
+module.exports = { sortYearlyExpenseItems, applyYearlyExpenseItemBorders };
