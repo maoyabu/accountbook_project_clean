@@ -3,16 +3,16 @@
   <div class="small text-muted">
     <a href="/asset/display" class="text-decoration-none">資産管理トップ</a> ＞ 資産の登録・編集
   </div>
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/9FEF0134-024D-41B5-8B4D-44E9E627B86F/%E8%B3%87%E7%94%A3%E7%AE%A1%E7%90%86"
-     target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2 ms-auto">
-    ガイド
-  </a>
+
 </div>
 
 <div class="card shadow-sm mt-2">
   <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #44616D;">
-    <h5 class="mb-0">資産の登録・編集</h5>
+    <div class="page-title-guide-row"><h5 class="mb-0">資産の登録・編集</h5><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/9FEF0134-024D-41B5-8B4D-44E9E627B86F/%E8%B3%87%E7%94%A3%E7%AE%A1%E7%90%86"
+     target="_blank" rel="noopener"
+     class="page-guide-link">
+    ガイド
+  </a></div>
     <div class="d-flex gap-2">
       <a href="/asset/display" class="btn btn-light btn-sm">資産状況</a>
     </div>
@@ -50,7 +50,7 @@
             </tr>
           </thead>
           <tbody>
-            <% assets.forEach(asset => { 
+            <% assets.forEach(asset => {
               const assetPayload = {
                 id: asset._id,
                 asset_cf: asset.asset_cf,

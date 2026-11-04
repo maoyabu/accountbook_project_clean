@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { buildPaymentSearchOptions } = require('../Utils/paymentSearchOptions');
+const { isGroupServiceEnabled } = require('../Utils/groupServices');
 const catchAsync = require('../Utils/catchAsync');
 const Finance = require('../models/finance');
 const mongoose = require('mongoose');
@@ -4234,12 +4236,12 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
 
     // フィルタ用の選択肢
     // 支払種別一覧（重複排除）
-    const paymentItems = await PaymentItem.find({ group: groupId });
+    const paymentItems = await PaymentItem.find({ group: groupId }).populate('user');
     const pay_cfs = Array.from(new Set(paymentItems.map(p => p.paymentItem))).sort();
 
     // グループメンバー
     const group = await Group.findById(groupId).populate('members');
-    const whos = group?.members || [];
+    const whos = (group?.members || []).filter(member => isGroupServiceEnabled(member, groupId, 'finance'));
     const sub_tag_options = (await Finance.distinct('sub_tag', { group: new mongoose.Types.ObjectId(groupId) }))
       .filter(v => v && v !== 'Please Choice')
       .sort();
@@ -4258,6 +4260,7 @@ router.get('/dashboard/yearly-detail', isLoggedIn, async (req, res) => {
         user: user || ''
       },
       pay_cfs,
+      paymentSearchOptions: buildPaymentSearchOptions(paymentItems, pay_cfs, req.user._id),
       whos,
       sub_tag_options
     });
@@ -4346,11 +4349,11 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
     const currentUser = await FinanceUser.findById(req.user._id).populate('groups');
 
     // フィルタ用の選択肢
-    const paymentItems = await PaymentItem.find({ group: groupId });
+    const paymentItems = await PaymentItem.find({ group: groupId }).populate('user');
     const pay_cfs = Array.from(new Set(paymentItems.map(p => p.paymentItem))).sort();
 
     const group = await Group.findById(groupId).populate('members');
-    const whos = group?.members || [];
+    const whos = (group?.members || []).filter(member => isGroupServiceEnabled(member, groupId, 'finance'));
     const sub_tag_options = (await Finance.distinct('sub_tag', { group: new mongoose.Types.ObjectId(groupId) }))
       .filter(v => v && v !== 'Please Choice')
       .sort();
@@ -4369,6 +4372,7 @@ router.get('/dashboard/monthly-detail', isLoggedIn, async (req, res) => {
         user: user || ''
       },
       pay_cfs,
+      paymentSearchOptions: buildPaymentSearchOptions(paymentItems, pay_cfs, req.user._id),
       whos,
       sub_tag_options
     });

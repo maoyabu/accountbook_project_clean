@@ -1,13 +1,13 @@
 <% layout('layouts/top_boilerplate') %>
-<div class="text-end">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/2DE27623-692C-4288-ADA9-D1DE16FE4D03/%E6%96%B0%E8%A6%8F%E4%BC%9A%E5%93%A1%E7%99%BB%E9%8C%B2"
-     target="_blank" rel="noopener"
-     class="badge bg-warning text-white text-decoration-none p-2">
-    ガイド
-  </a>
-</div>
+
     <div class="waku-1">
         <div class = "waku-2">
+<div class="page-title-guide-row"><h1 class="page-registration-title">新規会員登録</h1><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/2DE27623-692C-4288-ADA9-D1DE16FE4D03/%E6%96%B0%E8%A6%8F%E4%BC%9A%E5%93%A1%E7%99%BB%E9%8C%B2"
+     target="_blank" rel="noopener"
+     class="page-guide-link">
+    ガイド
+  </a></div>
+
             <form action="/register" method="POST">
                 <% if (query?.group) { %>
                     <input type="hidden" name="group" value="<%= query.group %>">

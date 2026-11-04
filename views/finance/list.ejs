@@ -1,15 +1,13 @@
 <% layout('layouts/boilerplate') %>
 <link rel="stylesheet" href="/css/finance-notice-board.css">
-<div class="text-end">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/33EAF36C-74B4-4157-BADD-9B777DF0BD2E/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E6%9C%80%E8%BF%91%E3%81%AE%E5%85%A5%E5%8A%9B-%E6%A4%9C%E7%B4%A2-EXCEL%E6%9B%B8%E5%87%BA%E3%81%97"
-     target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2">
-    ガイド
-  </a>
-</div>
+
 <div class="list-frame finance-notice-board">
   <div class="notice-heading">
-    <h5 class="mb-0">直近の入力 - <%= Math.min(count, displayLimit) %> 件 / <%= count %>件</h5>
+    <div class="page-title-guide-row"><h5 class="mb-0">直近の入力 - <%= Math.min(count, displayLimit) %> 件 / <%= count %>件</h5><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/33EAF36C-74B4-4157-BADD-9B777DF0BD2E/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E6%9C%80%E8%BF%91%E3%81%AE%E5%85%A5%E5%8A%9B-%E6%A4%9C%E7%B4%A2-EXCEL%E6%9B%B8%E5%87%BA%E3%81%97"
+     target="_blank" rel="noopener"
+     class="page-guide-link">
+    ガイド
+  </a></div>
   </div>
   <div class="finance-list-filters mb-2">
     <div class="finance-list-count d-flex align-items-center gap-2">

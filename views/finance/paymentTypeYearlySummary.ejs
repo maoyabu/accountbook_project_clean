@@ -45,7 +45,7 @@
           </thead>
           <tbody>
             <% summaryRows.forEach((row, index) => { %>
-              <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
+              <tr class="payment-yearly-row">
                 <th scope="row" class="text-start payment-type-col"><%= row.paymentTypeLabel %></th>
                 <% row.monthCells.forEach((cell) => { %>
                   <td class="text-end">
@@ -65,7 +65,7 @@
                 </td>
               </tr>
             <% }) %>
-            <tr class="table-warning">
+            <tr class="payment-yearly-total">
               <th scope="row" class="text-start payment-type-col">月合計</th>
               <% monthlyTotalCells.forEach((cell) => { %>
                 <td class="text-end fw-bold">
@@ -101,7 +101,7 @@
   }
 
   .payment-yearly-table thead th {
-    background-color: #44616D;
+    background-color: #426456;
     color: #fff;
     white-space: nowrap;
   }
@@ -119,22 +119,24 @@
   }
 
   .payment-yearly-table tbody th.payment-type-col {
-    color: #1f2933;
-    box-shadow: 1px 0 0 rgba(68, 97, 109, 0.12);
+    color: #293b30;
+    box-shadow: 1px 0 0 rgba(66, 100, 86, 0.12);
   }
 
-  .payment-yearly-table tbody tr.table-light th.payment-type-col {
-    background-color: #f8f9fa;
+  .payment-yearly-table tbody tr.payment-yearly-row { --payment-row-bg: #fff; }
+  .payment-yearly-table tbody tr.payment-yearly-row:nth-child(even) { --payment-row-bg: #edf4ee; }
+  .payment-yearly-table tbody tr.payment-yearly-total { --payment-row-bg: #dfe9e1; font-weight: 700; }
+  .payment-yearly-table tbody tr,
+  .payment-yearly-table tbody tr > * {
+    --bs-table-bg: var(--payment-row-bg);
+    --bs-table-accent-bg: transparent;
+    background-color: var(--payment-row-bg) !important;
+    color: #293b30;
+    box-shadow: none;
   }
-
-  .payment-yearly-table tbody tr.table-info th.payment-type-col {
-    background-color: #d9edf7;
-  }
-
-  .payment-yearly-table tbody tr.table-warning th.payment-type-col {
-    background-color: #fff3cd;
-    color: #4d3b00;
-  }
+  .payment-yearly-table tbody tr.payment-yearly-total > * { border-top: 2px solid #8da895 !important; }
+  .payment-yearly-table tbody a { color: #286b50; }
+  .payment-yearly-table tbody a:hover { color: #1c523c; text-decoration: underline !important; }
 
   @media (max-width: 768px) {
     .payment-yearly-table {

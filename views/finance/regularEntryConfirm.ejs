@@ -1,6 +1,6 @@
 <% layout('layouts/boilerplate') %>
 <link rel="stylesheet" href="/css/finance-notice-board.css">
-<div class="container finance-notice-board notice-form-page">
+<div class="container finance-notice-board notice-form-page notice-regular-page">
 
 <div class="card mt-4">
   <div class="notice-heading">
@@ -17,7 +17,7 @@
           <tr>
             <th>区分</th>
             <th>内容</th>
-            <th>金額</th>
+            <th class="text-end">金額</th>
           </tr>
         </thead>
         <tbody>
@@ -25,7 +25,7 @@
             <tr>
               <td><%= d.cf %></td>
               <td><%= d.content %></td>
-              <td>¥<%= d.amount.toLocaleString() %></td>
+              <td class="text-end">¥<%= d.amount.toLocaleString() %></td>
             </tr>
           <% }) %>
         </tbody>
@@ -43,7 +43,7 @@
 
       <div class="d-flex justify-content-between mt-4">
         <a href="/matomete/regular-entry/push" class="btn btn-outline-secondary">戻って修正</a>
-        <button type="submit" class="btn btn-danger">重複分は上書きして登録</button>
+        <button type="submit" class="btn btn-primary">重複分は上書きして登録</button>
       </div>
     </form>
   </div>

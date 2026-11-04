@@ -1,15 +1,13 @@
 <% layout('layouts/boilerplate') %>
 <link rel="stylesheet" href="/css/finance-notice-board.css">
-    <div class="text-end">
-    <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1B0724C9-975D-46F3-95CF-1D44AAC5CF48/My-Relation"
-      target="_blank" rel="noopener"
-      class="badge bg-success text-white text-decoration-none p-2">
-      ガイド
-    </a>
-  </div>
+
   <div class="sr-frame w-100 finance-notice-board">
   <div class="notice-heading">
-    <h5 class="mb-0">検索結果: <%= count %> 件</h5>
+    <div class="page-title-guide-row"><h5 class="mb-0">検索結果: <%= count %> 件</h5><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/1B0724C9-975D-46F3-95CF-1D44AAC5CF48/My-Relation"
+      target="_blank" rel="noopener"
+      class="page-guide-link">
+      ガイド
+    </a></div>
   </div>
   <div class="sr-body">
   <% if ((typeof enableFilterBar !== 'undefined' && enableFilterBar) || page === 'search') { %>
@@ -116,8 +114,12 @@
       <label class="form-label mb-1">種別</label>
       <select name="payment_type" class="form-select form-select-sm">
         <option value="Please Choice">すべて</option>
-        <% (pay_cfs || []).forEach(p => { %>
-          <option value="<%= p %>" <%= (filters?.payment_type || '') === p ? 'selected' : '' %>><%= p %></option>
+        <% let selectedPaymentAssigned = false; %>
+        <% (typeof paymentSearchOptions !== 'undefined' ? paymentSearchOptions : (pay_cfs || []).map(value => ({ value, label: value }))).filter(option => option.value !== 'Please Choice').forEach(option => {
+          const selected = !selectedPaymentAssigned && (filters?.payment_type || '') === option.value;
+          if (selected) selectedPaymentAssigned = true;
+        %>
+          <option value="<%= option.value %>" <%= selected ? 'selected' : '' %>><%= option.label %></option>
         <% }) %>
       </select>
     </div>

@@ -1,14 +1,12 @@
 <% layout('layouts/boilerplate') %>
-<div class="text-end mb-2">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/F541BF02-F996-44F2-AC86-B27DACA13A46/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E3%81%BE%E3%81%A8%E3%82%81%E3%81%A6%E5%85%A5%E5%8A%9B"
-     target="_blank" rel="noopener"
-     class="badge bg-success text-white text-decoration-none p-2">
-    ガイド
-  </a>
-</div>
+
 <div class="card shadow-sm mt-2">
     <div class="card-header text-white" style="background-color: #426456;">
-      <h5 class="mb-0">まとめて入力の項目追加</h5>
+      <div class="page-title-guide-row"><h5 class="mb-0">まとめて入力の項目追加</h5><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/F541BF02-F996-44F2-AC86-B27DACA13A46/%E5%AE%B6%E8%A8%88%E7%B0%BF-%E3%81%BE%E3%81%A8%E3%82%81%E3%81%A6%E5%85%A5%E5%8A%9B"
+     target="_blank" rel="noopener"
+     class="page-guide-link">
+    ガイド
+  </a></div>
     </div>
     <div class="card-body">
       <form action="<%= entryToEdit ? '/matomete/regular-entry/update/' + entryToEdit._id : '/matomete/regular-entry/create' %>" method="POST">
@@ -59,7 +57,7 @@
           <label for="day">引き落とし日（土日祝は考慮せず）</label>
           <input type="number" name="day" class="form-control" value="<%= entryToEdit ? entryToEdit.day : '' %>" required>
         </div>
-  
+
         <div class="row mb-3">
           <div class="col-md-5">
             <label for="content">内容</label>

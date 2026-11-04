@@ -650,3 +650,22 @@
 @media(max-width:359px){
   .finance-list-count label[for="limitSelect"],.finance-list-count label[for="searchLimitSelect"]{display:none}
 }
+
+/* Compact regular-entry rows while keeping amount and skip controls usable. */
+.finance-notice-row.notice-regular-row{min-height:0;padding-top:6px;padding-bottom:6px;row-gap:2px}
+.finance-notice-row.notice-regular-row::before{top:9px;bottom:9px}
+@media(max-width:575px){.finance-notice-row.notice-regular-row{row-gap:3px}}
+
+/* Regular-entry screens: readable headings, green table headers and quiet row stripes. */
+.notice-regular-page .notice-heading h5,.notice-backup-panel .notice-heading h5,#regularEntryModal .modal-title{color:#304b3a;font-weight:700}
+#regularEntryModal .modal-header{background:#edf3ee;border-color:#d3dfd5}
+.notice-regular-page table thead th,.notice-backup-panel table thead th{
+  --bs-table-bg:#426456;--bs-table-accent-bg:transparent;
+  background-color:#426456 !important;color:#fff !important;box-shadow:none !important;
+}
+.notice-regular-page table tbody tr,.notice-backup-panel table tbody tr{--regular-row-bg:#fff;background:var(--regular-row-bg)}
+.notice-regular-page table tbody tr:nth-child(even),.notice-backup-panel table tbody tr:nth-child(even){--regular-row-bg:#edf4ee}
+.notice-regular-page table tbody tr>*,.notice-backup-panel table tbody tr>*{
+  --bs-table-bg:var(--regular-row-bg);--bs-table-accent-bg:transparent;
+  background-color:var(--regular-row-bg) !important;color:#293b30;box-shadow:none !important;
+}

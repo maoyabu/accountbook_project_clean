@@ -1,11 +1,5 @@
 <% layout('layouts/boilerplate') %>
-<div class="text-end">
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/DF9C355B-DF21-4DD0-80E2-CC3A5A2CE876/gChat"
-     target="_blank" rel="noopener"
-     class="badge bg-warning text-white text-decoration-none p-2">
-    ガイド
-  </a>
-</div>
+
 <div class="container mt-3">
   <a href="/gchat" class="btn btn-outline-secondary mb-3">
     <i class="fas fa-arrow-left"></i> チャット一覧に戻る
@@ -16,7 +10,7 @@
 <div class="container mt-2">
   <div class="card shadow-sm mb-3">
     <div class="card-header bg-primary text-white">
-      <h5 class="mb-0">
+      <div class="page-title-guide-row"><h5 class="mb-0">
         <i class="fas fa-comments me-2"></i><%= chat.title %>
         <% if (chat.members && chat.members.length > 0) { %>
           <small class="text-white ms-2 d-flex flex-wrap align-items-center gap-2">
@@ -30,7 +24,11 @@
             ）
           </small>
         <% } %>
-      </h5>
+      </h5><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/DF9C355B-DF21-4DD0-80E2-CC3A5A2CE876/gChat"
+     target="_blank" rel="noopener"
+     class="page-guide-link">
+    ガイド
+  </a></div>
     </div>
     <div class="card-body p-3" style="background-color: #f8f9fa;">
       <div id="chat-box" class="mb-3" style="height: 400px; overflow-y: auto;">

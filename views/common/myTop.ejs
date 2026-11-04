@@ -11,13 +11,13 @@
     </picture>
   </a>
 </div>
-  <a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/B249DE58-FD83-48FA-B740-842680556015/%E3%83%9E%E3%82%A4%E3%83%9A%E3%83%BC%E3%82%B8TOP"
-     target="_blank" rel="noopener"
-     class="badge bg-warning text-white text-decoration-none p-2">
-    ガイド
-  </a>
+
 </div>
-<div id="datetime" class="text-end text-muted mt-3 me-3" style="font-size: 0.9rem;"></div>
+<div class="page-title-guide-row"><div id="datetime" class="text-end text-muted mt-3 me-3" style="font-size: 0.9rem;"></div><a href="https://colts-wish-krs.craft.me/UJ4Y7muYdOwQlH/b/B249DE58-FD83-48FA-B740-842680556015/%E3%83%9E%E3%82%A4%E3%83%9A%E3%83%BC%E3%82%B8TOP"
+     target="_blank" rel="noopener"
+     class="page-guide-link">
+    ガイド
+  </a></div>
 <!-- お知らせ -->
 <% if (infos && infos.length > 0) { %>
   <div class="alert alert-info mt-3 mx-3">
@@ -105,9 +105,9 @@
         </ul>
         <div class="mt-1"><i class="fa-solid fa-calendar-days"></i> マイ日記 <small>（昨日の日記）</small></div>
         <ul class="list-group small" style="line-height: 1.2;">
-          <% 
-            const yesterday = new Date(); 
-            yesterday.setDate(yesterday.getDate() - 1); 
+          <%
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
             const yyyy = yesterday.getFullYear();
             const mm = (yesterday.getMonth() + 1).toString().padStart(2, '0');
             const dd = yesterday.getDate().toString().padStart(2, '0');
@@ -116,7 +116,7 @@
           %>
           <% if (validEntries.length > 0) { %>
             <% validEntries.forEach(entry => { %>
-                            <% 
+                            <%
                 const rateLabels = ['最悪', '悪い', '普通', '良い', '最高'];
                 const rateText = rateLabels[(entry.rate || 3) - 1] || '不明';
               %>
@@ -126,7 +126,7 @@
             <% }) %>
           <% } else { %>
             <li class="list-group-item text-muted">
-              昨日の日記が登録されていません。昨日を振り返って登録してみましょう → 
+              昨日の日記が登録されていません。昨日を振り返って登録してみましょう →
               <a href="/allaboutme/eventcal?date=<%= yesterdayFormatted %>">登録へ</a>
             </li>
           <% } %>

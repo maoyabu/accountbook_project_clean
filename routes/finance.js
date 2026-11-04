@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { buildPaymentSearchOptions } = require('../Utils/paymentSearchOptions');
+const { isGroupServiceEnabled } = require('../Utils/groupServices');
 const { resolveFinanceListDisplay } = require('../Utils/financeListDisplay');
 const catchAsync = require('../Utils/catchAsync');
 const ExpressError = require('../Utils/ExpressError');
@@ -86,19 +88,6 @@ const getPreviousMonthMeta = (baseDate = new Date()) => {
 const getPreviousYearMeta = (baseDate = new Date(), startMonth = 1) => {
   return getPreviousFiscalYearMeta(baseDate, startMonth);
 };
-const isGroupServiceEnabled = (user, groupId, serviceKey) => {
-  if (!user) return false;
-  const gid = groupId ? groupId.toString() : null;
-  if (gid && user.servicesByGroup) {
-    const map = user.servicesByGroup;
-    const groupServices = typeof map.get === 'function' ? map.get(gid) : map[gid];
-    if (groupServices && typeof groupServices[serviceKey] === 'boolean') {
-      return groupServices[serviceKey];
-    }
-  }
-  return true;
-};
-
 //selectedの選択肢をここで定義
 const la_cfs = ['Please Choice','支出','収入','控除','貯蓄'];
 const defaultInItems = ['Please Choice','給与','賞与','その他'];
@@ -620,7 +609,8 @@ router.get('/search', isLoggedIn, async (req, res) => {
 
   // グループに所属するメンバー一覧を取得
   const group = await mongoose.model('Group').findById(activeGroupId).populate('members');
-  const memberIds = group.members.map(member => member._id);
+  const members = (group?.members || []).filter(member => isGroupServiceEnabled(member, activeGroupId, 'finance'));
+  const memberIds = members.map(member => member._id);
 
   // 支払方法：グループ内の各ユーザーの支払方法を取得（ユーザー→表示順）
   const rawPayItems = await PaymentItem.find({
@@ -662,6 +652,7 @@ router.get('/search', isLoggedIn, async (req, res) => {
     dedu_cfs,
     saving_cfs,
     pay_cfs: mergedPayCfs,
+    paymentSearchOptions: buildPaymentSearchOptions(rawPayItems, mergedPayCfs, req.user._id),
     whos
   });
 });
@@ -757,7 +748,8 @@ router.post('/search', catchAsync(async (req, res) => {
 
     // フィルタバー用データ（支払種別はグループ全体から重複排除、メンバーはグループ）
     const group = await mongoose.model('Group').findById(activeGroupId).populate('members');
-    const memberIds = group.members.map(member => member._id);
+    const members = (group?.members || []).filter(member => isGroupServiceEnabled(member, activeGroupId, 'finance'));
+    const memberIds = members.map(member => member._id);
     const rawPayItems = await PaymentItem.find({ group: activeGroupId, user: { $in: memberIds } }).populate('user').sort({ 'user.displayname': 1, display_order: 1 });
     const seenPay = new Set();
     const mergedPayCfs = ['Please Choice'];
@@ -796,7 +788,8 @@ router.post('/search', catchAsync(async (req, res) => {
           keyword: keyword || ''
         },
         pay_cfs: mergedPayCfs,
-        whos: group.members,
+    paymentSearchOptions: buildPaymentSearchOptions(rawPayItems, mergedPayCfs, req.user._id),
+        whos: members,
         la_cfs,
         ex_cfs,
         in_items,
@@ -874,7 +867,8 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
 
   // 支払種別/メンバー候補
   const group = await mongoose.model('Group').findById(activeGroupId).populate('members');
-  const memberIds = group.members.map(member => member._id);
+  const members = (group?.members || []).filter(member => isGroupServiceEnabled(member, activeGroupId, 'finance'));
+  const memberIds = members.map(member => member._id);
   const rawPayItems = await PaymentItem.find({ group: activeGroupId, user: { $in: memberIds } }).populate('user').sort({ 'user.displayname': 1, display_order: 1 });
   const seenPay = new Set();
   const mergedPayCfs = ['Please Choice'];
@@ -916,7 +910,8 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
       keyword: keyword || ''
     },
     pay_cfs: mergedPayCfs,
-    whos: group.members,
+    paymentSearchOptions: buildPaymentSearchOptions(rawPayItems, mergedPayCfs, req.user._id),
+    whos: members,
     la_cfs,
     ex_cfs,
     in_items,
