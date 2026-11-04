@@ -204,7 +204,8 @@ exports.getYearlyExpenseData = async (req, res) => {
       const yearLabels = years.map(y => `${y}年度`);
       const items = [...new Set(raw.map(item => item._id.item))];
       
-      const datasets = items.map(item => {
+      const expenseColors = ['#D7E8CF', '#C5D6A0', '#C9A227', '#A3B18A', '#C9CBCF', '#FFFFFF'];
+      const datasets = items.map((item, index) => {
         const data = years.map(year => {
           const entry = raw.find(r => r._id.year === year && r._id.item === item);
           return entry ? entry.total : 0;
@@ -212,7 +213,9 @@ exports.getYearlyExpenseData = async (req, res) => {
         return {
           label: item,
           data: data,
-          backgroundColor: getColorForItem(item)
+          backgroundColor: expenseColors[index % expenseColors.length],
+          borderColor: '#65735C',
+          borderWidth: 1
         };
       });
       

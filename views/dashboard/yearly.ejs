@@ -70,7 +70,7 @@
           <tbody>
             <%
               const cfList = ['収入', '貯蓄', '控除', '支出'];
-              const categoryColors = ['#dbeafe', '#dcfce7', '#fef3c7', '#fce7f3', '#ede9fe', '#cffafe', '#ffedd5', '#e2e8f0'];
+              const categoryColors = ['#D7E8CF', '#C5D6A0', '#C9A227', '#A3B18A', '#C9CBCF', '#FFFFFF'];
             %>
             <% cfList.forEach((cf, index) => { %>
               <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %>">
@@ -134,7 +134,7 @@
               <% (expenseCategorySummaries || []).forEach((category, index) => {
                 const categoryDiff = category.budget * budgetMonthCount - category.total;
               %>
-                <tr class="table-primary fw-bold">
+                <tr class="table-primary fw-bold yearly-category-row" style="--yearly-category-color: <%= categoryColors[index % categoryColors.length] %>;">
                   <td class="sticky-col text-start" style="background-color: <%= categoryColors[index % categoryColors.length] %>;"><i class="fa-solid fa-layer-group me-1"></i><%= category.name %></td>
                   <td class="text-start" style="background-color: <%= categoryColors[index % categoryColors.length] %>;">合計</td>
                   <% if (showTagSummary) { %><td></td><% } %>
@@ -152,8 +152,10 @@
               const parentCategoryNames = (expenseCategorySummaries || [])
                 .filter(category => category.itemNames.includes(item))
                 .map(category => category.name);
-              const parentCategoryIndex = (expenseCategorySummaries || [])
-                .findIndex(category => category.itemNames.includes(item));
+              const parentCategoryIndexes = (expenseCategorySummaries || [])
+                .map((category, categoryIndex) => category.itemNames.includes(item) ? categoryIndex : -1)
+                .filter(categoryIndex => categoryIndex >= 0);
+              const parentCategoryIndex = parentCategoryIndexes[1] ?? parentCategoryIndexes[0] ?? -1;
               const parentCategoryColor = parentCategoryIndex >= 0
                 ? categoryColors[parentCategoryIndex % categoryColors.length]
                 : '';
@@ -169,7 +171,7 @@
                 return a.localeCompare(b, 'ja');
               }) : [];
             %>
-                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %> <%= parentCategoryIndex >= 0 && tagList.length === 0 ? 'yearly-expense-item-end' : '' %>">
+                <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %> <%= parentCategoryIndex >= 0 && tagList.length === 0 ? 'yearly-expense-item-end' : '' %> <%= showCategorySummary && parentCategoryColor ? 'yearly-category-row' : '' %>" style="<%= showCategorySummary && parentCategoryColor ? `--yearly-category-color: ${parentCategoryColor};` : '' %>">
                 <% if (showCategorySummary) { %><td class="sticky-col text-start" style="<%= parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= parentCategoryNames.join('、') || '-' %></td><% } %>
                 <td class="<%= showCategorySummary ? '' : 'sticky-col' %> text-start" style="<%= showCategorySummary && parentCategoryColor ? `background-color: ${parentCategoryColor};` : '' %>"><%= item %></td>
                 <% if (showTagSummary) { %><td></td><% } %>
@@ -203,7 +205,7 @@
                 <% tagList.forEach((tag, tagIndex) => {
                   const tagQuery = tag === '他' ? '__none__' : tag;
                 %>
-                  <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %> <%= parentCategoryIndex >= 0 && tagIndex === tagList.length - 1 ? 'yearly-expense-item-end' : '' %>">
+                  <tr class="<%= index % 2 === 0 ? 'table-light' : 'table-info' %> <%= parentCategoryIndex >= 0 && tagIndex === tagList.length - 1 ? 'yearly-expense-item-end' : '' %> <%= showCategorySummary && parentCategoryColor ? 'yearly-category-row' : '' %>" style="<%= showCategorySummary && parentCategoryColor ? `--yearly-category-color: ${parentCategoryColor};` : '' %>">
                     <% if (showCategorySummary) { %><td class="sticky-col"></td><% } %>
                     <td class="<%= showCategorySummary ? '' : 'sticky-col' %>"></td>
                     <td class="text-start ps-3"><%= tag %></td>

@@ -597,6 +597,43 @@
 }
 
 .notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end,
-.notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end>td{border-bottom:1px dotted #87958b}
+.notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end>td{border-bottom:1px dotted #87958b !important}
 .notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end+tr,
 .notice-summary-page .dashboard-yearly tbody tr.yearly-expense-item-end+tr>td{border-top:0}
+
+/* Keep parent-category colors consistent across the whole annual row, including sticky cells. */
+.notice-summary-page .dashboard-yearly tbody tr.yearly-category-row>td{
+  --bs-table-bg:var(--yearly-category-color);
+  --bs-table-accent-bg:transparent;
+  background-color:var(--yearly-category-color) !important;
+  box-shadow:none !important;
+}
+/* Monthly tables use white / pale green stripes; negative-value warning fills remain visible. */
+.notice-monthly-page .dashboard-summary-table tbody>tr,
+.notice-monthly-page .dashboard-monthly tbody>tr:not(.dashboard-monthly-total-row){
+  --monthly-row-bg:#fff;
+  --bs-table-bg:var(--monthly-row-bg);
+  --bs-table-accent-bg:transparent;
+  background:var(--monthly-row-bg) !important;
+}
+.notice-monthly-page .dashboard-summary-table tbody>tr:nth-child(even),
+.notice-monthly-page .dashboard-monthly tbody>tr:nth-child(odd):not(.dashboard-monthly-total-row){--monthly-row-bg:#edf4ee}
+.notice-monthly-page .dashboard-summary-table tbody>tr>td,
+.notice-monthly-page .dashboard-monthly tbody>tr:not(.dashboard-monthly-total-row)>td{
+  --bs-table-bg:var(--monthly-row-bg);
+  --bs-table-accent-bg:transparent;
+  box-shadow:none !important;
+}
+.notice-monthly-page .dashboard-summary-table tbody>tr>td:not(.text-danger),
+.notice-monthly-page .dashboard-monthly tbody>tr:not(.dashboard-monthly-total-row)>td:not(.text-danger){background-color:var(--monthly-row-bg) !important}
+
+/* Annual summaries use the green palette for all ordinary rows and linked amounts. */
+.notice-summary-page .dashboard-yearly tbody tr.table-info:not(.yearly-category-row){--bs-table-bg:#edf4ee;--bs-table-accent-bg:transparent;background-color:#edf4ee !important}
+.notice-summary-page .dashboard-yearly tbody tr.table-info:not(.yearly-category-row)>td:not(.text-danger){background-color:#edf4ee !important;box-shadow:none !important}
+.notice-summary-page .dashboard-yearly tbody tr.table-light:not(.yearly-category-row)>td:not(.text-danger){background-color:#fafcf9 !important;box-shadow:none !important}
+.notice-summary-page .dashboard-yearly tbody a{color:#286b50}
+.notice-summary-page .dashboard-yearly tbody a:hover{color:#1c523c}
+
+.notice-summary-page .dashboard-yearly tbody tr.yearly-category-row>td,
+.notice-summary-page .dashboard-yearly tbody tr.yearly-category-row a{color:#17251b}
+.notice-summary-page .dashboard-yearly tbody tr.yearly-category-row a{text-decoration:underline !important;text-underline-offset:2px}

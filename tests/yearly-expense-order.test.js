@@ -75,3 +75,20 @@ for (const scope of ['m','g']) for (const categorySummary of [false,true]) for (
 
   });
 }
+
+test('annual item and tag rows use the second matching parent color, or the first when only one matches', async () => {
+  const {locals}=await run('/dashboard/yearly-g',true,true);
+  locals.expenseCategorySummaries = [
+    {...locals.expenseCategorySummaries[0],name:'第一',itemNames:['食品','日用品']},
+    {...locals.expenseCategorySummaries[1],name:'第二',itemNames:['食品']},
+    {...locals.expenseCategorySummaries[1],name:'第三',itemNames:['食品']}
+  ];
+  const html=ejs.render(fs.readFileSync(require.resolve('../views/dashboard/yearly.ejs'),'utf8'),{layout(){},...locals});
+  const $=cheerio.load(html);
+  const rowFor=item=>$('tbody tr').filter((_,tr)=>$(tr).children('td').toArray().some(td=>$(td).text().trim()===item)).last();
+  assert.match(rowFor('食品').attr('style'),/#C5D6A0/);
+  assert.match(rowFor('食品').next().attr('style'),/#C5D6A0/);
+  assert.match(rowFor('日用品').attr('style'),/#D7E8CF/);
+  assert.equal(rowFor('未分類').hasClass('yearly-category-row'),false);
+  assert.equal(html.includes('#3C8D2F'),false);
+});
