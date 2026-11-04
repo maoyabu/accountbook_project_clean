@@ -13,9 +13,26 @@
   </div>
   <div class="sr-body">
   <% if ((typeof enableFilterBar !== 'undefined' && enableFilterBar) || page === 'search') { %>
-  <details class="my-2">
+  <div class="finance-list-filters mb-2">
+  <% if (page === 'search') { %>
+    <% const resultLimit = typeof displayLimit !== 'undefined' ? displayLimit : 20; const resultSort = typeof sortOrder !== 'undefined' ? sortOrder : 'update_date'; %>
+    <div class="finance-list-count d-flex align-items-center gap-2">
+      <label for="searchLimitSelect" class="form-label mb-0">表示件数</label>
+      <select name="limit" id="searchLimitSelect" form="financeSearchFilterForm" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+        <% [20,50,100].forEach(limit => { %><option value="<%= limit %>" <%= resultLimit === limit ? 'selected' : '' %>><%= limit %>件</option><% }) %>
+      </select>
+      <div class="d-flex align-items-center gap-2">
+        <label for="searchSortOrder" class="form-label mb-0">並び順</label>
+        <select name="sortOrder" id="searchSortOrder" form="financeSearchFilterForm" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="date" <%= resultSort === 'date' ? 'selected' : '' %>>使用日順</option>
+          <option value="update_date" <%= resultSort === 'update_date' ? 'selected' : '' %>>更新日順</option>
+        </select>
+      </div>
+    </div>
+  <% } %>
+  <details>
     <summary class="notice-filter-toggle">絞り込み</summary>
-  <form method="GET" action="<%= page === 'search' ? '/finance/search/results' : (page === 'monthly-detail' ? '/export/dashboard/monthly-detail' : '/export/dashboard/yearly-detail') %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2 w-100">
+  <form id="financeSearchFilterForm" method="GET" action="<%= page === 'search' ? '/finance/search/results' : (page === 'monthly-detail' ? '/export/dashboard/monthly-detail' : '/export/dashboard/yearly-detail') %>" class="filter-bar d-flex flex-wrap align-items-end gap-2 mt-2 mb-2 w-100">
     <!-- 基本条件を維持する隠しフィールド -->
     <% if (page !== 'search') { %>
       <!-- finance/search 用: 元の検索条件を維持 -->
@@ -95,7 +112,6 @@
       </div>
     </div>
     <% } %>
-    <!-- 並び順は不要のため削除 -->
     <div>
       <label class="form-label mb-1">種別</label>
       <select name="payment_type" class="form-select form-select-sm">
@@ -133,6 +149,7 @@
     </div>
   </form>
   </details>
+  </div>
   <% } %>
 
   <% if (page === 'search') { %>

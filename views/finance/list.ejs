@@ -19,19 +19,19 @@
         <option value="50" <%= displayLimit === 50 ? 'selected' : '' %>>50件</option>
         <option value="100" <%= displayLimit === 100 ? 'selected' : '' %>>100件</option>
       </select>
+      <div class="d-flex align-items-center gap-2">
+        <label for="sortOrder" class="form-label mb-0">並び順</label>
+        <select name="sortOrder" id="sortOrder" form="financeListFilterForm" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+          <option value="date" <%= sortOrder === 'date' ? 'selected' : '' %>>使用日順</option>
+          <option value="update_date" <%= sortOrder === 'update_date' ? 'selected' : '' %>>更新日順</option>
+        </select>
+      </div>
     </div>
     <details>
       <summary class="finance-list-filter-toggle">絞り込み</summary>
   <div class="filter-bar notice-filter-panel">
     <form id="financeListFilterForm" method="GET" action="/finance/list" class="d-flex flex-wrap align-items-end gap-3 mb-0">
       <input type="hidden" name="scope" value="<%= selectedFilters?.scope || 'user' %>">
-      <div class="d-flex flex-column">
-        <label for="sortOrder" class="form-label mb-1">並び順</label>
-        <select name="sortOrder" id="sortOrder" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-          <option value="date" <%= sortOrder === 'date' ? 'selected' : '' %>>使用日順</option>
-          <option value="update_date" <%= sortOrder === 'update_date' ? 'selected' : '' %>>更新日順</option>
-        </select>
-      </div>
 
       <div class="d-flex flex-column">
         <label for="cfFilter" class="form-label mb-1">区分</label>

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { resolveFinanceListDisplay } = require('../Utils/financeListDisplay');
 const catchAsync = require('../Utils/catchAsync');
 const ExpressError = require('../Utils/ExpressError');
 const Finance = require('../models/finance');
@@ -669,6 +670,7 @@ router.get('/search', isLoggedIn, async (req, res) => {
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 router.post('/search', catchAsync(async (req, res) => {
+    const { sortOrder, displayLimit, sortCriteria } = resolveFinanceListDisplay(req.body, 'update_date');
     const { date, date2, cf, expense_item, income_item, dedu_item, saving_item, payment_type, user, keyword, sub_tag } = req.body;
 
     // 検索クエリ用のオブジェクト
@@ -741,7 +743,7 @@ router.post('/search', catchAsync(async (req, res) => {
         query.content = { $regex: escapeRegExp(keyword.trim()), $options: 'i' };
     }
     // 条件に一致するデータを取得
-    const finances = await Finance.find(query).sort({ update_date: -1 })
+    const finances = await Finance.find(query).sort(sortCriteria).limit(displayLimit)
         .populate('user')  // ← displayname を使うために追加！
         .populate({
             path: 'group',
@@ -782,6 +784,7 @@ router.post('/search', catchAsync(async (req, res) => {
         finances,
         count,
         page: 'search',
+        sortOrder, displayLimit,
         currentUser,  // ← これを追加！
         enableFilterBar: true,
         filters: {
@@ -805,6 +808,7 @@ router.post('/search', catchAsync(async (req, res) => {
 
 // 検索結果（GET, 並び替え・追加絞り込み用）
 router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
+  const { sortOrder, displayLimit, sortCriteria } = resolveFinanceListDisplay(req.query, 'update_date');
   // 正規化: 同名パラメータ重複による配列化を回避
   const pick = v => Array.isArray(v) ? v[v.length - 1] : v;
   const from = pick(req.query.from);
@@ -861,7 +865,7 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
     query.content = { $regex: escapeRegExp(keyword.trim()), $options: 'i' };
   }
 
-  const finances = await Finance.find(query).sort({ update_date: -1 })
+  const finances = await Finance.find(query).sort(sortCriteria).limit(displayLimit)
     .populate('user')
     .populate({ path: 'group', populate: { path: 'createdBy' } });
 
@@ -897,6 +901,7 @@ router.get('/search/results', isLoggedIn, catchAsync(async (req, res) => {
     finances,
     count,
     page: 'search',
+        sortOrder, displayLimit,
     currentUser,
     enableFilterBar: true,
     filters: {

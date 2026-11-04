@@ -637,3 +637,16 @@
 .notice-summary-page .dashboard-yearly tbody tr.yearly-category-row>td,
 .notice-summary-page .dashboard-yearly tbody tr.yearly-category-row a{color:#17251b}
 .notice-summary-page .dashboard-yearly tbody tr.yearly-category-row a{text-decoration:underline !important;text-underline-offset:2px}
+
+/* Recent entries and search results: compact spacing without changing other list screens. */
+.finance-notice-row.finance-entry-row{min-height:0;padding-top:6px;padding-bottom:6px;row-gap:2px}
+.finance-notice-row.finance-entry-row::before{top:9px;bottom:9px}
+
+@media(max-width:575px){
+  .finance-list-count{left:78px;gap:6px !important}
+  .finance-list-count label[for="sortOrder"],.finance-list-count label[for="searchSortOrder"]{display:none}
+  .finance-list-count .form-select{font-size:.76rem;padding-left:7px}
+}
+@media(max-width:359px){
+  .finance-list-count label[for="limitSelect"],.finance-list-count label[for="searchLimitSelect"]{display:none}
+}
