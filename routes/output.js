@@ -3031,7 +3031,7 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
     const os = require('os');
     const path = require('path');
     const outputDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(os.homedir(), 'Downloads');
-    const outputPath = path.join(outputDir, `${year}サマリー.xlsx`);
+    const outputPath = path.join(outputDir, `${year}年度${selectedMonth}月サマリー.xlsx`);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Yearly Summary', {
@@ -3207,7 +3207,7 @@ router.get('/dashboard/yearly-m-exls', isLoggedIn, async (req, res) => {
 
     await workbook.xlsx.writeFile(outputPath);
 
-    res.download(outputPath, `${year}サマリー.xlsx`, (err) => {
+    res.download(outputPath, `${year}年度${selectedMonth}月サマリー.xlsx`, (err) => {
       fs.unlink(outputPath, () => {});
       if (err) {
         console.error('❌ 年次Excelダウンロードエラー:', err);
@@ -3435,7 +3435,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
     const path = require('path');
     const now = new Date();
     const outputDir = process.env.NODE_ENV === 'production' ? '/tmp' : path.join(os.homedir(), 'Downloads');
-    const outputPath = path.join(outputDir, `${year}サマリー.xlsx`);
+    const outputPath = path.join(outputDir, `${year}年度${selectedMonth}月サマリー.xlsx`);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Yearly Summary', {
@@ -3611,7 +3611,7 @@ router.get('/dashboard/yearly-g-exls', isLoggedIn, async (req, res) => {
 
     await workbook.xlsx.writeFile(outputPath);
 
-    res.download(outputPath, `${year}サマリー.xlsx`, (err) => {
+    res.download(outputPath, `${year}年度${selectedMonth}月サマリー.xlsx`, (err) => {
       fs.unlink(outputPath, () => {});
       if (err) {
         console.error('❌ 年次Excelダウンロードエラー:', err);
