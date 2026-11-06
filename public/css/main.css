@@ -4271,3 +4271,82 @@ body[data-service="myself"] a.page-guide-link:hover{background:#304c6b !importan
 body[data-service="myself"] a.page-guide-link:focus-visible{outline-color:#3c5f86}
 .page-registration-title{font-size:1.1rem;font-weight:700}
 @media print{.page-guide-link{display:none !important}}
+
+/* Settings and account pages follow the refreshed, calm service palette. */
+.app-settings-page {
+  --settings-accent: #426456;
+  --settings-ink: #304b3a;
+  --settings-soft: #edf3ed;
+  --settings-border: #dbe5dc;
+  color: #293d32;
+}
+.app-settings-page .settings-page-heading { padding: 0; background: transparent; color: var(--settings-ink); margin-bottom: 28px; }
+.app-settings-page .settings-page-heading h1 { background: transparent; color: var(--settings-ink); text-align: left; font-size: clamp(1.6rem, 3vw, 2rem); line-height: 1.4; }
+.app-settings-page .settings-page-heading p { margin-top: 8px; color: #69796e; line-height: 1.8; font-size: .9rem; }
+.app-settings-page .settings-shell { border-color: var(--settings-border); border-radius: 20px; box-shadow: 0 10px 30px rgba(48,75,58,.05); }
+.app-settings-page .settings-sidebar { background: #f5f8f4; border-color: var(--settings-border); }
+.app-settings-page .settings-nav-link { color: #69796e; font-size: .9rem; }
+.app-settings-page .settings-nav-link:hover,
+.app-settings-page .settings-nav-link.is-active { color: var(--settings-ink); background: var(--settings-soft); border-color: var(--settings-accent); }
+.app-settings-page .settings-content { padding: 32px 24px; }
+.app-settings-page .settings-section-title { margin-bottom: 24px; flex-wrap: wrap; }
+.app-settings-page .settings-section-title h2 { color: var(--settings-ink); font-size: 1.25rem; }
+.app-settings-page .settings-section-title p,
+.app-settings-page .settings-card p { color: #69796e; font-size: .86rem; line-height: 1.7; }
+.app-settings-page .settings-card { border-color: var(--settings-border); border-radius: 14px; }
+.app-settings-page .settings-card h3 { color: var(--settings-ink); font-size: 1rem; }
+.app-settings-page .settings-btn { background: var(--settings-accent); border: 1px solid var(--settings-accent); font-size: .85rem; border-radius: 8px; }
+.app-settings-page .settings-btn:hover { background: #345244; border-color: #345244; }
+.app-settings-page .settings-btn-secondary { background: #fff; color: var(--settings-ink); border-color: #b9cdbb; }
+.app-settings-page .settings-btn-secondary:hover { background: var(--settings-soft); }
+.app-settings-page .settings-btn-danger { background: #fff; border-color: #e6c9c5; color: #ac4840; }
+.app-settings-page .settings-btn-danger:hover { background: #fcf0ee; border-color: #ac4840; }
+.app-settings-page .settings-count,
+.app-settings-page .settings-group-chip { background: var(--settings-soft); color: var(--settings-ink); border-color: #b9cdbb; }
+.app-settings-page .settings-success,
+.app-settings-page .settings-owner { color: var(--settings-accent); }
+.app-settings-page .settings-name-form,
+.app-settings-page .settings-member-card.is-owner,
+.app-settings-page .settings-service-grid label { background: #f5f8f4; }
+.app-settings-page .settings-group-row:hover { color: var(--settings-ink); background: #f5f8f4; border-color: #a5bda9; }
+.app-settings-page .settings-two-column { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; }
+.app-settings-page :is(.settings-member-head,.settings-invite-row,.settings-profile-card) { flex-wrap: wrap; }
+.app-settings-page :is(.settings-member-head,.settings-invite-row,.settings-profile-card,.settings-group-row) > span,
+.app-settings-page .settings-profile-card > div { min-width: 0; overflow-wrap: anywhere; }
+.app-settings-page .form-control,
+.app-settings-page .form-select { min-height: 44px; border-color: #d3dfd5; border-radius: 8px; font-size: .9rem; }
+.app-settings-page :is(.form-control,.form-select):focus { border-color: #426456; box-shadow: 0 0 0 3px rgba(66,100,86,.12); }
+.app-settings-page input[type="checkbox"] { accent-color: #426456; }
+.app-settings-page .form-check-input:checked { background-color: #426456; border-color: #426456; }
+.app-settings-page :is(a,button,input):focus-visible { outline: 2px solid #426456; outline-offset: 3px; }
+.settings-back-link { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; color: #426456; font-size: .86rem; text-decoration: none; }
+.settings-back-link:hover { color: #304b3a; text-decoration: underline; }
+.settings-profile-toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.settings-profile-editor { padding: 32px; }
+.settings-profile-summary { display: flex; align-items: flex-start; gap: 20px; }
+.settings-profile-summary > div { flex: 1; min-width: 0; }
+.settings-profile-summary .settings-profile-avatar { width: 80px; height: 80px; }
+.settings-profile-summary .list-group-item { border-color: #dbe5dc; font-size: .85rem; gap: 12px; }
+.settings-profile-summary .list-group-item a { color: #426456; overflow-wrap: anywhere; }
+.settings-profile-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 24px; }
+.app-settings-page .settings-form-heading { margin: 24px 0 18px; color: #304b3a; font-weight: 700; font-size: 1.05rem; }
+.settings-profile-editor .form-label { font-size: .86rem; font-weight: 600; }
+.settings-profile-editor hr { background-color: #c8d6ca; opacity: .65; margin: 26px 0; }
+.settings-profile-editor .service-group-row { background: #f5f8f4; border-color: #dbe5dc; }
+.settings-profile-dates { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.app-settings-page .settings-profile-dates p { font-size: .75rem; }
+.settings-account-danger { padding: 0 0 4px; }
+.settings-account-danger form { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+@media (max-width: 1000px) {
+  .app-settings-page .settings-two-column { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .app-settings-page .settings-content { padding: 24px 14px; }
+  .settings-profile-editor { padding: 18px; }
+  .settings-profile-fields { grid-template-columns: 1fr; }
+  .settings-profile-summary { flex-direction: column; }
+  .settings-profile-summary > div { width: 100%; }
+  .settings-profile-summary .d-flex { flex-wrap: wrap; gap: 8px; }
+  .settings-profile-summary .list-group { width: 100%; }
+  .app-settings-page .settings-group-picker { align-items: stretch; flex-direction: column; }
+}
