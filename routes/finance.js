@@ -2272,6 +2272,7 @@ router.get('/budget', isLoggedIn, async (req, res) => {
       customLabel: item.customLabel
     })),
     financeTagRegistrationEnabled: req.user?.financeTagRegistrationEnabled === true,
+    financeTagInputEnabled: req.user?.financeTagInputEnabled !== false,
     financeEntryMode: req.user?.financeEntryMode === 'list' ? 'list' : 'step'
   });
 });

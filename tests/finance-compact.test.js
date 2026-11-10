@@ -90,3 +90,32 @@ test('conversation forces step flow and inherits only date and categories on con
   for(const field of ['sub_tag','content','amount','payment_type']) assert.equal(config.values[field],'');
   assert.equal(f.saved.length,0);
 });
+
+test('tag input preference belongs to the actor and validates submitted choices', async () => {
+  const f = fixture();
+  const res = await f.call('post', '/budget/tag-input-settings', {body:{tag_input:'disabled',userId:other}});
+  assert.equal(res.url, '/finance/budget');
+  assert.deepEqual(f.preferences, [{id:user,update:{financeTagInputEnabled:false}}]);
+  const invalid = await f.call('post', '/budget/tag-input-settings', {body:{tag_input:'invalid'}});
+  assert.equal(invalid.code,400);
+  assert.equal(f.preferences.length,1);
+});
+test('disabling tag input hides the field and preserves existing tags on edit', async () => {
+  const f = fixture();
+  const actor = {_id:user,financeTagRegistrationEnabled:true,financeTagInputEnabled:false};
+  for (const path of ['/entry', '/entry-conversation', '/:id/compact']) {
+    const res = await f.call('get',path,{user:actor,params:{id:record}});
+    assert.equal(res.data.compactData.tagEnabled,false);
+  }
+  f.source.sub_tag = '元のタグ';
+  await f.call('post','/:id/compact',{user:actor,params:{id:record},body:{values:values()}});
+  assert.equal(f.source.sub_tag,'元のタグ');
+  await f.call('post','/entry-step',{user:actor,body:{values:values()}});
+  assert.equal(f.saved[1].sub_tag,undefined);
+});
+test('tag input is optional when enabled', async () => {
+  const f = fixture();
+  const res = await f.call('post','/entry-step',{body:{values:{...values(),sub_tag:''}}});
+  assert.equal(res.code,200);
+  assert.equal(f.saved[0].sub_tag,'');
+});

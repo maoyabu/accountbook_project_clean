@@ -43,6 +43,13 @@ module.exports = function createCompactRouter(deps) {
     req.flash('success', `新規登録を「${mode === 'list' ? '一覧方式' : 'ステップ方式'}」に変更しました`);
     res.redirect('/finance/budget');
   }));
+  router.post('/budget/tag-input-settings', isLoggedIn, wrap(async (req, res) => {
+    const preference = req.body.tag_input;
+    if (!['enabled', 'disabled'].includes(preference)) return res.status(400).send('入力時のタグ登録を選択してください');
+    await FinanceUser.findByIdAndUpdate(req.user._id, { financeTagInputEnabled: preference === 'enabled' });
+    req.flash('success', `入力時のタグ登録を「${preference === 'enabled' ? 'する' : 'しない'}」に更新しました`);
+    res.redirect('/finance/budget');
+  }));
   router.get('/entry-step', isLoggedIn, (req, res) => {
     const query = new URLSearchParams();
     for (const key of ['from', 'modal', 'returnTo']) if (typeof req.query[key] === 'string') query.set(key, req.query[key]);
@@ -61,7 +68,7 @@ module.exports = function createCompactRouter(deps) {
     }
     const options = await context(req, groupId, values.userId, values.date);
     if (!(options.categories[values.cf] || []).includes(values.category)) values.category = '';
-    res.render('finance/compact', { compactData: { mode: 'new', conversation, entryMode: !conversation && req.user.financeEntryMode === 'list' ? 'list' : 'step', values, options, continuing, reviewing: continuing, tagEnabled: req.user.financeTagRegistrationEnabled === true, returnTo: sanitizeReturnPath(req.query.returnTo, '/finance/list') }, embedded: req.query.modal === '1' });
+    res.render('finance/compact', { compactData: { mode: 'new', conversation, entryMode: !conversation && req.user.financeEntryMode === 'list' ? 'list' : 'step', values, options, continuing, reviewing: continuing, tagEnabled: req.user.financeTagRegistrationEnabled === true && req.user.financeTagInputEnabled !== false, returnTo: sanitizeReturnPath(req.query.returnTo, '/finance/list') }, embedded: req.query.modal === '1' });
   }
   router.get('/entry', isLoggedIn, wrap((req, res) => renderNew(req, res)));
   router.get('/entry-conversation', isLoggedIn, wrap((req, res) => renderNew(req, res, true)));
@@ -78,7 +85,7 @@ module.exports = function createCompactRouter(deps) {
       category: finance[categoryFields[finance.cf]] || '', sub_tag: finance.sub_tag || '', content: finance.content || '', amount: finance.amount, payment_type: finance.payment_type || '' };
     const options = await context(req, values.groupId, values.userId, values.date, finance.toObject(), true);
     if (options.userId !== values.userId) { values.userId = options.userId; values.payment_type = ''; }
-    res.render('finance/compact', { compactData: { mode: 'edit', id: idOf(finance), values, options, tagEnabled: req.user.financeTagRegistrationEnabled === true,
+    res.render('finance/compact', { compactData: { mode: 'edit', id: idOf(finance), values, options, tagEnabled: req.user.financeTagRegistrationEnabled === true && req.user.financeTagInputEnabled !== false,
       returnTo: sanitizeReturnPath(req.query.returnTo, '/finance/list') }, embedded: req.query.modal === '1' });
   }));
   // Previously opened forms and conversation input now confirm in the same compact screen.
@@ -95,7 +102,7 @@ module.exports = function createCompactRouter(deps) {
       sub_tag: typeof form.sub_tag === 'string' ? form.sub_tag : '', content: typeof form.content === 'string' ? form.content : '',
       amount: typeof form.amount === 'string' || typeof form.amount === 'number' ? form.amount : '', payment_type: typeof form.payment_type === 'string' ? form.payment_type : '' };
     res.render('finance/compact', { compactData: { mode: original ? 'edit' : 'new', id: original ? idOf(original) : undefined,
-      values, options, reviewing: true, continueConversation: req.body.nextAction === 'conversation', tagEnabled: req.user.financeTagRegistrationEnabled === true,
+      values, options, reviewing: true, continueConversation: req.body.nextAction === 'conversation', tagEnabled: req.user.financeTagRegistrationEnabled === true && req.user.financeTagInputEnabled !== false,
       returnTo: sanitizeReturnPath(req.body.returnTo, '/finance/list') }, embedded: req.body.financeEditModal === '1' });
   }
   router.post('/entry', isLoggedIn, wrap(reviewForm));
@@ -111,7 +118,7 @@ module.exports = function createCompactRouter(deps) {
       const options = await context(req, values.groupId, values.userId, values.date, sameContext ? original.toObject() : null);
       const errors = validateValues(values, options);
       if (Object.keys(errors).length) return res.status(400).json({ ok: false, errors });
-      const payload = { ...payloadFromValues(values, req.user.financeTagRegistrationEnabled === true), user: values.userId, group: values.groupId };
+      const payload = { ...payloadFromValues(values, req.user.financeTagRegistrationEnabled === true && req.user.financeTagInputEnabled !== false), user: values.userId, group: values.groupId };
       const duplicateQuery = buildDuplicateQuery(payload);
       if (original && !copy) duplicateQuery._id = { $ne: original._id };
       if (!req.body.confirmDuplicate && await Finance.findOne(duplicateQuery)) return res.status(409).json({ ok: false, duplicate: true, message: '同じ内容の入力があります。この内容で保存しますか？' });

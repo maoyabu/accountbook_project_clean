@@ -148,3 +148,21 @@ test('conversation date choice advances automatically to income/expense selectio
   await $('compactStepField').children[1].children[0].fire();
   assert.equal($('compactStepTitle').textContent,'収支区分');assert.equal($('compactRows').children.length,1);
 });
+
+test('disabled tag input is omitted from list and editing screens', () => {
+  const list = setup('new','list',false,{tagEnabled:false});
+  assert.equal(list.$('compactListFields').children.length,6);
+  assert.equal(list.$('compactListFields').children.some(section => section.children[0].textContent === 'タグ'),false);
+  const edit = setup('edit','step',false,{tagEnabled:false});
+  assert.equal(edit.$('compactRows').children.length,6);
+  assert.equal(edit.$('compactRows').children.some(row => row.children[0].textContent === 'タグ'),false);
+});
+test('disabled tag input automatically advances from category to content', async () => {
+  const {$} = setup('new','step',false,{tagEnabled:false});
+  await $('compactStepForm').fire('submit');
+  await $('compactStepField').children[1].children[0].fire();
+  await $('compactStepField').children[1].children[0].fire();
+  assert.equal($('compactStepTitle').textContent,'内容');
+  assert.equal($('compactProgress').textContent,'STEP 4 / 6');
+  assert.equal($('compactSkip').classList.contains('d-none'),true);
+});

@@ -1,7 +1,8 @@
 (() => {
   const config = JSON.parse(document.getElementById('compactData').textContent);
   let values = { ...config.values }, options = config.options;
-  const steps = ['date', 'cf', 'category', 'sub_tag', 'content', 'amount', 'payment_type'];
+  const steps = ['date', 'cf', 'category', 'sub_tag', 'content', 'amount', 'payment_type']
+    .filter(field => field !== 'sub_tag' || config.tagEnabled);
   const labels = { date: '年月日', cf: '収支区分', category: '詳細区分', sub_tag: 'タグ', content: '内容', amount: '金額', payment_type: '支払種別', groupId: 'グループ', userId: '使用者' };
   const $ = id => document.getElementById(id);
   let index = 0, reviewing = config.mode === 'edit' || config.reviewing === true, busy = false, copy = false, editingField;
@@ -84,7 +85,7 @@
     }
     if (field === 'sub_tag') {
       const hint = document.createElement('p'); hint.className = 'compact-hint';
-      hint.textContent = !config.tagEnabled ? 'タグ登録は設定で無効になっています。SKIPで進めます。' : tags().length ? '候補のタグを選択できます。新しいタグも入力できます。不要ならSKIP。' : 'タグ候補はありません。不要ならSKIPで進めます。'; host.append(hint);
+      hint.textContent = tags().length ? '候補のタグを選択できます。新しいタグも入力できます。不要ならSKIP。' : 'タグ候補はありません。不要ならSKIPで進めます。'; host.append(hint);
       if (config.tagEnabled) choiceTags(host, tags(), input);
     }
     return input;
