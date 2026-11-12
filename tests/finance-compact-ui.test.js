@@ -19,17 +19,18 @@ const initial = {groupId:'g',userId:'u',date:'2026-11-03',cf:'',category:'',sub_
 const options = {userId:'u',groups:[{id:'g',name:'家族'}],users:[{id:'u',name:'本人'}],categories:{支出:['食費'],収入:['給与'],控除:['税'],貯蓄:['預金']},payments:['現金'],commonTags:[]};
 function setup(mode='new', entryMode='step', conversation=false, overrides={}) {
   const ids = {}; const $ = name => ids[name] ||= new Element(); const calls = [];
+  const modal = {shown:false,show(){this.shown=true;},hide(){this.shown=false;}};
   const values = mode === 'edit' ? {...initial,cf:'支出',category:'食費',content:'昼食',amount:500,payment_type:'現金'} : initial;
   $('compactData').textContent = JSON.stringify({mode,entryMode,conversation,id:'record',values,options,tagEnabled:true,returnTo:'/finance/list',...overrides});
   const window = {addEventListener(){},location:{origin:'http://localhost'},confirm:()=>true}; window.parent = window;
   const runtime = {
     document:{getElementById:$,createElement:tag=>new Element(tag)}, Option:function(text,value){this.textContent=text;this.value=value;}, URL, URLSearchParams,
-    bootstrap:{Modal:{getOrCreateInstance:()=>({show(){},hide(){}})}}, window,
+    bootstrap:{Modal:{getOrCreateInstance:()=>modal}}, window,
     fetch:async(url,params)=>{calls.push({url,params});return {ok:true,json:async()=>params?.method === 'POST' ? {ok:true,continueUrl:'/finance/entry-step?from=saved'} : {ok:true,options:overrides.options || options}};}
   };
   if (conversation) vm.runInNewContext(fs.readFileSync('public/js/financeConversation.js','utf8'),runtime);
   vm.runInNewContext(fs.readFileSync('public/js/financeCompact.js','utf8'),runtime);
-  return {$,calls,window};
+  return {$,calls,window,modal};
 }
 test('seven steps collapse to text rows, allow field modal correction and save-and-continue',async()=>{
   const {$,calls,window}=setup();
@@ -96,8 +97,7 @@ test('list mode starts with date only and applies selected fields through the ed
   };
   await row('収支区分').fire();
   await $('compactModalField').children[1].children[0].fire();
-  assert.equal(row('詳細区分'),undefined);
-  await $('compactModalForm').fire('submit');
+  assert.equal(row('詳細区分').children[1].textContent,'');
   assert.equal(row('収支区分').children[1].textContent,'支出');
   assert.equal(row('詳細区分').children[1].textContent,'');
   await apply('詳細区分','食費'); await apply('タグ','食品');
@@ -183,3 +183,36 @@ test('disabled tag input automatically advances from category to content', async
   assert.equal($('compactProgress').textContent,'STEP 4 / 6');
   assert.equal($('compactSkip').classList.contains('d-none'),true);
 });
+
+for (const [mode, entryMode] of [['new','list'], ['new','step'], ['edit','step']]) {
+  test(`modal selections close immediately and text waits for apply (${mode}, ${entryMode})`, async () => {
+    const {$,modal,calls} = setup(mode,entryMode,false,{
+      reviewing:true,
+      values:{...initial,cf:'支出',category:'食費',content:'昼食',amount:'500',payment_type:'現金'},
+      options:{...options,commonTags:[{category:'食費',tags:[{name:'食品'}]}]}
+    });
+    const row = label => $('compactRows').children.find(item=>item.children[0].textContent===label);
+    for (const [label,value] of [['収支区分','支出'],['詳細区分','食費'],['タグ','食品'],['支払種別','現金']]) {
+      await row(label).fire();
+      assert.equal(modal.shown,true);
+      const host=$('compactModalField');
+      const chips=host.children[label==='タグ' ? 2 : 1];
+      await chips.children.find(button=>button.textContent===value).fire();
+      assert.equal(modal.shown,false);
+      assert.equal(row(label).children[1].textContent,value);
+    }
+    for (const [label,value,expected] of [['内容','夕食','夕食'],['金額','850','¥850']]) {
+      const previous=row(label).children[1].textContent;
+      await row(label).fire();
+      const input=$('compactModalField').querySelector(); input.value=value;
+      await input.fire('input'); await input.fire('change');
+      assert.equal(modal.shown,true);
+      assert.equal(row(label).children[1].textContent,previous);
+      assert.equal($('compactModalApply').classList.contains('d-none'),false);
+      await $('compactModalForm').fire('submit');
+      assert.equal(modal.shown,false);
+      assert.equal(row(label).children[1].textContent,expected);
+    }
+    assert.equal(calls.length,0);
+  });
+}

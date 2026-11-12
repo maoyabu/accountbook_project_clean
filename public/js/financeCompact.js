@@ -86,7 +86,7 @@
     }
     if (field === 'sub_tag') {
       const hint = document.createElement('p'); hint.className = 'compact-hint';
-      hint.textContent = tags().length ? '候補のタグを選択できます。新しいタグも入力できます。不要ならSKIP。' : 'タグ候補はありません。不要ならSKIPで進めます。'; host.append(hint);
+      hint.textContent = tags().length ? '候補のタグを選択できます。新しいタグも入力できます。' : '新しいタグを入力できます。'; host.append(hint);
       if (config.tagEnabled) choiceTags(host, tags(), input);
     }
     return input;
@@ -149,18 +149,27 @@
     if (busy) return;
     voice?.stop();
     editingField = field; $('compactModalTitle').textContent = labels[field]; $('compactModalError').textContent = '';
-    createField(field, $('compactModalField'));
+    const input = createField(field, $('compactModalField'));
+    if (['cf', 'category', 'sub_tag', 'payment_type'].includes(field)) {
+      input.onChoice = value => applyModal(field, value);
+    }
+    $('compactModalApply').classList.toggle('d-none', ['cf', 'category', 'payment_type'].includes(field));
     modal = bootstrap.Modal.getOrCreateInstance($('compactFieldModal')); modal.show();
   }
   $('compactFieldModal').addEventListener('shown.bs.modal', () => { const field = $('compactModalField'); const target = field.querySelector('button[aria-pressed="true"]') || field.querySelector('button, input:not([type="hidden"])'); target?.focus(); });
-  $('compactModalForm').addEventListener('submit', async event => {
-    event.preventDefault(); if (busy) return; busy = true; $('compactModalApply').disabled = true;
+  async function applyModal(field, value) {
+    if (busy || !field || editingField !== field) return;
+    busy = true; $('compactModalApply').disabled = true;
     try {
-      await apply(editingField, $('compactModalField').querySelector('input,select').value);
+      await apply(field, value);
       if (!reviewing) { const invalid = steps.slice(0, index).findIndex(field => errorFor(field)); if (invalid >= 0) index = invalid; }
-      render(); modal.hide();
+      render(); modal.hide(); editingField = undefined;
     } catch (err) { $('compactModalError').textContent = err.message; }
     finally { busy = false; $('compactModalApply').disabled = false; }
+  }
+  $('compactModalForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    await applyModal(editingField, $('compactModalField').querySelector('input,select').value);
   });
   async function completeStep(value) {
     if (busy || reviewing) return;
