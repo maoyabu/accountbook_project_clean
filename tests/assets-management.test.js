@@ -57,15 +57,48 @@ function request(body = {}) {
 const assetData = { _id: assetId, asset_cf: '金融資産', asset_item: '預貯金', content: '普通預金', amount: 200000, monetary_unit: '円', entry_date: new Date('2026-01-01'), update_date: new Date('2026-11-01') };
 const currentAsset = extra => { const data = { ...assetData, ...extra }; return { ...data, toObject: () => ({ ...data }) }; };
 
-test('overview uses current assets rather than an old inventory snapshot', async () => {
+test('overview uses the latest inventory amounts and sums the displayed assets', async () => {
   const { state, route } = setup();
   state.assets = [currentAsset(), currentAsset({ _id: inventoryId, asset_cf: '負債', asset_item: '住宅ローン', amount: -50000 })];
-  state.inventories = [{ _id: inventoryId, inventoryMonth: new Date('2026-09-01'), totalYen: 999999, totalByCf: { 金融資産: 999999 }, items: [] }];
+  state.inventories = [
+    { inventoryMonth: new Date('2026-06-01'), totalByCf: { 金融資産: 100000 }, items: [{ asset: assetId, amount: 100000, amountYen: 100000 }] },
+    { inventoryMonth: new Date('2026-09-01'), totalByCf: { 金融資産: 350000, 負債: -30000 }, items: [
+      { asset: new mongoose.Types.ObjectId(assetId), amount: 350000, amountYen: 350000, updatedAt: new Date('2026-10-01') },
+      { asset: inventoryId, amount: -30000, amountYen: -30000 }
+    ] }
+  ];
   const res = response(); await route('get', '/display').at(-1)(request(), res);
-  assert.equal(res.view, 'assets/display'); assert.equal(res.locals.totalYen, 150000);
-  assert.equal(res.locals.assets[0].amountYen, 200000); assert.equal(res.locals.assets[1].amountYen, -50000);
-  assert.equal(res.locals.chartData.series.financial[0], 999999);
+  assert.equal(res.view, 'assets/display'); assert.equal(res.locals.totalYen, 320000);
+  assert.equal(res.locals.assets[0].amount, 350000); assert.equal(res.locals.assets[0].amountYen, 350000);
+  assert.equal(res.locals.assets[0].update_date.getTime(), new Date('2026-10-01').getTime());
+  assert.equal(res.locals.assets[1].amountYen, -30000);
+  assert.equal(res.locals.totalByCf['金融資産'], 350000); assert.equal(res.locals.totalByCf['負債'], -30000);
+  assert.equal(res.locals.chartData.series.financial[0], 100000);
   assert.equal(state.queries[0][1].group, 'group-a');
+  assert.equal(state.queries[1][1].group, 'group-a');
+  assert.equal(state.assets[0].amount, 200000);
+});
+
+test('overview falls back to registered amounts for assets without inventory', async () => {
+  for (const inventories of [[], [{ inventoryMonth: new Date('2026-09-01'), items: [], totalByCf: {} }]]) {
+    const { state, route } = setup(); state.assets = [currentAsset()]; state.inventories = inventories;
+    const res = response(); await route('get', '/display').at(-1)(request(), res);
+    assert.equal(res.locals.assets[0].amount, 200000);
+    assert.equal(res.locals.assets[0].amountYen, 200000); assert.equal(res.locals.totalYen, 200000);
+  }
+});
+
+test('overview preserves inventory valuations for quantities and zero balances', async () => {
+  const { state, route } = setup();
+  state.assets = [currentAsset({ asset_item: '株式', monetary_unit: '数量', code: '1234', amount: 10 }), currentAsset({ _id: inventoryId })];
+  state.inventories = [{ inventoryMonth: new Date('2026-09-01'), totalByCf: {}, items: [
+    { asset: assetId, amount: 20, amountYen: 60000 },
+    { asset: inventoryId, amount: 0, amountYen: 0 }
+  ] }];
+  const res = response(); await route('get', '/display').at(-1)(request(), res);
+  assert.equal(res.locals.assets[0].amount, 20); assert.equal(res.locals.assets[0].amountYen, 60000);
+  assert.equal(res.locals.assets[1].amount, 0); assert.equal(res.locals.assets[1].amountYen, 0);
+  assert.equal(res.locals.totalYen, 60000); assert.equal(res.locals.showRateInfo, false);
 });
 
 test('invalid asset data and missing group are rejected before mutation', () => {

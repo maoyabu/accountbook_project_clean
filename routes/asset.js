@@ -637,16 +637,29 @@ router.get('/display', ensureAuthenticated, async (req, res) => {
           .populate('createdBy', 'username displayname').populate('updatedBy', 'username displayname');
         const inventories = await AssetInventory.find({ group: groupId }).sort({ inventoryMonth: 1 });
         const latestInventory = inventories[inventories.length - 1] || null;
+        const latestInventoryItems = new Map(
+          (latestInventory?.items || []).map(item => [String(item.asset), item])
+        );
         const rateCache = {};
         const stockPrices = {};
         let totalYen = 0;
         const totalByCf = { 金融資産: 0, 実物資産: 0, 無形資産: 0, 負債: 0 };
         const assetDisplayList = [];
         for (const asset of assets) {
-          const amountYen = await calculateAssetYen(asset, rateCache, stockPrices);
+          const inventoryItem = latestInventoryItems.get(String(asset._id));
+          const displayAsset = asset.toObject();
+          // 棚卸し済みの資産は保存した数量・円換算金額をそのまま表示する。
+          // 最新の棚卸しに含まれない新規資産は登録内容から計算する。
+          if (inventoryItem) {
+            displayAsset.amount = inventoryItem.amount;
+            displayAsset.update_date = inventoryItem.updatedAt || latestInventory.updatedAt;
+          }
+          const amountYen = inventoryItem
+            ? inventoryItem.amountYen
+            : await calculateAssetYen(asset, rateCache, stockPrices);
           totalYen += amountYen;
           if (Object.prototype.hasOwnProperty.call(totalByCf, asset.asset_cf)) totalByCf[asset.asset_cf] += amountYen;
-          assetDisplayList.push({ ...asset.toObject(), amountYen });
+          assetDisplayList.push({ ...displayAsset, amountYen });
         }
         res.render('assets/display', {
             assets: assetDisplayList,
