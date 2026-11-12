@@ -25,15 +25,8 @@
       </div>
     </form>
   </section>
-  <section id="compactListPanel" class="d-none" aria-label="入力項目一覧">
-    <form id="compactListForm" class="no-js-submit">
-      <div id="compactListFields"></div>
-      <div class="compact-step-actions"><button type="submit" id="compactListNext" class="btn btn-primary">確認へ</button></div>
-    </form>
-  </section>
   <div id="compactConfirm" class="d-none">
-    <p class="compact-hint">修正する項目をタップしてください。</p>
-    <button type="button" id="compactListBack" class="compact-copy d-none">入力一覧に戻る</button>
+    <p class="compact-hint"><%= compactData.mode === 'new' ? '入力する項目をタップして、内容を反映してください。' : '修正する項目をタップしてください。' %></p>
     <div class="compact-save-actions">
       <button type="button" id="compactSave" class="btn btn-primary">保存</button>
       <button type="button" id="compactContinue" class="btn btn-outline-primary">続けて入力</button>

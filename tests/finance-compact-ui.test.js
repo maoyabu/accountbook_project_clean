@@ -78,22 +78,39 @@ test('choice tags show the current selection and switch to only one selected tag
   assert.deepEqual($('compactModalField').children[1].children.map(button=>button.textContent),['給与']);
 });
 
-test('list mode shows all editable fields, preserves values and reaches the same confirmation and save',async()=>{
+test('list mode starts with date only and applies selected fields through the edit modal',async()=>{
   const {$,calls}=setup('new','list');
-  assert.equal($('compactListPanel').classList.contains('d-none'),false);
   assert.equal($('compactStepPanel').classList.contains('d-none'),true);
-  const host = key => $('compactListFields').children[['date','cf','category','sub_tag','content','amount','payment_type'].indexOf(key)].children[1];
-  const choose = async(key,value)=>{await host(key).children[1].children.find(button=>button.textContent===value).fire();};
-  const type = async(key,value)=>{host(key).querySelector().value=value;await host(key).querySelector().fire('input');};
-  assert.equal($('compactListFields').children.length,7);
-  await type('content','昼食'); await type('amount','850');
-  await choose('cf','支出'); await choose('category','食費'); await choose('payment_type','現金');
-  assert.equal(host('content').querySelector().value,'昼食'); assert.equal(host('amount').querySelector().value,'850');
-  await $('compactListForm').fire('submit');
-  assert.equal($('compactRows').children.length,7); assert.equal($('compactListPanel').classList.contains('d-none'),true);
-  await $('compactListBack').fire(); assert.equal(host('content').querySelector().value,'昼食');
-  await $('compactListForm').fire('submit'); await $('compactSave').fire();
-  assert.equal(JSON.parse(calls.at(-1).params.body).values.amount,'850');
+  assert.equal($('compactConfirm').classList.contains('d-none'),false);
+  const row = key => $('compactRows').children.find(item=>item.children[0].textContent===key);
+  assert.equal($('compactRows').children.length,6);
+  assert.equal(row('年月日').children[1].textContent,initial.date);
+  assert.equal(row('詳細区分'),undefined);
+  for (const item of $('compactRows').children.slice(1)) assert.equal(item.children[1].textContent,'');
+  const apply = async(label,value)=>{
+    await row(label).fire();
+    const host=$('compactModalField');
+    if(host.querySelector().type==='hidden') await host.children[1].children.find(button=>button.textContent===value).fire();
+    else host.querySelector().value=value;
+    await $('compactModalForm').fire('submit');
+  };
+  await row('収支区分').fire();
+  await $('compactModalField').children[1].children[0].fire();
+  assert.equal(row('詳細区分'),undefined);
+  await $('compactModalForm').fire('submit');
+  assert.equal(row('収支区分').children[1].textContent,'支出');
+  assert.equal(row('詳細区分').children[1].textContent,'');
+  await apply('詳細区分','食費'); await apply('タグ','食品');
+  await apply('収支区分','収入');
+  assert.equal(row('詳細区分').children[1].textContent,'');
+  assert.equal(row('タグ').children[1].textContent,'');
+  await apply('詳細区分','給与');
+  await $('compactSave').fire(); assert.equal(calls.length,0);
+  assert.match($('compactError').textContent,/内容/);
+  await apply('内容','給与振込'); await apply('金額','850'); await apply('支払種別','現金');
+  await $('compactSave').fire();
+  const saved=JSON.parse(calls.at(-1).params.body).values;
+  assert.equal(saved.amount,'850'); assert.equal(saved.cf,'収入'); assert.equal(saved.category,'給与');
 });
 
 test('conversation uses shared completed rows and confirmation and continues with previous record',async()=>{
@@ -110,7 +127,7 @@ for (const [entryMode, conversation] of [['step',false],['list',false],['step',t
   test(`continuation uses modal-only confirmation (${entryMode}, voice=${conversation})`,async()=>{
     const {$,calls}=setup('new',entryMode,conversation,{continuing:true,reviewing:true,values:{...initial,cf:'支出',category:'食費'}});
     assert.equal($('compactRows').children.length,7);
-    for (const panel of ['compactStepPanel','compactListPanel','compactListBack']) assert.equal($(panel).classList.contains('d-none'),true);
+    for (const panel of ['compactStepPanel']) assert.equal($(panel).classList.contains('d-none'),true);
     assert.equal($('compactConfirm').classList.contains('d-none'),false);
     await $('compactSave').fire();assert.equal(calls.length,0);
     assert.match($('compactError').textContent,/内容/);
@@ -151,8 +168,8 @@ test('conversation date choice advances automatically to income/expense selectio
 
 test('disabled tag input is omitted from list and editing screens', () => {
   const list = setup('new','list',false,{tagEnabled:false});
-  assert.equal(list.$('compactListFields').children.length,6);
-  assert.equal(list.$('compactListFields').children.some(section => section.children[0].textContent === 'タグ'),false);
+  assert.equal(list.$('compactRows').children.length,5);
+  assert.equal(list.$('compactRows').children.some(row => row.children[0].textContent === 'タグ'),false);
   const edit = setup('edit','step',false,{tagEnabled:false});
   assert.equal(edit.$('compactRows').children.length,6);
   assert.equal(edit.$('compactRows').children.some(row => row.children[0].textContent === 'タグ'),false);

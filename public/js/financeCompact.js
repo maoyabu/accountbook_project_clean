@@ -5,9 +5,9 @@
     .filter(field => field !== 'sub_tag' || config.tagEnabled);
   const labels = { date: '年月日', cf: '収支区分', category: '詳細区分', sub_tag: 'タグ', content: '内容', amount: '金額', payment_type: '支払種別', groupId: 'グループ', userId: '使用者' };
   const $ = id => document.getElementById(id);
-  let index = 0, reviewing = config.mode === 'edit' || config.reviewing === true, busy = false, copy = false, editingField;
+  const listMode = config.mode === 'new' && config.entryMode === 'list';
+  let index = 0, reviewing = config.mode === 'edit' || config.reviewing === true || listMode, busy = false, copy = false, editingField;
   let modal, voice;
-  const listMode = config.mode === 'new' && config.entryMode === 'list' && !config.continuing;
   const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
   function errorFor(field, candidate = values) {
     if (field === 'date' && !validDate(candidate.date)) return '有効な年月日を入力してください';
@@ -21,6 +21,7 @@
   function labelValue(field) {
     if (field === 'groupId') return options.groups.find(group => group.id === values.groupId)?.name || '未選択';
     if (field === 'userId') return options.users.find(user => user.id === values.userId)?.name || '未選択';
+    if (listMode && !String(values[field] ?? '').trim()) return '';
     if (field === 'amount') return String(values.amount).trim() !== '' ? `¥${Number(values.amount).toLocaleString('ja-JP')}` : '未入力';
     if (field === 'sub_tag') return values.sub_tag || 'なし';
     return values[field] || '未入力';
@@ -90,25 +91,6 @@
     }
     return input;
   }
-  function renderList() {
-    $('compactListFields').replaceChildren();
-    steps.forEach(field => {
-      const section = document.createElement('div'); section.className = 'compact-list-field';
-      const label = document.createElement('label'); label.textContent = labels[field];
-      const host = document.createElement('div'); host.id = `compactList-${field}`;
-      label.setAttribute('for', host.id + 'Input'); section.append(label); section.append(host);
-      const input = createField(field, host, async value => {
-        if (busy) return;
-        if (!['date', 'cf', 'category'].includes(field)) { values[field] = value; return; }
-        busy = true; $('compactListNext').disabled = true;
-        try { await apply(field, value); renderList(); $('compactError').classList.add('d-none'); }
-        catch (err) { values[field] = value; showError(err.message); }
-        finally { busy = false; $('compactListNext').disabled = false; }
-      });
-      if (['content', 'amount', 'sub_tag'].includes(field)) input.addEventListener('input', () => { values[field] = input.value; });
-      $('compactListFields').append(section);
-    });
-  }
   function render() {
     $('compactIdentity').replaceChildren();
     ['groupId', 'userId'].forEach(field => {
@@ -117,9 +99,10 @@
       element.textContent = `${labels[field]}　${labelValue(field)}`; $('compactIdentity').append(element);
     });
     $('compactRows').replaceChildren();
-    const visible = reviewing ? steps : steps.slice(0, index);
+    const visible = (reviewing ? steps : steps.slice(0, index))
+      .filter(field => field !== 'category' || values.cf);
     visible.forEach(field => {
-      const row = document.createElement('button'); row.type = 'button'; row.className = 'compact-row' + (errorFor(field) ? ' is-invalid' : '');
+      const row = document.createElement('button'); row.type = 'button'; row.className = 'compact-row' + (!listMode && errorFor(field) ? ' is-invalid' : '');
       row.setAttribute('aria-label', `${labels[field]}：${labelValue(field)}。タップして修正`);
       for (const [cls, text] of [['compact-row-label', labels[field]], ['compact-row-value', labelValue(field)], ['compact-row-edit', '›']]) {
         const span = document.createElement('span'); span.className = cls; span.textContent = text; row.append(span);
@@ -127,10 +110,8 @@
       row.addEventListener('click', () => openModal(field)); $('compactRows').append(row);
     });
     $('compactStepPanel').classList.toggle('d-none', reviewing || listMode);
-    $('compactListPanel').classList.toggle('d-none', reviewing || !listMode);
-    $('compactListBack').classList.toggle('d-none', !reviewing || !listMode); $('compactConfirm').classList.toggle('d-none', !reviewing);
-    $('compactProgress').textContent = reviewing ? '入力内容の確認' : listMode ? '項目を入力して「確認へ」' : `STEP ${index + 1} / ${steps.length}`;
-    if (!reviewing && listMode) renderList();
+    $('compactConfirm').classList.toggle('d-none', !reviewing);
+    $('compactProgress').textContent = reviewing ? (listMode ? '入力項目を選択してください' : '入力内容の確認') : `STEP ${index + 1} / ${steps.length}`;
     if (reviewing) voice?.stop();
     if (!reviewing && !listMode) {
       const field = steps[index]; $('compactStepTitle').textContent = labels[field];
@@ -155,8 +136,6 @@
       const response = await fetch(`/finance/entry-step/options?${new URLSearchParams({ date: candidate.date, groupId: candidate.groupId, userId: candidate.userId })}`, { headers: { Accept: 'application/json' } });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || '候補を取得できませんでした');
-      // Keep text typed while date-dependent options are being fetched.
-      if (listMode) for (const key of ['content', 'amount', 'sub_tag']) candidate[key] = values[key];
       options = result.options; candidate.userId = options.userId;
       if (!(options.categories[candidate.cf] || []).includes(candidate.category)) candidate.category = '';
       if (field !== 'date' || !options.payments.includes(candidate.payment_type)) candidate.payment_type = '';
@@ -194,13 +173,6 @@
     try { await completeStep($('compactStepField').querySelector('input,select').value); }
     catch (err) { $('compactStepError').textContent = err.message; }
   });
-  $('compactListForm').addEventListener('submit', event => {
-    event.preventDefault(); if (busy) return;
-    const invalid = steps.find(field => errorFor(field));
-    if (invalid) { showError(errorFor(invalid)); return; }
-    reviewing = true; $('compactError').classList.add('d-none'); render();
-  });
-  $('compactListBack').addEventListener('click', () => { if (busy) return; reviewing = false; render(); });
   $('compactSkip').addEventListener('click', () => { if (busy) return; values.sub_tag = ''; index++; render(); });
   $('compactBack').addEventListener('click', () => { if (busy || !index) return; index--; render(); });
   $('compactCopy')?.addEventListener('click', () => {
